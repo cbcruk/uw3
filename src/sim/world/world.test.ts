@@ -85,6 +85,60 @@ describe("항해 진행", () => {
     expect(stalledDays).toBe(20);
   });
 
+  /** 첫 출항이 제자리면 플레이어는 시뮬레이션이 죽은 것으로 읽는다. */
+  it("출항 직후 기본 침로로 전진한다", () => {
+    const game = createGame();
+    const startLon = game.voyage.position.lon;
+    applyAction(game, { type: "depart" });
+    const { report } = applyAction(game, { type: "advance-day" });
+
+    expect(report?.distanceNm ?? 0).toBeGreaterThan(0);
+    expect(game.voyage.position.lon).toBeLessThan(startLon);
+  });
+
+  /**
+   * 정박지 한 칸만 항해 가능하면 리스본은 사방이 육지인 구멍이 된다.
+   * 태킹 각도가 전부 육지에 막혀 출항이 불가능해진다.
+   */
+  it("항구 앞바다가 열려 있어 양쪽 태킹으로 외해에 나갈 수 있다", () => {
+    for (const headingDeg of [210, 300]) {
+      const game = createGame();
+      const start = { ...game.voyage.position };
+      applyAction(game, { type: "depart" });
+      applyAction(game, { type: "set-heading", headingDeg });
+      for (let day = 0; day < 5; day += 1) {
+        applyAction(game, { type: "advance-day" });
+      }
+
+      expect(haversineNm(game.voyage.position, start)).toBeGreaterThan(50);
+      expect(game.voyage.position.lon).toBeLessThan(start.lon);
+    }
+  });
+
+  /** 정풍으로 멈춘 날은 이유가 항해일지에 남아야 한다. 침묵은 고장으로 읽힌다. */
+  it("전진하지 못한 날은 이유를 기록한다", () => {
+    const game = createGame();
+    applyAction(game, { type: "depart" });
+    const wind = windAt(game.voyage.position, game.voyage.day);
+    applyAction(game, { type: "set-heading", headingDeg: wind.fromDeg });
+    const { report } = applyAction(game, { type: "advance-day" });
+
+    expect(report?.distanceNm).toBe(0);
+    expect(report?.logs.some((text) => text.includes("정풍"))).toBe(true);
+  });
+
+  it("돛을 모두 접으면 그 이유가 기록된다", () => {
+    const game = createGame();
+    applyAction(game, { type: "depart" });
+    game.voyage.sailsSet.forEach((_, mast) => {
+      applyAction(game, { type: "set-sail", mast, set: false });
+    });
+    const { report } = applyAction(game, { type: "advance-day" });
+
+    expect(report?.distanceNm).toBe(0);
+    expect(report?.logs.some((text) => text.includes("돛을 모두 접은"))).toBe(true);
+  });
+
   it("배는 육지를 통과하지 못한다", () => {
     const game = createGame();
     applyAction(game, { type: "depart" });

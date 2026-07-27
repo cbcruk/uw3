@@ -47,7 +47,9 @@ export function createGame(config: GameConfig = DEFAULT_CONFIG): Game {
   const voyage: VoyageState = {
     position: { lat: startPort.lat, lon: startPort.lon },
     day: toDayNumber(config.startDate),
-    headingDeg: 270,
+    // 리스본은 편서풍을 정면으로 받는다. 270°로 시작하면 첫 출항이 영구 정지로 보인다.
+    // 남서 침로는 실제 리스본 출항의 첫 다리이자, 라틴돛이 물 수 있는 각이다.
+    headingDeg: 210,
     sailsSet: shipClass.defaultRig.map(() => true),
     rig: shipClass.defaultRig.map((mast) => ({ ...mast })),
     food: capacity,
