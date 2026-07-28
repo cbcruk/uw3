@@ -3,6 +3,7 @@ import { normalizeHeading } from "../sim/geo/geo.utils";
 import { createGame } from "../sim/world/world";
 import { applyAction } from "../sim/world/world";
 import type { GameAction } from "../sim/world/world.types";
+import { readDebugOptions } from "./debug/debug-options";
 import { createHud } from "./hud/hud";
 import { createMapView } from "./map-view/map-view";
 
@@ -11,12 +12,13 @@ const TRACK_LIMIT = 400;
 export function mountApp(root: HTMLElement): void {
   const game = createGame();
   const track: LatLon[] = [{ ...game.voyage.position }];
+  let fog = readDebugOptions(window.location.search).fog;
 
   root.innerHTML = `
     <main class="layout">
       <section class="chart">
         <canvas id="chart-canvas"></canvas>
-        <p class="chart__hint">해도를 클릭하면 그 방향으로 침로를 잡는다. ← → 침로 조정, Space 하루 진행.</p>
+        <p class="chart__hint" id="chart-hint"></p>
       </section>
       <aside class="panel">
         <div id="hud" class="hud"></div>
@@ -43,7 +45,8 @@ export function mountApp(root: HTMLElement): void {
   const canvas = root.querySelector<HTMLCanvasElement>("#chart-canvas");
   const hudRoot = root.querySelector<HTMLElement>("#hud");
   const sailsRoot = root.querySelector<HTMLElement>("#sails");
-  if (canvas === null || hudRoot === null || sailsRoot === null) {
+  const hintRoot = root.querySelector<HTMLElement>("#chart-hint");
+  if (canvas === null || hudRoot === null || sailsRoot === null || hintRoot === null) {
     throw new Error("app scaffolding missing");
   }
 
@@ -51,12 +54,14 @@ export function mountApp(root: HTMLElement): void {
   const mapView = createMapView({
     canvas,
     game,
+    fog,
     onCourseSet: (headingDeg: number) => {
       dispatch({ type: "set-heading", headingDeg });
     },
   });
 
   const sailsPanel = sailsRoot;
+  const hintPanel = hintRoot;
 
   function renderSails(): void {
     sailsPanel.innerHTML = game.voyage.rig
@@ -88,10 +93,16 @@ export function mountApp(root: HTMLElement): void {
     }
   }
 
+  function renderHint(): void {
+    const fogState = fog ? "안개 켬" : "안개 끔 — 해도 전체 표시";
+    hintPanel.textContent = `해도를 클릭하면 그 방향으로 침로를 잡는다. ← → 침로 조정, Space 하루 진행, F ${fogState}.`;
+  }
+
   function render(): void {
     hud.render();
     renderSails();
     renderContextButtons();
+    renderHint();
     mapView.render(track);
   }
 
@@ -158,6 +169,11 @@ export function mountApp(root: HTMLElement): void {
     } else if (event.key === " ") {
       event.preventDefault();
       dispatch({ type: "advance-day" });
+    } else if (event.key === "f" || event.key === "F") {
+      event.preventDefault();
+      fog = !fog;
+      mapView.setFog(fog);
+      render();
     }
   });
 

@@ -17,7 +17,7 @@ interface Surface {
   tilePx: number;
 }
 
-function drawTerrain(surface: Surface, game: Game): void {
+function drawTerrain(surface: Surface, game: Game, fog: boolean): void {
   const { ctx, tilePx } = surface;
   const { size } = game.tileMap;
 
@@ -26,7 +26,7 @@ function drawTerrain(surface: Surface, game: Game): void {
 
   for (let y = 0; y < size.height; y += 1) {
     for (let x = 0; x < size.width; x += 1) {
-      if (!game.exploration.isRevealed({ x, y })) {
+      if (fog && !game.exploration.isRevealed({ x, y })) {
         continue;
       }
       const isLand = game.tileMap.isLandTile({ x, y });
@@ -35,17 +35,20 @@ function drawTerrain(surface: Surface, game: Game): void {
     }
   }
 
-  drawCoastline(surface, game.tileMap, game);
+  drawCoastline(surface, game.tileMap, game, fog);
 }
 
-function drawCoastline(surface: Surface, tileMap: TileMap, game: Game): void {
+function drawCoastline(surface: Surface, tileMap: TileMap, game: Game, fog: boolean): void {
   const { ctx, tilePx } = surface;
   const { size } = tileMap;
   ctx.fillStyle = MAP_PALETTE.coast;
 
   for (let y = 0; y < size.height; y += 1) {
     for (let x = 0; x < size.width; x += 1) {
-      if (!game.exploration.isRevealed({ x, y }) || !tileMap.isLandTile({ x, y })) {
+      if (fog && !game.exploration.isRevealed({ x, y })) {
+        continue;
+      }
+      if (!tileMap.isLandTile({ x, y })) {
         continue;
       }
       const exposed =
@@ -133,7 +136,8 @@ function drawShip(surface: Surface, game: Game): void {
 }
 
 export function createMapView(options: MapViewOptions): MapView {
-  const { canvas, game, onCourseSet } = options;
+  const { canvas, game, onCourseSet, fog = true } = options;
+  let fogEnabled = fog;
   const ctx = canvas.getContext("2d");
   if (ctx === null) {
     throw new Error("2d context unavailable");
@@ -163,11 +167,14 @@ export function createMapView(options: MapViewOptions): MapView {
   return {
     render(track: readonly LatLon[]): void {
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      drawTerrain(surface, game);
+      drawTerrain(surface, game, fogEnabled);
       drawGraticule(surface, bounds);
       drawTrack(surface, track);
       drawPorts(surface, game);
       drawShip(surface, game);
+    },
+    setFog(enabled: boolean): void {
+      fogEnabled = enabled;
     },
   };
 }
