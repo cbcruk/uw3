@@ -11,6 +11,8 @@ export interface VoyageState {
   position: LatLon;
   day: number;
   headingDeg: number;
+  /** 항해사에게 맡긴 목적지. null이면 수동 조타. */
+  destination: LatLon | null;
   sailsSet: boolean[];
   rig: MastSail[];
   food: number;
@@ -72,6 +74,8 @@ export interface HazardDefinition {
 
 export interface DayReport {
   day: number;
+  /** 그 날 항해를 마친 위치. 항적 기록에 쓴다. */
+  position: LatLon;
   wind: Wind;
   speedKnots: number;
   distanceNm: number;

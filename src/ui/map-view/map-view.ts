@@ -1,5 +1,4 @@
 import type { LatLon, MapBounds } from "../../sim/geo/geo.types";
-import { bearingDeg } from "../../sim/geo/geo.utils";
 import type { TileMap } from "../../sim/map/tile-map.types";
 import { windAt } from "../../sim/wind/wind";
 import type { Game } from "../../sim/world/world.types";
@@ -116,6 +115,36 @@ function drawPorts(surface: Surface, game: Game): void {
   }
 }
 
+/** 항해사에게 맡긴 목적지. 배에서 이어지는 실선과 표적으로 표시한다. */
+function drawDestination(surface: Surface, game: Game): void {
+  const destination = game.voyage.destination;
+  if (destination === null) {
+    return;
+  }
+  const { ctx, projection } = surface;
+  const ship = projection.toCanvas(game.voyage.position);
+  const mark = projection.toCanvas(destination);
+
+  ctx.strokeStyle = MAP_PALETTE.destination;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 5]);
+  ctx.beginPath();
+  ctx.moveTo(ship.x, ship.y);
+  ctx.lineTo(mark.x, mark.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  ctx.arc(mark.x, mark.y, 6, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(mark.x - 9, mark.y);
+  ctx.lineTo(mark.x + 9, mark.y);
+  ctx.moveTo(mark.x, mark.y - 9);
+  ctx.lineTo(mark.x, mark.y + 9);
+  ctx.stroke();
+}
+
 function drawShip(surface: Surface, game: Game): void {
   const { ctx, projection } = surface;
   const { x, y } = projection.toCanvas(game.voyage.position);
@@ -136,7 +165,7 @@ function drawShip(surface: Surface, game: Game): void {
 }
 
 export function createMapView(options: MapViewOptions): MapView {
-  const { canvas, game, onCourseSet, fog = true } = options;
+  const { canvas, game, onDestinationSet, fog = true } = options;
   let fogEnabled = fog;
   const ctx = canvas.getContext("2d");
   if (ctx === null) {
@@ -157,11 +186,12 @@ export function createMapView(options: MapViewOptions): MapView {
 
   canvas.addEventListener("click", (event: MouseEvent) => {
     const rect = canvas.getBoundingClientRect();
-    const target = projection.toLatLon(
-      ((event.clientX - rect.left) / rect.width) * widthPx,
-      ((event.clientY - rect.top) / rect.height) * heightPx,
+    onDestinationSet(
+      projection.toLatLon(
+        ((event.clientX - rect.left) / rect.width) * widthPx,
+        ((event.clientY - rect.top) / rect.height) * heightPx,
+      ),
     );
-    onCourseSet(bearingDeg(game.voyage.position, target));
   });
 
   return {
@@ -170,6 +200,7 @@ export function createMapView(options: MapViewOptions): MapView {
       drawTerrain(surface, game, fogEnabled);
       drawGraticule(surface, bounds);
       drawTrack(surface, track);
+      drawDestination(surface, game);
       drawPorts(surface, game);
       drawShip(surface, game);
     },

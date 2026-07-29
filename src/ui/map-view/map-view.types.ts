@@ -4,7 +4,7 @@ import type { Game } from "../../sim/world/world.types";
 export interface MapViewOptions {
   canvas: HTMLCanvasElement;
   game: Game;
-  onCourseSet: (headingDeg: number) => void;
+  onDestinationSet: (target: LatLon) => void;
   /** 초기 안개 표시 여부. 기본 true. */
   fog?: boolean;
 }
@@ -25,4 +25,5 @@ export interface MapPalette {
   ship: string;
   port: string;
   wind: string;
+  destination: string;
 }

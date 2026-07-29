@@ -4,6 +4,7 @@ import { computeSpeedKnots, conditionFactor } from "../ship/sail";
 import type { SailingCondition } from "../ship/ship.types";
 import { windAt } from "../wind/wind";
 import type { Wind } from "../wind/wind.types";
+import { courseStepNm } from "./course";
 import { VOYAGE_HAZARDS } from "./hazards";
 import type {
   DayReport,
@@ -80,7 +81,7 @@ function moveAlongCourse(
   distanceNm: number,
   lookoutNm: number,
 ): Movement {
-  const stepNm = Math.max(2, context.tileMap.bounds.tileSize * 60 * 0.5);
+  const stepNm = courseStepNm(context.tileMap);
   const steps = Math.max(1, Math.ceil(distanceNm / stepNm));
   const legNm = distanceNm / steps;
 
@@ -287,6 +288,7 @@ export function stepDay(state: VoyageState, context: VoyageContext): DayReport {
 
   return {
     day: state.day,
+    position: { ...state.position },
     wind,
     speedKnots,
     distanceNm: movement.distanceNm,

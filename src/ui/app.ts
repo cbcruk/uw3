@@ -1,5 +1,5 @@
 import type { LatLon } from "../sim/geo/geo.types";
-import { normalizeHeading } from "../sim/geo/geo.utils";
+import { bearingDeg, haversineNm, normalizeHeading } from "../sim/geo/geo.utils";
 import { createGame } from "../sim/world/world";
 import { applyAction } from "../sim/world/world";
 import type { GameAction } from "../sim/world/world.types";
@@ -13,6 +13,7 @@ export function mountApp(root: HTMLElement): void {
   const game = createGame();
   const track: LatLon[] = [{ ...game.voyage.position }];
   let fog = readDebugOptions(window.location.search).fog;
+  let lastStop: string | null = null;
 
   root.innerHTML = `
     <main class="layout">
@@ -34,9 +35,10 @@ export function mountApp(root: HTMLElement): void {
             <button data-action="resupply">보급 · 수리</button>
           </div>
           <div class="controls__row">
-            <button data-action="day" class="primary">하루 진행</button>
-            <button data-action="week">7일 진행</button>
+            <button data-action="passage" class="primary">항해 개시</button>
+            <button data-action="day">하루만</button>
           </div>
+          <p class="controls__note" id="orders"></p>
         </div>
       </aside>
     </main>
@@ -46,7 +48,14 @@ export function mountApp(root: HTMLElement): void {
   const hudRoot = root.querySelector<HTMLElement>("#hud");
   const sailsRoot = root.querySelector<HTMLElement>("#sails");
   const hintRoot = root.querySelector<HTMLElement>("#chart-hint");
-  if (canvas === null || hudRoot === null || sailsRoot === null || hintRoot === null) {
+  const ordersRoot = root.querySelector<HTMLElement>("#orders");
+  if (
+    canvas === null ||
+    hudRoot === null ||
+    sailsRoot === null ||
+    hintRoot === null ||
+    ordersRoot === null
+  ) {
     throw new Error("app scaffolding missing");
   }
 
@@ -55,13 +64,14 @@ export function mountApp(root: HTMLElement): void {
     canvas,
     game,
     fog,
-    onCourseSet: (headingDeg: number) => {
-      dispatch({ type: "set-heading", headingDeg });
+    onDestinationSet: (target: LatLon) => {
+      dispatch({ type: "set-destination", target });
     },
   });
 
   const sailsPanel = sailsRoot;
   const hintPanel = hintRoot;
+  const ordersPanel = ordersRoot;
 
   function renderSails(): void {
     sailsPanel.innerHTML = game.voyage.rig
@@ -74,11 +84,29 @@ export function mountApp(root: HTMLElement): void {
       .join("");
   }
 
+  /** 항해사에게 무엇을 맡겼는지, 왜 멈췄는지를 명령 버튼 옆에 붙여 둔다. */
+  function renderOrders(): void {
+    const destination = game.voyage.destination;
+    if (destination === null) {
+      ordersPanel.textContent = "해도를 클릭해 목적지를 지정한다. 항해사가 태킹을 맡는다.";
+      return;
+    }
+    const rangeNm = haversineNm(game.voyage.position, destination);
+    const bearing = Math.round(bearingDeg(game.voyage.position, destination));
+    const stop = lastStop === null ? "" : ` · ${lastStop}`;
+    ordersPanel.textContent = `목적지까지 ${Math.round(rangeNm)}해리, 방위 ${bearing}°${stop}`;
+  }
+
   function renderContextButtons(): void {
     const anchorButton = root.querySelector<HTMLButtonElement>('[data-action="anchor"]');
     const portButton = root.querySelector<HTMLButtonElement>('[data-action="port"]');
     const resupplyButton = root.querySelector<HTMLButtonElement>('[data-action="resupply"]');
+    const passageButton = root.querySelector<HTMLButtonElement>('[data-action="passage"]');
     const inPort = game.voyage.atPortId !== null;
+
+    if (passageButton !== null) {
+      passageButton.disabled = game.voyage.destination === null || inPort || game.ended !== null;
+    }
 
     if (anchorButton !== null) {
       anchorButton.textContent = game.voyage.anchored ? "닻 올리기" : "닻 내리기";
@@ -95,24 +123,36 @@ export function mountApp(root: HTMLElement): void {
 
   function renderHint(): void {
     const fogState = fog ? "안개 켬" : "안개 끔 — 해도 전체 표시";
-    hintPanel.textContent = `해도를 클릭하면 그 방향으로 침로를 잡는다. ← → 침로 조정, Space 하루 진행, F ${fogState}.`;
+    hintPanel.textContent = `해도를 클릭해 목적지를 지정한다. ← → 직접 조타(목적지 해제), Space 하루만, F ${fogState}.`;
   }
 
   function render(): void {
     hud.render();
     renderSails();
     renderContextButtons();
+    renderOrders();
     renderHint();
     mapView.render(track);
   }
 
+  function recordTrack(point: LatLon): void {
+    track.push({ ...point });
+    if (track.length > TRACK_LIMIT) {
+      track.shift();
+    }
+  }
+
   function dispatch(action: GameAction): void {
-    applyAction(game, action);
+    const result = applyAction(game, action);
     if (action.type === "advance-day") {
-      track.push({ ...game.voyage.position });
-      if (track.length > TRACK_LIMIT) {
-        track.shift();
-      }
+      recordTrack(game.voyage.position);
+    }
+    if (result.passage !== null) {
+      result.passage.reports.forEach((report) => recordTrack(report.position));
+      lastStop = result.passage.summary;
+    }
+    if (action.type === "set-destination") {
+      lastStop = null;
     }
     render();
   }
@@ -151,10 +191,8 @@ export function mountApp(root: HTMLElement): void {
       case "day":
         dispatch({ type: "advance-day" });
         break;
-      case "week":
-        for (let i = 0; i < 7; i += 1) {
-          dispatch({ type: "advance-day" });
-        }
+      case "passage":
+        dispatch({ type: "sail" });
         break;
     }
   });

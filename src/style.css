@@ -164,6 +164,13 @@ body {
   flex-wrap: wrap;
 }
 
+.controls__note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
 button {
   flex: 1;
   min-width: 0;
