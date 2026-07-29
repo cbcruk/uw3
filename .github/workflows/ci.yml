@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 같은 브랜치에 밀어넣으면 앞 실행은 의미가 없다. 취소하고 최신 것만 본다.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # setup-vp가 Vite+ 설치, Node 버전, 패키지 매니저, 의존성 캐시를 한 번에 맡는다.
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: "24"
+          cache: true
+
+      - run: vp install --frozen-lockfile
+
+      # 포맷·린트·타입 체크. CI에서는 고치지 않고 어긋난 사실만 보고한다.
+      - run: vp check
+
+      # vp test는 Vitest와 달리 기본이 단발 실행이다. watch 플래그가 따로 필요 없다.
+      - run: vp test
+
+      # 시뮬은 테스트가 잡지만 번들 단계 실패는 여기서만 드러난다.
+      - run: vp build
