@@ -3,6 +3,8 @@ import { advance, clamp, haversineNm, relativeWindAngle } from "../geo/geo.utils
 import { computeSpeedKnots, conditionFactor } from "../ship/sail";
 import type { SailingCondition } from "../ship/ship.types";
 import { windAt } from "../wind/wind";
+import type { Wind } from "../wind/wind.types";
+import { courseStepNm } from "./course";
 import { VOYAGE_HAZARDS } from "./hazards";
 import type {
   DayReport,
@@ -79,7 +81,7 @@ function moveAlongCourse(
   distanceNm: number,
   lookoutNm: number,
 ): Movement {
-  const stepNm = Math.max(2, context.tileMap.bounds.tileSize * 60 * 0.5);
+  const stepNm = courseStepNm(context.tileMap);
   const steps = Math.max(1, Math.ceil(distanceNm / stepNm));
   const legNm = distanceNm / steps;
 
@@ -110,6 +112,20 @@ function moveAlongCourse(
   }
 
   return { distanceNm: travelled, blocked, revealed, dockedPortId };
+}
+
+/**
+ * 전진 0인 날은 반드시 이유를 남긴다. 침묵하면 플레이어는 정풍을 고장으로 읽는다.
+ * 태킹은 난이도의 출처지 (SPEC 2) 숨겨야 할 규칙이 아니다.
+ */
+function stallReason(state: VoyageState, wind: Wind): string {
+  if (state.sailsSet.every((set) => set === false)) {
+    return "돛을 모두 접은 채로는 바람을 받지 못한다.";
+  }
+  if (wind.speedKnots < 1) {
+    return "무풍이다. 돛이 늘어진 채 하루가 지났다.";
+  }
+  return `정풍이다. 침로 ${Math.round(state.headingDeg)}°로는 바람을 물지 못한다. 침로를 좌우로 틀어 태킹해야 한다.`;
 }
 
 function consumeSupplies(state: VoyageState, logs: string[]): void {
@@ -237,6 +253,14 @@ export function stepDay(state: VoyageState, context: VoyageContext): DayReport {
   if (movement.blocked) {
     logs.push("전방에 육지. 더 나아갈 수 없다.");
   }
+  if (
+    movement.distanceNm === 0 &&
+    !state.anchored &&
+    state.atPortId === null &&
+    !movement.blocked
+  ) {
+    logs.push(stallReason(state, wind));
+  }
 
   consumeSupplies(state, logs);
 
@@ -264,6 +288,7 @@ export function stepDay(state: VoyageState, context: VoyageContext): DayReport {
 
   return {
     day: state.day,
+    position: { ...state.position },
     wind,
     speedKnots,
     distanceNm: movement.distanceNm,

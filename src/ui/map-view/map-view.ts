@@ -1,5 +1,4 @@
 import type { LatLon, MapBounds } from "../../sim/geo/geo.types";
-import { bearingDeg } from "../../sim/geo/geo.utils";
 import type { TileMap } from "../../sim/map/tile-map.types";
 import { windAt } from "../../sim/wind/wind";
 import type { Game } from "../../sim/world/world.types";
@@ -17,7 +16,7 @@ interface Surface {
   tilePx: number;
 }
 
-function drawTerrain(surface: Surface, game: Game): void {
+function drawTerrain(surface: Surface, game: Game, fog: boolean): void {
   const { ctx, tilePx } = surface;
   const { size } = game.tileMap;
 
@@ -26,7 +25,7 @@ function drawTerrain(surface: Surface, game: Game): void {
 
   for (let y = 0; y < size.height; y += 1) {
     for (let x = 0; x < size.width; x += 1) {
-      if (!game.exploration.isRevealed({ x, y })) {
+      if (fog && !game.exploration.isRevealed({ x, y })) {
         continue;
       }
       const isLand = game.tileMap.isLandTile({ x, y });
@@ -35,17 +34,20 @@ function drawTerrain(surface: Surface, game: Game): void {
     }
   }
 
-  drawCoastline(surface, game.tileMap, game);
+  drawCoastline(surface, game.tileMap, game, fog);
 }
 
-function drawCoastline(surface: Surface, tileMap: TileMap, game: Game): void {
+function drawCoastline(surface: Surface, tileMap: TileMap, game: Game, fog: boolean): void {
   const { ctx, tilePx } = surface;
   const { size } = tileMap;
   ctx.fillStyle = MAP_PALETTE.coast;
 
   for (let y = 0; y < size.height; y += 1) {
     for (let x = 0; x < size.width; x += 1) {
-      if (!game.exploration.isRevealed({ x, y }) || !tileMap.isLandTile({ x, y })) {
+      if (fog && !game.exploration.isRevealed({ x, y })) {
+        continue;
+      }
+      if (!tileMap.isLandTile({ x, y })) {
         continue;
       }
       const exposed =
@@ -113,6 +115,36 @@ function drawPorts(surface: Surface, game: Game): void {
   }
 }
 
+/** 항해사에게 맡긴 목적지. 배에서 이어지는 실선과 표적으로 표시한다. */
+function drawDestination(surface: Surface, game: Game): void {
+  const destination = game.voyage.destination;
+  if (destination === null) {
+    return;
+  }
+  const { ctx, projection } = surface;
+  const ship = projection.toCanvas(game.voyage.position);
+  const mark = projection.toCanvas(destination);
+
+  ctx.strokeStyle = MAP_PALETTE.destination;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 5]);
+  ctx.beginPath();
+  ctx.moveTo(ship.x, ship.y);
+  ctx.lineTo(mark.x, mark.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  ctx.arc(mark.x, mark.y, 6, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(mark.x - 9, mark.y);
+  ctx.lineTo(mark.x + 9, mark.y);
+  ctx.moveTo(mark.x, mark.y - 9);
+  ctx.lineTo(mark.x, mark.y + 9);
+  ctx.stroke();
+}
+
 function drawShip(surface: Surface, game: Game): void {
   const { ctx, projection } = surface;
   const { x, y } = projection.toCanvas(game.voyage.position);
@@ -133,7 +165,8 @@ function drawShip(surface: Surface, game: Game): void {
 }
 
 export function createMapView(options: MapViewOptions): MapView {
-  const { canvas, game, onCourseSet } = options;
+  const { canvas, game, onDestinationSet, fog = true } = options;
+  let fogEnabled = fog;
   const ctx = canvas.getContext("2d");
   if (ctx === null) {
     throw new Error("2d context unavailable");
@@ -153,21 +186,26 @@ export function createMapView(options: MapViewOptions): MapView {
 
   canvas.addEventListener("click", (event: MouseEvent) => {
     const rect = canvas.getBoundingClientRect();
-    const target = projection.toLatLon(
-      ((event.clientX - rect.left) / rect.width) * widthPx,
-      ((event.clientY - rect.top) / rect.height) * heightPx,
+    onDestinationSet(
+      projection.toLatLon(
+        ((event.clientX - rect.left) / rect.width) * widthPx,
+        ((event.clientY - rect.top) / rect.height) * heightPx,
+      ),
     );
-    onCourseSet(bearingDeg(game.voyage.position, target));
   });
 
   return {
     render(track: readonly LatLon[]): void {
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      drawTerrain(surface, game);
+      drawTerrain(surface, game, fogEnabled);
       drawGraticule(surface, bounds);
       drawTrack(surface, track);
+      drawDestination(surface, game);
       drawPorts(surface, game);
       drawShip(surface, game);
+    },
+    setFog(enabled: boolean): void {
+      fogEnabled = enabled;
     },
   };
 }

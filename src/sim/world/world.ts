@@ -5,9 +5,11 @@ import { formatGameDate, toDayNumber } from "../calendar/calendar";
 import { createExplorationState } from "../fog/fog-of-war";
 import { haversineNm, normalizeHeading } from "../geo/geo.utils";
 import { createTileMap } from "../map/tile-map";
+import { findSeaRoute } from "../map/sea-route";
 import { createRngSet } from "../rng/rng";
+import { runPassage } from "../voyage/passage";
 import { stepDay } from "../voyage/voyage";
-import type { VoyageState } from "../voyage/voyage.types";
+import type { DayReport, VoyageContext, VoyageState } from "../voyage/voyage.types";
 import type { ActionResult, Game, GameAction, GameConfig, JournalEntry } from "./world.types";
 
 const DOCKING_RANGE_NM = 12;
@@ -47,7 +49,10 @@ export function createGame(config: GameConfig = DEFAULT_CONFIG): Game {
   const voyage: VoyageState = {
     position: { lat: startPort.lat, lon: startPort.lon },
     day: toDayNumber(config.startDate),
-    headingDeg: 270,
+    // 리스본은 편서풍을 정면으로 받는다. 270°로 시작하면 첫 출항이 영구 정지로 보인다.
+    // 남서 침로는 실제 리스본 출항의 첫 다리이자, 라틴돛이 물 수 있는 각이다.
+    headingDeg: 210,
+    destination: null,
     sailsSet: shipClass.defaultRig.map(() => true),
     rig: shipClass.defaultRig.map((mast) => ({ ...mast })),
     food: capacity,
@@ -148,23 +153,87 @@ function dockAt(game: Game, portId: string | null): JournalEntry[] {
   return [{ day: game.voyage.day, kind: "port", text: `${port.name}에 입항했다.` }];
 }
 
+function voyageContext(game: Game): VoyageContext {
+  return {
+    tileMap: game.tileMap,
+    exploration: game.exploration,
+    shipClass: game.shipClass,
+    rng: game.rng.voyage,
+    ports: game.ports,
+    dockingRangeNm: DOCKING_RANGE_NM,
+  };
+}
+
+/**
+ * 하루치 보고를 항해일지에 옮긴다. 구간 항해에서는 마지막 날에만 경고를 싣는다.
+ * 같은 경고가 날마다 반복되면 진짜 새 소식이 묻힌다 (SPEC 4.2 텔레그래프).
+ */
+function recordDay(game: Game, report: DayReport, includeWarnings: boolean): JournalEntry[] {
+  const entries: JournalEntry[] = [
+    ...report.logs.map(
+      (text): JournalEntry => ({
+        day: report.day,
+        kind: report.hazardId !== null ? "hazard" : "log",
+        text,
+      }),
+    ),
+    ...dockAt(game, report.dockedPortId),
+    ...(includeWarnings
+      ? report.warnings.map((text): JournalEntry => ({ day: report.day, kind: "warning", text }))
+      : []),
+  ];
+
+  if (report.ended !== null && game.ended === null) {
+    game.ended = report.ended;
+    entries.push({
+      day: report.day,
+      kind: "system",
+      text:
+        report.ended === "crew-lost"
+          ? "선원이 모두 스러졌다. 항해는 여기서 끝났다."
+          : "선체가 버티지 못했다. 배를 잃었다.",
+    });
+  }
+
+  game.journal.push(...entries);
+  return entries;
+}
+
 export function applyAction(game: Game, action: GameAction): ActionResult {
   game.actions.push(action);
 
   switch (action.type) {
     case "set-heading": {
+      // 손으로 침로를 잡으면 항해사에게 맡긴 목적지는 해제된다. 둘이 매일 다투면 안 된다.
       game.voyage.headingDeg = normalizeHeading(action.headingDeg);
-      return { report: null, entries: [] };
+      game.voyage.destination = null;
+      return { report: null, entries: [], passage: null };
+    }
+    case "set-destination": {
+      if (action.target === null) {
+        game.voyage.destination = null;
+        return { report: null, entries: [], passage: null };
+      }
+      // 갈 수 없는 곳을 목적지로 걸어두면 항해 명령이 매번 헛돈다. 지금 거절한다.
+      if (findSeaRoute(game.tileMap, game.voyage.position, action.target) === null) {
+        const entries: JournalEntry[] = [
+          { day: game.voyage.day, kind: "system", text: "그곳으로 이어지는 바닷길이 없다." },
+        ];
+        game.journal.push(...entries);
+        return { report: null, entries, passage: null };
+      }
+      game.voyage.destination = { ...action.target };
+      return { report: null, entries: [], passage: null };
     }
     case "set-sail": {
       if (action.mast >= 0 && action.mast < game.voyage.sailsSet.length) {
         game.voyage.sailsSet[action.mast] = action.set;
       }
-      return { report: null, entries: [] };
+      return { report: null, entries: [], passage: null };
     }
     case "set-anchor": {
       game.voyage.anchored = action.anchored;
-      return { report: null, entries: [] };
+      return { report: null, entries: [], passage: null };
     }
     case "depart": {
       const port = game.voyage.atPortId === null ? undefined : findPort(game.voyage.atPortId);
@@ -176,59 +245,52 @@ export function applyAction(game: Game, action: GameAction): ActionResult {
           ? []
           : [{ day: game.voyage.day, kind: "port", text: `${port.name}을 떠났다.` }];
       game.journal.push(...entries);
-      return { report: null, entries };
+      return { report: null, entries, passage: null };
     }
     case "resupply": {
       const entries = resupply(game);
       game.journal.push(...entries);
-      return { report: null, entries };
+      return { report: null, entries, passage: null };
     }
     case "advance-day": {
       if (game.ended !== null) {
-        return { report: null, entries: [] };
+        return { report: null, entries: [], passage: null };
       }
 
-      const report = stepDay(game.voyage, {
-        tileMap: game.tileMap,
-        exploration: game.exploration,
-        shipClass: game.shipClass,
-        rng: game.rng.voyage,
-        ports: game.ports,
-        dockingRangeNm: DOCKING_RANGE_NM,
+      const report = stepDay(game.voyage, voyageContext(game));
+      const entries = recordDay(game, report, true);
+      return { report, entries, passage: null };
+    }
+    case "sail": {
+      if (game.ended !== null || game.voyage.destination === null) {
+        return { report: null, entries: [], passage: null };
+      }
+
+      const passage = runPassage(game.voyage, voyageContext(game));
+      const entries: JournalEntry[] = [];
+      passage.reports.forEach((report, index) => {
+        const isLast = index === passage.reports.length - 1;
+        entries.push(...recordDay(game, report, isLast));
       });
 
-      const entries: JournalEntry[] = [
-        ...report.logs.map(
-          (text): JournalEntry => ({
-            day: report.day,
-            kind: report.hazardId !== null ? "hazard" : "log",
-            text,
-          }),
-        ),
-        ...dockAt(game, report.dockedPortId),
-        ...report.warnings.map(
-          (text): JournalEntry => ({
-            day: report.day,
-            kind: "warning",
-            text,
-          }),
-        ),
-      ];
-
-      if (report.ended !== null && game.ended === null) {
-        game.ended = report.ended;
-        entries.push({
-          day: report.day,
-          kind: "system",
-          text:
-            report.ended === "crew-lost"
-              ? "선원이 모두 스러졌다. 항해는 여기서 끝났다."
-              : "선체가 버티지 못했다. 배를 잃었다.",
-        });
+      // 도착한 목적지를 그대로 두면 항해 명령이 하루짜리 "도달" 보고만 반복한다.
+      if (passage.stop === "arrived" || passage.stop === "docked") {
+        game.voyage.destination = null;
       }
 
-      game.journal.push(...entries);
-      return { report, entries };
+      const summary: JournalEntry = {
+        day: game.voyage.day,
+        kind: "system",
+        text: passage.summary,
+      };
+      game.journal.push(summary);
+      entries.push(summary);
+
+      return {
+        report: passage.reports[passage.reports.length - 1] ?? null,
+        entries,
+        passage,
+      };
     }
   }
 }

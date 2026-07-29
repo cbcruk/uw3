@@ -11,6 +11,7 @@ export const MAP_PALETTE: MapPalette = {
   ship: "#f5e6c8",
   port: "#e0a83c",
   wind: "#7fb3d5",
+  destination: "#8fd6a0",
 };
 
 export interface Projection {

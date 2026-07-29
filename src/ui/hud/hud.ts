@@ -51,7 +51,7 @@ export function createHud(options: HudOptions): Hud {
 
         <dl class="readout">
           <div><dt>위치</dt><dd>${formatLatitude(voyage.position.lat)} ${formatLongitude(voyage.position.lon)}</dd></div>
-          <div><dt>침로</dt><dd>${Math.round(voyage.headingDeg)}°</dd></div>
+          <div><dt>침로</dt><dd>${Math.round(voyage.headingDeg)}° ${voyage.destination === null ? "(직접)" : "(항해사)"}</dd></div>
           <div><dt>바람</dt><dd>${describeWindDirection(wind.fromDeg)} ${wind.speedKnots.toFixed(1)}kn</dd></div>
           <div><dt>풍계</dt><dd>${WIND_REGIME_LABELS[wind.regime]}</dd></div>
           <div><dt>풍향각</dt><dd>${Math.round(relAngle)}° ${relAngle < 35 ? "(정풍)" : relAngle > 140 ? "(순풍)" : "(횡풍)"}</dd></div>
