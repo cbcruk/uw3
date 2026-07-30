@@ -165,7 +165,7 @@ function drawShip(surface: Surface, game: Game): void {
 }
 
 export function createMapView(options: MapViewOptions): MapView {
-  const { canvas, game, onDestinationSet, fog = true } = options;
+  const { canvas, game, onChartPick, fog = true } = options;
   let fogEnabled = fog;
   const ctx = canvas.getContext("2d");
   if (ctx === null) {
@@ -186,7 +186,7 @@ export function createMapView(options: MapViewOptions): MapView {
 
   canvas.addEventListener("click", (event: MouseEvent) => {
     const rect = canvas.getBoundingClientRect();
-    onDestinationSet(
+    onChartPick(
       projection.toLatLon(
         ((event.clientX - rect.left) / rect.width) * widthPx,
         ((event.clientY - rect.top) / rect.height) * heightPx,

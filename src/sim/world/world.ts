@@ -52,6 +52,8 @@ export function createGame(config: GameConfig = DEFAULT_CONFIG): Game {
     // 리스본은 편서풍을 정면으로 받는다. 270°로 시작하면 첫 출항이 영구 정지로 보인다.
     // 남서 침로는 실제 리스본 출항의 첫 다리이자, 라틴돛이 물 수 있는 각이다.
     headingDeg: 210,
+    // 3편의 조작은 침로 지정이다. 자동 항해는 플레이어가 고를 때만 켠다.
+    steering: "manual",
     destination: null,
     sailsSet: shipClass.defaultRig.map(() => true),
     rig: shipClass.defaultRig.map((mast) => ({ ...mast })),
@@ -204,9 +206,17 @@ export function applyAction(game: Game, action: GameAction): ActionResult {
 
   switch (action.type) {
     case "set-heading": {
-      // 손으로 침로를 잡으면 항해사에게 맡긴 목적지는 해제된다. 둘이 매일 다투면 안 된다.
+      // 키를 잡으면 수동이다. 항해사와 매일 침로를 다투게 두지 않는다.
       game.voyage.headingDeg = normalizeHeading(action.headingDeg);
+      game.voyage.steering = "manual";
       game.voyage.destination = null;
+      return { report: null, entries: [], passage: null };
+    }
+    case "set-steering": {
+      game.voyage.steering = action.mode;
+      if (action.mode === "manual") {
+        game.voyage.destination = null;
+      }
       return { report: null, entries: [], passage: null };
     }
     case "set-destination": {
@@ -214,6 +224,8 @@ export function applyAction(game: Game, action: GameAction): ActionResult {
         game.voyage.destination = null;
         return { report: null, entries: [], passage: null };
       }
+      // 목적지를 걸면 자동 조타다. 두 명령이 조타 방식을 그대로 드러낸다.
+      game.voyage.steering = "auto";
       // 갈 수 없는 곳을 목적지로 걸어두면 항해 명령이 매번 헛돈다. 지금 거절한다.
       if (findSeaRoute(game.tileMap, game.voyage.position, action.target) === null) {
         const entries: JournalEntry[] = [
@@ -262,7 +274,8 @@ export function applyAction(game: Game, action: GameAction): ActionResult {
       return { report, entries, passage: null };
     }
     case "sail": {
-      if (game.ended !== null || game.voyage.destination === null) {
+      const needsDestination = game.voyage.steering === "auto" && game.voyage.destination === null;
+      if (game.ended !== null || game.voyage.atPortId !== null || needsDestination) {
         return { report: null, entries: [], passage: null };
       }
 
