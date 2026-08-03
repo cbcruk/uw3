@@ -1,35 +1,40 @@
-import type { LatLon, MapBounds, TileCoord } from "../geo/geo.types";
-import { gridSizeOf, isTileInside, latLonToTile, tileCenter, tileIndex } from "../geo/geo.utils";
-import type { TileMap } from "./tile-map.types";
-import { isPointOnAnyLand } from "./tile-map.utils";
+import type { LatLon, TileCoord } from "../geo/geo.types";
+import { gridSizeOf, isTileInside, latLonToTile, tileIndex } from "../geo/geo.utils";
+import { bakeLandMask } from "./land-mask";
+import type { LandPolygon } from "./land-mask.types";
+import type { TileMap, TileMapOptions } from "./tile-map.types";
 
 /** 정박지를 중심으로 열어 두는 앞바다 반경 (타일). */
 const FAIRWAY_TILE_RADIUS = 1;
 
-export interface TileMapOptions {
-  bounds: MapBounds;
-  landmasses: readonly (readonly LatLon[])[];
-  navigableAnchorages?: readonly LatLon[];
-}
-
+/**
+ * 전 지구 타일 맵. 실제 해안선(Natural Earth 1:50m)을 래스터로 구워 만든다.
+ *
+ * 타일 격자와 육지 마스크는 같은 것이다 — 경계가 지구 전체이고 타일 한 변이
+ * 1/cellsPerDegree일 때 `latLonToTile`의 행·열이 마스크의 셀 인덱스와 정확히 일치한다.
+ */
 export function createTileMap(options: TileMapOptions): TileMap {
-  const { bounds, landmasses, navigableAnchorages = [] } = options;
-  const size = gridSizeOf(bounds);
-  const land = new Uint8Array(size.width * size.height);
+  const { polygons, cellsPerDegree, navigableAnchorages = [] } = options;
 
-  for (let y = 0; y < size.height; y += 1) {
-    for (let x = 0; x < size.width; x += 1) {
-      const center = tileCenter(bounds, { x, y });
-      if (isPointOnAnyLand(center, landmasses)) {
-        land[tileIndex(size, { x, y })] = 1;
-      }
-    }
-  }
+  const bounds = {
+    minLat: -90,
+    maxLat: 90,
+    minLon: -180,
+    maxLon: 180,
+    tileSize: 1 / cellsPerDegree,
+  };
+  const size = gridSizeOf(bounds);
+  const { mask } = bakeLandMask(polygons as readonly LandPolygon[], cellsPerDegree);
+
+  const readBit = (index: number): boolean =>
+    (((mask[index >>> 5] ?? 0) >>> (index & 31)) & 1) === 1;
+  const clearBit = (index: number): void => {
+    mask[index >>> 5] = ((mask[index >>> 5] ?? 0) & ~(1 << (index & 31))) >>> 0;
+  };
 
   /**
-   * 정박지 한 칸만 뚫으면 배가 항구에 갇힌다. 타일 한 변이 수십 해리라 리스본처럼
-   * 만 안쪽에 있는 항구는 사방이 육지가 되고, 태킹할 여유 폭이 없어 출항 자체가 막힌다.
-   * 항구 앞바다(정박지와 이웃한 한 겹)를 함께 열어 출항 항로를 보장한다.
+   * 정박지 한 칸만 뚫으면 배가 항구에 갇힌다. 항구 앞바다를 함께 열어 출항 항로를 보장한다.
+   * 실제 해안선을 써도 하구·만 안쪽 항구는 여전히 격자에서 막힐 수 있다.
    */
   for (const anchorage of navigableAnchorages) {
     const tile = latLonToTile(bounds, anchorage);
@@ -37,23 +42,25 @@ export function createTileMap(options: TileMapOptions): TileMap {
       for (let dx = -FAIRWAY_TILE_RADIUS; dx <= FAIRWAY_TILE_RADIUS; dx += 1) {
         const approach = { x: tile.x + dx, y: tile.y + dy };
         if (isTileInside(size, approach)) {
-          land[tileIndex(size, approach)] = 0;
+          clearBit(tileIndex(size, approach));
         }
       }
     }
   }
 
   const isLandTile = (tile: TileCoord): boolean => {
-    if (!isTileInside(size, tile)) {
+    if (tile.y < 0 || tile.y >= size.height) {
       return true;
     }
-    return land[tileIndex(size, tile)] === 1;
+    // 경도는 순환한다. 날짜변경선을 넘어도 이어져야 한다.
+    const x = ((tile.x % size.width) + size.width) % size.width;
+    return readBit(tileIndex(size, { x, y: tile.y }));
   };
 
   return {
     bounds,
     size,
-    land,
+    land: mask,
     isLandTile,
     isNavigable(position: LatLon): boolean {
       return !isLandTile(latLonToTile(bounds, position));

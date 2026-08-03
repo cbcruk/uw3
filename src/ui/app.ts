@@ -3,16 +3,14 @@ import { bearingDeg, haversineNm, normalizeHeading } from "../sim/geo/geo.utils"
 import { createGame } from "../sim/world/world";
 import { applyAction } from "../sim/world/world";
 import type { GameAction } from "../sim/world/world.types";
-import { readDebugOptions } from "./debug/debug-options";
 import { createHud } from "./hud/hud";
-import { createMapView } from "./map-view/map-view";
+import { createMapView } from "./map-view/globe-view";
 
 const TRACK_LIMIT = 400;
 
 export function mountApp(root: HTMLElement): void {
   const game = createGame();
   const track: LatLon[] = [{ ...game.voyage.position }];
-  let fog = readDebugOptions(window.location.search).fog;
   let lastStop: string | null = null;
 
   root.innerHTML = `
@@ -66,7 +64,6 @@ export function mountApp(root: HTMLElement): void {
   const mapView = createMapView({
     canvas,
     game,
-    fog,
     onChartPick: (target: LatLon) => {
       // 조타 모드가 클릭의 의미를 정한다. 수동이면 그 방향으로 침로, 자동이면 목적지.
       dispatch(
@@ -145,9 +142,8 @@ export function mountApp(root: HTMLElement): void {
   }
 
   function renderHint(): void {
-    const fogState = fog ? "안개 켬" : "안개 끔 — 해도 전체 표시";
     const pick = game.voyage.steering === "manual" ? "침로" : "목적지";
-    hintPanel.textContent = `해도를 클릭해 ${pick}를 지정한다. ← → 침로 조정, Enter 항해 개시, Space 하루만, F ${fogState}.`;
+    hintPanel.textContent = `지구본을 끌어 돌리고 휠로 확대한다. 클릭하면 ${pick}를 지정한다. ← → 침로 조정, Enter 항해 개시, Space 하루만, C 배로 이동.`;
   }
 
   function render(): void {
@@ -242,11 +238,9 @@ export function mountApp(root: HTMLElement): void {
     } else if (event.key === "Enter") {
       event.preventDefault();
       dispatch({ type: "sail" });
-    } else if (event.key === "f" || event.key === "F") {
+    } else if (event.key === "c" || event.key === "C") {
       event.preventDefault();
-      fog = !fog;
-      mapView.setFog(fog);
-      render();
+      mapView.lookAt(game.voyage.position);
     }
   });
 

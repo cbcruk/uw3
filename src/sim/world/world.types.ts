@@ -26,6 +26,8 @@ export interface Game {
   config: GameConfig;
   rng: RngSet;
   tileMap: TileMap;
+  /** 항로 탐색용 성긴 격자. */
+  routeMap: TileMap;
   exploration: ExplorationState;
   shipClass: ShipClass;
   voyage: VoyageState;

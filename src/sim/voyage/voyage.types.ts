@@ -48,6 +48,7 @@ export interface PortAnchorage {
 
 export interface VoyageContext {
   tileMap: TileMap;
+  routeMap: TileMap;
   exploration: ExplorationState;
   shipClass: ShipClass;
   rng: Rng;

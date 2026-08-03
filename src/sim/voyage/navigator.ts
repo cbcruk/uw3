@@ -42,7 +42,7 @@ export function planHeading(
   context: VoyageContext,
   destination: LatLon,
 ): NavigatorPlan | null {
-  const route = findSeaRoute(context.tileMap, state.position, destination);
+  const route = findSeaRoute(context.routeMap, state.position, destination);
   if (route === null) {
     return null;
   }

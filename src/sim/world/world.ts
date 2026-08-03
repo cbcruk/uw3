@@ -1,10 +1,11 @@
-import { WORLD_BOUNDS, LANDMASSES } from "../../content/coastline";
 import { PORTS, PORT_ANCHORAGES, findPort } from "../../content/ports";
+import { LAND_POLYGONS } from "../../content/world-land";
 import { findShipClass } from "../../content/ships";
 import { formatGameDate, toDayNumber } from "../calendar/calendar";
 import { createExplorationState } from "../fog/fog-of-war";
 import { haversineNm, normalizeHeading } from "../geo/geo.utils";
 import { createTileMap } from "../map/tile-map";
+import { ROUTE_CELLS_PER_DEGREE, WORLD_LAND_CELLS_PER_DEGREE } from "../map/land-mask.const";
 import { findSeaRoute } from "../map/sea-route";
 import { createRngSet } from "../rng/rng";
 import { runPassage } from "../voyage/passage";
@@ -38,8 +39,14 @@ export function createGame(config: GameConfig = DEFAULT_CONFIG): Game {
   }
 
   const tileMap = createTileMap({
-    bounds: WORLD_BOUNDS,
-    landmasses: LANDMASSES,
+    polygons: LAND_POLYGONS,
+    cellsPerDegree: WORLD_LAND_CELLS_PER_DEGREE,
+    navigableAnchorages: PORT_ANCHORAGES,
+  });
+  // 항로 탐색은 성긴 격자로 한다. 충돌 해상도로 A*를 돌리면 배열만 수백 MB다.
+  const routeMap = createTileMap({
+    polygons: LAND_POLYGONS,
+    cellsPerDegree: ROUTE_CELLS_PER_DEGREE,
     navigableAnchorages: PORT_ANCHORAGES,
   });
   const exploration = createExplorationState(tileMap.size);
@@ -47,7 +54,7 @@ export function createGame(config: GameConfig = DEFAULT_CONFIG): Game {
   const crew = Math.round((shipClass.crewMin + shipClass.crewMax) / 2);
 
   const voyage: VoyageState = {
-    position: { lat: startPort.lat, lon: startPort.lon },
+    position: { ...startPort.anchorage },
     day: toDayNumber(config.startDate),
     // 리스본은 편서풍을 정면으로 받는다. 270°로 시작하면 첫 출항이 영구 정지로 보인다.
     // 남서 침로는 실제 리스본 출항의 첫 다리이자, 라틴돛이 물 수 있는 각이다.
@@ -79,6 +86,7 @@ export function createGame(config: GameConfig = DEFAULT_CONFIG): Game {
     config,
     rng: createRngSet(config.seed),
     tileMap,
+    routeMap,
     exploration,
     shipClass,
     voyage,
@@ -99,7 +107,7 @@ export function createGame(config: GameConfig = DEFAULT_CONFIG): Game {
 export function nearestPort(game: Game): { portId: string; distanceNm: number } | null {
   let best: { portId: string; distanceNm: number } | null = null;
   for (const port of game.ports) {
-    const distanceNm = haversineNm(game.voyage.position, { lat: port.lat, lon: port.lon });
+    const distanceNm = haversineNm(game.voyage.position, port.anchorage);
     if (best === null || distanceNm < best.distanceNm) {
       best = { portId: port.id, distanceNm };
     }
@@ -158,10 +166,11 @@ function dockAt(game: Game, portId: string | null): JournalEntry[] {
 function voyageContext(game: Game): VoyageContext {
   return {
     tileMap: game.tileMap,
+    routeMap: game.routeMap,
     exploration: game.exploration,
     shipClass: game.shipClass,
     rng: game.rng.voyage,
-    ports: game.ports,
+    ports: game.ports.map((port) => ({ id: port.id, ...port.anchorage })),
     dockingRangeNm: DOCKING_RANGE_NM,
   };
 }
@@ -227,7 +236,7 @@ export function applyAction(game: Game, action: GameAction): ActionResult {
       // 목적지를 걸면 자동 조타다. 두 명령이 조타 방식을 그대로 드러낸다.
       game.voyage.steering = "auto";
       // 갈 수 없는 곳을 목적지로 걸어두면 항해 명령이 매번 헛돈다. 지금 거절한다.
-      if (findSeaRoute(game.tileMap, game.voyage.position, action.target) === null) {
+      if (findSeaRoute(game.routeMap, game.voyage.position, action.target) === null) {
         const entries: JournalEntry[] = [
           { day: game.voyage.day, kind: "system", text: "그곳으로 이어지는 바닷길이 없다." },
         ];
