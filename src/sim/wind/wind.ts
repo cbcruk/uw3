@@ -1,78 +1,56 @@
+import { WIND, WIND_BANDS, WIND_REGIONS } from "../../content/tuning/wind.tuning";
 import { dayOfYear } from "../calendar/calendar";
 import type { LatLon } from "../geo/geo.types";
 import { clamp, normalizeHeading } from "../geo/geo.utils";
 import type { Wind, WindBand, WindRegime } from "./wind.types";
 import { blendHeadings, smoothNoise } from "./wind.utils";
 
-const GLOBAL_BANDS: readonly WindBand[] = [
-  { maxLat: 5, fromDeg: 90, speedKnots: 3, regime: "doldrums" },
-  { maxLat: 28, fromDeg: 55, speedKnots: 14, regime: "trades" },
-  { maxLat: 33, fromDeg: 100, speedKnots: 6, regime: "horse-latitudes" },
-  { maxLat: 90, fromDeg: 255, speedKnots: 16, regime: "westerlies" },
-];
+const DAYS_PER_YEAR = 365;
 
-const MEDITERRANEAN = {
-  minLon: -5.4,
-  minLat: 30,
-  maxLat: 44,
-} as const;
-
-const GIBRALTAR = {
-  minLat: 35.5,
-  maxLat: 36.5,
-  minLon: -6.4,
-  maxLon: -4.5,
-} as const;
-
-const GULF_OF_LION = {
-  minLat: 41.3,
-  minLon: 2.0,
-  maxLon: 7.0,
-} as const;
+/** 연중 위상. 기준일에 0, 반년 뒤 반대 부호가 된다. */
+function seasonalPhase(dayNumber: number): number {
+  return (2 * Math.PI * (dayOfYear(dayNumber) - WIND.seasonalPhaseDay)) / DAYS_PER_YEAR;
+}
 
 /** 여름에 기압대가 북상하고 겨울에 남하한다. */
 function seasonalLatShift(dayNumber: number): number {
-  return 4.5 * Math.sin((2 * Math.PI * (dayOfYear(dayNumber) - 80)) / 365);
+  return WIND.seasonalLatShiftDeg * Math.sin(seasonalPhase(dayNumber));
 }
 
 /** 겨울 1, 여름 0 에 가까운 계수. 지중해·편서풍 강도의 계절 변동에 쓴다. */
 function winterFactor(dayNumber: number): number {
-  return 0.5 - 0.5 * Math.sin((2 * Math.PI * (dayOfYear(dayNumber) - 80)) / 365);
+  return 0.5 - 0.5 * Math.sin(seasonalPhase(dayNumber));
 }
 
 function bandAt(effectiveLat: number): WindBand {
   const lat = Math.abs(effectiveLat);
-  for (const band of GLOBAL_BANDS) {
+  const bands = WIND_BANDS.value;
+  for (const band of bands) {
     if (lat <= band.maxLat) {
       return band;
     }
   }
-  return GLOBAL_BANDS[GLOBAL_BANDS.length - 1] as WindBand;
+  return bands[bands.length - 1] as WindBand;
 }
 
 function isMediterranean(position: LatLon): boolean {
-  return (
-    position.lon > MEDITERRANEAN.minLon &&
-    position.lat > MEDITERRANEAN.minLat &&
-    position.lat < MEDITERRANEAN.maxLat
-  );
+  const box = WIND_REGIONS.mediterranean;
+  return position.lon > box.minLon && position.lat > box.minLat && position.lat < box.maxLat;
 }
 
 function isInGibraltar(position: LatLon): boolean {
+  const box = WIND_REGIONS.gibraltar;
   return (
-    position.lat > GIBRALTAR.minLat &&
-    position.lat < GIBRALTAR.maxLat &&
-    position.lon > GIBRALTAR.minLon &&
-    position.lon < GIBRALTAR.maxLon
+    position.lat > box.minLat &&
+    position.lat < box.maxLat &&
+    position.lon > box.minLon &&
+    position.lon < box.maxLon
   );
 }
 
 function isInGulfOfLion(position: LatLon): boolean {
-  return (
-    position.lat > GULF_OF_LION.minLat &&
-    position.lon > GULF_OF_LION.minLon &&
-    position.lon < GULF_OF_LION.maxLon
-  );
+  const box = WIND_REGIONS.gulfOfLion;
+  return position.lat > box.minLat && position.lon > box.minLon && position.lon < box.maxLon;
 }
 
 /**
@@ -80,8 +58,8 @@ function isInGulfOfLion(position: LatLon): boolean {
  * 난수가 아니라 날짜의 결정론적 함수이므로 플레이어가 관측하고 기다릴 수 있다.
  */
 function gibraltarRegime(dayNumber: number): WindRegime {
-  const block = Math.floor(dayNumber / 4);
-  return smoothNoise(block * 0.7, 0, 0) > 0.45 ? "levanter" : "poniente";
+  const block = Math.floor(dayNumber / WIND.gibraltarRegimeBlockDays);
+  return smoothNoise(block * 0.7, 0, 0) > WIND.gibraltarLevanterThreshold ? "levanter" : "poniente";
 }
 
 function baseWind(position: LatLon, dayNumber: number): WindBand {
@@ -89,8 +67,9 @@ function baseWind(position: LatLon, dayNumber: number): WindBand {
     const regime = gibraltarRegime(dayNumber);
     return {
       maxLat: 0,
-      fromDeg: regime === "levanter" ? 85 : 265,
-      speedKnots: 18 + 6 * winterFactor(dayNumber),
+      fromDeg: regime === "levanter" ? WIND.levanterFromDeg : WIND.ponienteFromDeg,
+      speedKnots:
+        WIND.gibraltarBaseKnots + WIND.gibraltarWinterBonusKnots * winterFactor(dayNumber),
       regime,
     };
   }
@@ -98,8 +77,8 @@ function baseWind(position: LatLon, dayNumber: number): WindBand {
   if (isInGulfOfLion(position)) {
     return {
       maxLat: 0,
-      fromDeg: 330,
-      speedKnots: 12 + 12 * winterFactor(dayNumber),
+      fromDeg: WIND.mistralFromDeg,
+      speedKnots: WIND.mistralBaseKnots + WIND.mistralWinterBonusKnots * winterFactor(dayNumber),
       regime: "mistral",
     };
   }
@@ -107,8 +86,9 @@ function baseWind(position: LatLon, dayNumber: number): WindBand {
   if (isMediterranean(position)) {
     return {
       maxLat: 0,
-      fromDeg: 295,
-      speedKnots: 8 + 7 * winterFactor(dayNumber),
+      fromDeg: WIND.mediterraneanFromDeg,
+      speedKnots:
+        WIND.mediterraneanBaseKnots + WIND.mediterraneanWinterBonusKnots * winterFactor(dayNumber),
       regime: "mediterranean",
     };
   }
@@ -118,28 +98,30 @@ function baseWind(position: LatLon, dayNumber: number): WindBand {
     ...band,
     speedKnots:
       band.regime === "westerlies"
-        ? band.speedKnots * (0.8 + 0.5 * winterFactor(dayNumber))
+        ? band.speedKnots *
+          (WIND.westerliesSummerFactor + WIND.westerliesWinterRange * winterFactor(dayNumber))
         : band.speedKnots,
   };
 }
 
 export function windAt(position: LatLon, dayNumber: number): Wind {
   const base = baseWind(position, dayNumber);
-  const noiseX = position.lon / 2.5;
-  const noiseY = position.lat / 2.5;
-  const noiseT = dayNumber / 3;
+  const noiseX = position.lon / WIND.noiseSpaceDeg;
+  const noiseY = position.lat / WIND.noiseSpaceDeg;
+  const noiseT = dayNumber / WIND.noiseTimeDays;
 
   const directionJitter =
-    (smoothNoise(noiseX, noiseY, noiseT) - 0.5) * 80 +
-    (smoothNoise(noiseX * 2.7 + 5.1, noiseY * 2.7 - 3.3, noiseT * 2.3) - 0.5) * 45;
+    (smoothNoise(noiseX, noiseY, noiseT) - 0.5) * WIND.directionJitterDeg +
+    (smoothNoise(noiseX * 2.7 + 5.1, noiseY * 2.7 - 3.3, noiseT * 2.3) - 0.5) *
+      WIND.directionJitterFineDeg;
   const speedJitter =
-    0.5 +
-    0.8 * smoothNoise(noiseX + 31.7, noiseY - 12.3, noiseT) +
-    0.4 * smoothNoise(noiseX * 2.9 - 7.4, noiseY * 2.9 + 4.6, noiseT * 2.1);
+    WIND.speedJitterBase +
+    WIND.speedJitterCoarse * smoothNoise(noiseX + 31.7, noiseY - 12.3, noiseT) +
+    WIND.speedJitterFine * smoothNoise(noiseX * 2.9 - 7.4, noiseY * 2.9 + 4.6, noiseT * 2.1);
 
   return {
     fromDeg: normalizeHeading(blendHeadings(base.fromDeg, base.fromDeg + directionJitter, 1)),
-    speedKnots: clamp(base.speedKnots * speedJitter, 0, 45),
+    speedKnots: clamp(base.speedKnots * speedJitter, 0, WIND.maxWindKnots),
     regime: base.regime,
   };
 }
