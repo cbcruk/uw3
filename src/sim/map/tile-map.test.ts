@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vite-plus/test";
-import { PORTS, PORT_ANCHORAGES } from "../../content/ports";
+import { PORT_ANCHORAGES } from "../../content/ports";
 import { LAND_POLYGONS } from "../../content/world-land";
 import { ROUTE_CELLS_PER_DEGREE } from "./land-mask.const";
-import { findSeaRoute } from "./sea-route";
 import { createTileMap } from "./tile-map";
 
-/** 도달성 검사는 항로 격자로 한다. 실제 자동 항해가 쓰는 격자와 같아야 의미가 있다. */
 const tileMap = createTileMap({
   polygons: LAND_POLYGONS,
   cellsPerDegree: ROUTE_CELLS_PER_DEGREE,
@@ -38,17 +36,7 @@ describe("createTileMap", () => {
     expect(tileMap.isLandTile({ x: tileMap.size.width, y: 100 })).toBe(east);
     expect(tileMap.isLandTile({ x: -tileMap.size.width, y: 100 })).toBe(east);
   });
-
-  /**
-   * 항구가 외해와 이어지지 않으면 출항 자체가 불가능하다. 두 번 겪은 문제다 —
-   * 손으로 그린 해안선에서 한 번, 실제 데이터의 하구 해상도에서 한 번.
-   */
-  it("모든 항구의 정박지가 외해에서 닿는다", () => {
-    const openSea = { lat: 30, lon: -40 };
-
-    for (const port of PORTS) {
-      expect(tileMap.isNavigable(port.anchorage)).toBe(true);
-      expect(findSeaRoute(tileMap, openSea, port.anchorage)).not.toBeNull();
-    }
-  });
 });
+
+// 항구 도달성은 `content/validate`로 옮겼다. 그것은 코드가 아니라 **자료**의 불변식이다 —
+// 실패하면 `sim/`이 아니라 `content/ports.ts`나 해상도를 봐야 한다.

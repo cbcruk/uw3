@@ -34,7 +34,9 @@ export const PORTS: readonly Port[] = [
     name: "세우타",
     lat: 35.89,
     lon: -5.32,
-    anchorage: { lat: 35.93, lon: -5.32 },
+    // 만 안쪽(-5.32)은 1/16° 격자에서 뭍으로 잡혀 앞바다 뚫기에 기대고 있었다.
+    // 세우타 항은 실제로 북동으로 열려 있으므로 그쪽 해상으로 옮긴다.
+    anchorage: { lat: 35.93, lon: -5.28 },
     nation: "포르투갈",
     culture: "마그레브",
     language: "arabic",

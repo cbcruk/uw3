@@ -29,3 +29,21 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 
 코드에 상태 필드나 호출 순서를 추가했다면 `SHAPE.md`에 한 줄을 추가한다.
 적지 않으면 다음 사람은 그것이 조정 가능한 줄 알고 몇 주를 쓴다.
+
+## 검증
+
+`vp test`와 `vp run validate`는 보는 것이 다르다. 실패했을 때 열 파일이 갈린다.
+
+| 명령              | 보는 것            | 빨개지면 고칠 곳 |
+| ----------------- | ------------------ | ---------------- |
+| `vp test`         | 코드가 맞게 도는가 | `src/sim/`       |
+| `vp run validate` | 자료가 쓸 만한가   | `src/content/`   |
+
+수치를 새로 넣을 때:
+
+1. 코드에 박지 말고 `content/tuning/`의 표에 넣는다
+2. **근거 등급을 단다** — `measured` / `qualitative` / `unverified`
+3. 새 표를 만들었으면 `content/validate/checks.ts`의 `SCALAR_TABLES`에 등록한다.
+   등록하지 않으면 부채 집계에 잡히지 않아 실제보다 좋아 보인다
+4. `unverified`가 늘면 검증기가 막는다. 늘려야 한다면 `debt-baseline.ts`를 함께
+   고치고, 그 diff로 "근거 없는 값을 늘렸다"는 사실을 남긴다
