@@ -1,6 +1,7 @@
 import { VOYAGE_TUNING as V } from "../../content/tuning/voyage.tuning";
 import { HOURS_PER_DAY, seasonOf } from "../calendar/calendar";
 import { advance, clamp, haversineNm, relativeWindAngle } from "../geo/geo.utils";
+import { leewayTrackDeg } from "../ship/leeway";
 import { computeSpeedKnots, conditionFactor } from "../ship/sail";
 import type { SailingCondition } from "../ship/ship.types";
 import { currentAt, groundTrack } from "../current/current";
@@ -253,7 +254,10 @@ export function stepDay(state: VoyageState, context: VoyageContext): DayReport {
   // 돛이 멈춰도 해류는 배를 밀고 간다. 닻을 내렸거나 입항 중일 때만 제자리다.
   const current =
     state.anchored || state.atPortId !== null ? NO_CURRENT : currentAt(state.position);
-  const track = groundTrack(state.headingDeg, speedKnots, current);
+  // 배는 뱃머리가 향한 곳으로 가지 않는다 (SHAPE P9). 돛은 침로에 맞춰 조정하지만
+  // 실제로 물 위를 지나는 방위는 그보다 풍하로 밀려 있다.
+  const sailTrackDeg = leewayTrackDeg(state.headingDeg, wind.fromDeg, wind.speedKnots, speedKnots);
+  const track = groundTrack(sailTrackDeg, speedKnots, current);
 
   const lookoutNm =
     V.baseLookoutNm * (V.lookoutFloor + V.lookoutRange * conditionFactor(condition));

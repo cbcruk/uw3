@@ -50,12 +50,14 @@ export function formatScenario(result: ScenarioResult): string {
   if (result.detourAdvantageDays === null) {
     lines.push("  우회 이점: 잴 수 없다 (직항 또는 우회가 도달하지 못했다)");
   } else {
+    // 원인을 단정하지 않는다. 이 수는 무엇이 원인인지가 아니라 **얼마나 안 맞는지**만
+    // 말한다. 한 번은 압류가 원인이었지만, 남은 격차의 원인은 아직 모른다.
     const value = result.detourAdvantageDays;
     const verdict =
       value <= 0
         ? "직항이 같거나 빠르다. 볼타 두 마르가 재현되지 않는다"
         : value < 3
-          ? "우회 이점이 미미하다. 태킹이 너무 싸다 (SPEC 3.3 — 압류 부재)"
+          ? "우회가 빠르긴 하나 격차가 작다. 역사적으로는 직항이 사실상 불가능해야 한다"
           : "우회가 뚜렷이 빠르다";
     lines.push(`  우회 이점: ${value > 0 ? "+" : ""}${value}일 — ${verdict}`);
   }

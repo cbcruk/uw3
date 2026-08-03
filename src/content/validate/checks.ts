@@ -7,6 +7,7 @@ import { DEBT_BASELINE } from "../tuning/debt-baseline";
 import { SAIL_CURVES, SAIL_SCALARS } from "../tuning/sail.tuning";
 import { WIND_BANDS, WIND_SCALARS } from "../tuning/wind.tuning";
 import { HAZARD_TABLES } from "../tuning/hazards.tuning";
+import { LEEWAY_TABLES } from "../tuning/leeway.tuning";
 import { VOYAGE_TABLES } from "../tuning/voyage.tuning";
 import { gradeTally, tuningEntries } from "../tuning/tuning";
 import type { SourceGrade, Tuned } from "../tuning/tuning.types";
@@ -19,7 +20,13 @@ import type { Check, Finding } from "./validate.types";
  * 수치 표 전부. **새 표를 만들면 여기에 등록해야** 검증과 집계에 걸린다.
  * 등록하지 않은 표는 부채로 세어지지 않으므로, 빠뜨리면 집계가 실제보다 좋아 보인다.
  */
-const SCALAR_TABLES = [SAIL_SCALARS, WIND_SCALARS, ...HAZARD_TABLES, ...VOYAGE_TABLES];
+const SCALAR_TABLES = [
+  SAIL_SCALARS,
+  WIND_SCALARS,
+  ...HAZARD_TABLES,
+  ...VOYAGE_TABLES,
+  ...LEEWAY_TABLES,
+];
 /** 곡선·구간처럼 값이 수가 아닌 항목. 유한성 검사만 빼고 같은 규칙을 받는다. */
 const CURVE_ENTRIES: readonly Tuned<unknown>[] = [...Object.values(SAIL_CURVES), WIND_BANDS];
 const ALL_TUNED: readonly Tuned<unknown>[] = [...tuningEntries(SCALAR_TABLES), ...CURVE_ENTRIES];
