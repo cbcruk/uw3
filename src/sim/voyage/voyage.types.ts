@@ -6,12 +6,20 @@ import type { Rng } from "../rng/rng.types";
 import type { MastSail, ShipClass } from "../ship/ship.types";
 import type { Wind } from "../wind/wind.types";
 
+/**
+ * 조타 방식. 3편의 조작은 침로만 지정하고 배가 계속 그 방향으로 가는 것이다.
+ * 해안을 읽고 우회로를 잡는 판단은 플레이어 몫이다 (SPEC 2 — 알아도 도달하기 어렵다).
+ * 자동은 이미 아는 바다를 되짚을 때를 위한 선택지일 뿐 기본이 아니다.
+ */
+export type SteeringMode = "manual" | "auto";
+
 /** SPEC 8.3 항해 상태 벡터. 트러블 확률과 종료 조건이 전부 여기서 파생된다. */
 export interface VoyageState {
   position: LatLon;
   day: number;
   headingDeg: number;
-  /** 항해사에게 맡긴 목적지. null이면 수동 조타. */
+  steering: SteeringMode;
+  /** 자동 조타에서 항해사에게 맡긴 목적지. */
   destination: LatLon | null;
   sailsSet: boolean[];
   rig: MastSail[];

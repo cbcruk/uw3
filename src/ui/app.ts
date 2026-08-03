@@ -34,6 +34,7 @@ export function mountApp(root: HTMLElement): void {
             <button data-action="port"></button>
             <button data-action="resupply">보급 · 수리</button>
           </div>
+          <div class="controls__row" id="steering"></div>
           <div class="controls__row">
             <button data-action="passage" class="primary">항해 개시</button>
             <button data-action="day">하루만</button>
@@ -47,12 +48,14 @@ export function mountApp(root: HTMLElement): void {
   const canvas = root.querySelector<HTMLCanvasElement>("#chart-canvas");
   const hudRoot = root.querySelector<HTMLElement>("#hud");
   const sailsRoot = root.querySelector<HTMLElement>("#sails");
+  const steeringRoot = root.querySelector<HTMLElement>("#steering");
   const hintRoot = root.querySelector<HTMLElement>("#chart-hint");
   const ordersRoot = root.querySelector<HTMLElement>("#orders");
   if (
     canvas === null ||
     hudRoot === null ||
     sailsRoot === null ||
+    steeringRoot === null ||
     hintRoot === null ||
     ordersRoot === null
   ) {
@@ -64,14 +67,20 @@ export function mountApp(root: HTMLElement): void {
     canvas,
     game,
     fog,
-    onDestinationSet: (target: LatLon) => {
-      dispatch({ type: "set-destination", target });
+    onChartPick: (target: LatLon) => {
+      // 조타 모드가 클릭의 의미를 정한다. 수동이면 그 방향으로 침로, 자동이면 목적지.
+      dispatch(
+        game.voyage.steering === "manual"
+          ? { type: "set-heading", headingDeg: bearingDeg(game.voyage.position, target) }
+          : { type: "set-destination", target },
+      );
     },
   });
 
   const sailsPanel = sailsRoot;
   const hintPanel = hintRoot;
   const ordersPanel = ordersRoot;
+  const steeringPanel = steeringRoot;
 
   function renderSails(): void {
     sailsPanel.innerHTML = game.voyage.rig
@@ -84,16 +93,29 @@ export function mountApp(root: HTMLElement): void {
       .join("");
   }
 
-  /** 항해사에게 무엇을 맡겼는지, 왜 멈췄는지를 명령 버튼 옆에 붙여 둔다. */
+  function renderSteering(): void {
+    const manual = game.voyage.steering === "manual";
+    steeringPanel.innerHTML = `
+      <button data-action="steer" data-mode="manual" class="${manual ? "on" : ""}">수동 조타</button>
+      <button data-action="steer" data-mode="auto" class="${manual ? "" : "on"}">자동 항해</button>
+    `;
+  }
+
+  /** 지금 무엇을 지시해 둔 상태인지, 왜 멈췄는지를 명령 버튼 아래에 붙여 둔다. */
   function renderOrders(): void {
+    const stop = lastStop === null ? "" : ` · ${lastStop}`;
+    if (game.voyage.steering === "manual") {
+      ordersPanel.textContent = `침로 ${Math.round(game.voyage.headingDeg)}° 유지. 해도를 클릭하면 그 방향으로 침로를 잡는다.${stop}`;
+      return;
+    }
     const destination = game.voyage.destination;
     if (destination === null) {
-      ordersPanel.textContent = "해도를 클릭해 목적지를 지정한다. 항해사가 태킹을 맡는다.";
+      ordersPanel.textContent =
+        "해도를 클릭해 목적지를 지정한다. 항해사가 태킹과 해안 우회를 맡는다.";
       return;
     }
     const rangeNm = haversineNm(game.voyage.position, destination);
     const bearing = Math.round(bearingDeg(game.voyage.position, destination));
-    const stop = lastStop === null ? "" : ` · ${lastStop}`;
     ordersPanel.textContent = `목적지까지 ${Math.round(rangeNm)}해리, 방위 ${bearing}°${stop}`;
   }
 
@@ -105,7 +127,8 @@ export function mountApp(root: HTMLElement): void {
     const inPort = game.voyage.atPortId !== null;
 
     if (passageButton !== null) {
-      passageButton.disabled = game.voyage.destination === null || inPort || game.ended !== null;
+      const needsDestination = game.voyage.steering === "auto" && game.voyage.destination === null;
+      passageButton.disabled = needsDestination || inPort || game.ended !== null;
     }
 
     if (anchorButton !== null) {
@@ -123,12 +146,14 @@ export function mountApp(root: HTMLElement): void {
 
   function renderHint(): void {
     const fogState = fog ? "안개 켬" : "안개 끔 — 해도 전체 표시";
-    hintPanel.textContent = `해도를 클릭해 목적지를 지정한다. ← → 직접 조타(목적지 해제), Space 하루만, F ${fogState}.`;
+    const pick = game.voyage.steering === "manual" ? "침로" : "목적지";
+    hintPanel.textContent = `해도를 클릭해 ${pick}를 지정한다. ← → 침로 조정, Enter 항해 개시, Space 하루만, F ${fogState}.`;
   }
 
   function render(): void {
     hud.render();
     renderSails();
+    renderSteering();
     renderContextButtons();
     renderOrders();
     renderHint();
@@ -151,7 +176,8 @@ export function mountApp(root: HTMLElement): void {
       result.passage.reports.forEach((report) => recordTrack(report.position));
       lastStop = result.passage.summary;
     }
-    if (action.type === "set-destination") {
+    // 새 지시를 내리면 지난 정지 사유는 낡은 정보다.
+    if (["set-heading", "set-destination", "set-steering"].includes(action.type)) {
       lastStop = null;
     }
     render();
@@ -194,6 +220,12 @@ export function mountApp(root: HTMLElement): void {
       case "passage":
         dispatch({ type: "sail" });
         break;
+      case "steer":
+        dispatch({
+          type: "set-steering",
+          mode: button.dataset.mode === "auto" ? "auto" : "manual",
+        });
+        break;
     }
   });
 
@@ -207,6 +239,9 @@ export function mountApp(root: HTMLElement): void {
     } else if (event.key === " ") {
       event.preventDefault();
       dispatch({ type: "advance-day" });
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      dispatch({ type: "sail" });
     } else if (event.key === "f" || event.key === "F") {
       event.preventDefault();
       fog = !fog;

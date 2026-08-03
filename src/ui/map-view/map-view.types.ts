@@ -4,7 +4,8 @@ import type { Game } from "../../sim/world/world.types";
 export interface MapViewOptions {
   canvas: HTMLCanvasElement;
   game: Game;
-  onDestinationSet: (target: LatLon) => void;
+  /** 해도의 한 지점을 찍었다. 침로로 쓸지 목적지로 쓸지는 조타 모드가 정한다. */
+  onChartPick: (target: LatLon) => void;
   /** 초기 안개 표시 여부. 기본 true. */
   fog?: boolean;
 }

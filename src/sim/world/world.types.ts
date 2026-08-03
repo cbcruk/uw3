@@ -5,7 +5,7 @@ import type { TileMap } from "../map/tile-map.types";
 import type { PassageResult } from "../voyage/passage.types";
 import type { RngSet } from "../rng/rng.types";
 import type { ShipClass } from "../ship/ship.types";
-import type { DayReport, VoyageEnd, VoyageState } from "../voyage/voyage.types";
+import type { DayReport, SteeringMode, VoyageEnd, VoyageState } from "../voyage/voyage.types";
 
 export interface GameConfig {
   seed: number;
@@ -38,6 +38,7 @@ export interface Game {
 
 export type GameAction =
   | { type: "set-heading"; headingDeg: number }
+  | { type: "set-steering"; mode: SteeringMode }
   | { type: "set-destination"; target: LatLon | null }
   | { type: "set-sail"; mast: number; set: boolean }
   | { type: "set-anchor"; anchored: boolean }

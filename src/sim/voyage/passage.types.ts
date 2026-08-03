@@ -10,6 +10,7 @@ export type PassageStop =
   | "hazard"
   | "warning"
   | "beating"
+  | "blocked"
   | "supply"
   | "stuck"
   | "ended"
