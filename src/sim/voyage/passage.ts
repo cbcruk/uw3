@@ -34,7 +34,7 @@ function summarize(stop: PassageStop, days: number, state: VoyageState): string 
     case "blocked":
       return `${prefix} 전방에 육지. 침로를 다시 잡아야 한다.`;
     case "stuck":
-      return `${prefix} 배가 나아가지 못한다. 침로도 돛도 소용이 없다.`;
+      return `${prefix} 돛이 바람을 물지 못한다. 배는 해류에 맡겨진 상태다.`;
     case "ended":
       return `${prefix} 항해가 끝났다.`;
     case "max-days":
@@ -107,7 +107,8 @@ export function runPassage(
     if (state.steering === "manual" && report.blockedByLand) {
       return finish("blocked");
     }
-    if (report.distanceNm === 0) {
+    // 해류에 떠밀리는 것은 전진이 아니다. 돛이 죽었으면 선장에게 돌려준다.
+    if (report.speedKnots === 0) {
       return finish("stuck");
     }
 

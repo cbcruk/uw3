@@ -5,6 +5,7 @@ import type { TileMap } from "../map/tile-map.types";
 import type { Rng } from "../rng/rng.types";
 import type { MastSail, ShipClass } from "../ship/ship.types";
 import type { Wind } from "../wind/wind.types";
+import type { Current } from "../current/current.types";
 
 /**
  * 조타 방식. 3편의 조작은 침로만 지정하고 배가 계속 그 방향으로 가는 것이다.
@@ -86,6 +87,9 @@ export interface DayReport {
   /** 그 날 항해를 마친 위치. 항적 기록에 쓴다. */
   position: LatLon;
   wind: Wind;
+  current: Current;
+  /** 해류를 더한 실제 진행 방위. 침로와 다를 수 있다. */
+  trackDeg: number;
   speedKnots: number;
   distanceNm: number;
   blockedByLand: boolean;

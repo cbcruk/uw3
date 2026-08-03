@@ -12,6 +12,7 @@ export const MAP_PALETTE: MapPalette = {
   wind: "#7fb3d5",
   destination: "#8fd6a0",
   equator: "#ffffff22",
+  current: "#4fa3c7",
 };
 
 export function drawArrow(

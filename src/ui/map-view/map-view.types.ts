@@ -26,4 +26,5 @@ export interface MapPalette {
   wind: string;
   destination: string;
   equator: string;
+  current: string;
 }

@@ -2,8 +2,10 @@ import { seasonOf } from "../calendar/calendar";
 import { advance, clamp, haversineNm, relativeWindAngle } from "../geo/geo.utils";
 import { computeSpeedKnots, conditionFactor } from "../ship/sail";
 import type { SailingCondition } from "../ship/ship.types";
+import { currentAt, groundTrack } from "../current/current";
 import { windAt } from "../wind/wind";
 import type { Wind } from "../wind/wind.types";
+import type { Current } from "../current/current.types";
 import { courseStepNm } from "./course";
 import { VOYAGE_HAZARDS } from "./hazards";
 import type {
@@ -15,6 +17,7 @@ import type {
 } from "./voyage.types";
 
 const BASE_LOOKOUT_NM = 16;
+const NO_CURRENT: Current = { toDeg: 0, speedKnots: 0, name: "무해류" };
 const HAZARD_ROLL_SCALE = 0.55;
 
 export function effectiveCrew(state: VoyageState): number {
@@ -78,6 +81,7 @@ function clearDepartureLock(state: VoyageState, context: VoyageContext): void {
 function moveAlongCourse(
   state: VoyageState,
   context: VoyageContext,
+  trackDeg: number,
   distanceNm: number,
   lookoutNm: number,
 ): Movement {
@@ -95,7 +99,7 @@ function moveAlongCourse(
   );
 
   for (let i = 0; i < steps; i += 1) {
-    const next = advance(state.position, state.headingDeg, legNm);
+    const next = advance(state.position, trackDeg, legNm);
     if (!context.tileMap.isNavigable(next)) {
       blocked = true;
       break;
@@ -118,14 +122,16 @@ function moveAlongCourse(
  * 전진 0인 날은 반드시 이유를 남긴다. 침묵하면 플레이어는 정풍을 고장으로 읽는다.
  * 태킹은 난이도의 출처지 (SPEC 2) 숨겨야 할 규칙이 아니다.
  */
-function stallReason(state: VoyageState, wind: Wind): string {
+function stallReason(state: VoyageState, wind: Wind, current: Current): string {
+  const drift = current.speedKnots >= 0.05 ? ` 배는 ${current.name}에 떠밀려 간다.` : "";
+
   if (state.sailsSet.every((set) => set === false)) {
-    return "돛을 모두 접은 채로는 바람을 받지 못한다.";
+    return `돛을 모두 접은 채로는 바람을 받지 못한다.${drift}`;
   }
   if (wind.speedKnots < 1) {
-    return "무풍이다. 돛이 늘어진 채 하루가 지났다.";
+    return `무풍이다. 돛이 늘어진 채 하루가 지났다.${drift}`;
   }
-  return `정풍이다. 침로 ${Math.round(state.headingDeg)}°로는 바람을 물지 못한다. 침로를 좌우로 틀어 태킹해야 한다.`;
+  return `정풍이다. 침로 ${Math.round(state.headingDeg)}°로는 바람을 물지 못한다. 침로를 좌우로 틀어 태킹해야 한다.${drift}`;
 }
 
 function consumeSupplies(state: VoyageState, logs: string[]): void {
@@ -235,10 +241,15 @@ export function stepDay(state: VoyageState, context: VoyageContext): DayReport {
           condition,
         });
 
+  // 돛이 멈춰도 해류는 배를 밀고 간다. 닻을 내렸거나 입항 중일 때만 제자리다.
+  const current =
+    state.anchored || state.atPortId !== null ? NO_CURRENT : currentAt(state.position);
+  const track = groundTrack(state.headingDeg, speedKnots, current);
+
   const lookoutNm = BASE_LOOKOUT_NM * (0.6 + 0.4 * conditionFactor(condition));
   const movement =
-    speedKnots > 0
-      ? moveAlongCourse(state, context, speedKnots * 24, lookoutNm)
+    track.speedKnots > 0
+      ? moveAlongCourse(state, context, track.headingDeg, track.speedKnots * 24, lookoutNm)
       : {
           distanceNm: 0,
           blocked: false,
@@ -253,13 +264,11 @@ export function stepDay(state: VoyageState, context: VoyageContext): DayReport {
   if (movement.blocked) {
     logs.push("전방에 육지. 더 나아갈 수 없다.");
   }
-  if (
-    movement.distanceNm === 0 &&
-    !state.anchored &&
-    state.atPortId === null &&
-    !movement.blocked
-  ) {
-    logs.push(stallReason(state, wind));
+  // 판단 기준은 항정이 아니라 **돛이 물었는가**다. 해류에 떠밀려 위치가 변해도
+  // 돛이 죽었으면 배는 선장의 뜻대로 가고 있지 않다.
+  // 육지에 막힌 것과는 별개의 사실이므로 둘 다 남긴다.
+  if (speedKnots === 0 && !state.anchored && state.atPortId === null) {
+    logs.push(stallReason(state, wind, current));
   }
 
   consumeSupplies(state, logs);
@@ -290,6 +299,8 @@ export function stepDay(state: VoyageState, context: VoyageContext): DayReport {
     day: state.day,
     position: { ...state.position },
     wind,
+    current,
+    trackDeg: track.headingDeg,
     speedKnots,
     distanceNm: movement.distanceNm,
     blockedByLand: movement.blocked,

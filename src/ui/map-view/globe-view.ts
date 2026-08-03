@@ -1,6 +1,7 @@
 import { LAND_POLYGONS } from "../../content/world-land";
 import type { LatLon } from "../../sim/geo/geo.types";
 import type { LandPolygon } from "../../sim/map/land-mask.types";
+import { currentAt } from "../../sim/current/current";
 import { windAt } from "../../sim/wind/wind";
 import type { Game } from "../../sim/world/world.types";
 import type { MapView, MapViewOptions } from "./map-view.types";
@@ -194,6 +195,36 @@ function drawDestination(surface: Surface, game: Game): void {
   ctx.stroke();
 }
 
+/**
+ * 해류 벡터장. 배 주변만 성기게 그린다 — 전 지구에 화살표를 뿌리면 해도가 아니라
+ * 벽지가 된다. 침로와 항적이 왜 어긋나는지 눈으로 잡히면 그걸로 충분하다.
+ */
+function drawCurrents(surface: Surface, game: Game): void {
+  const { ctx } = surface;
+  const center = game.voyage.position;
+  const stepDeg = 4;
+
+  for (let dLat = -12; dLat <= 12; dLat += stepDeg) {
+    for (let dLon = -12; dLon <= 12; dLon += stepDeg) {
+      const position = { lat: center.lat + dLat, lon: center.lon + dLon };
+      if (Math.abs(position.lat) > 89) {
+        continue;
+      }
+      const current = currentAt(position);
+      if (current.speedKnots < 0.15) {
+        continue;
+      }
+      const point = toScreen(surface, position);
+      if (!point.visible) {
+        continue;
+      }
+      ctx.globalAlpha = Math.min(0.7, 0.2 + current.speedKnots * 0.25);
+      drawArrow(ctx, point.x, point.y, current.toDeg, 5, MAP_PALETTE.current);
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
 function drawShip(surface: Surface, game: Game): void {
   const { ctx } = surface;
   const point = toScreen(surface, game.voyage.position);
@@ -332,6 +363,7 @@ export function createMapView(options: MapViewOptions): MapView {
         drawLand(surface, LAND_POLYGONS);
         ctx.restore();
         drawGraticule(surface);
+        drawCurrents(surface, game);
         drawTrack(surface, track);
         drawDestination(surface, game);
         drawPorts(surface, game);
