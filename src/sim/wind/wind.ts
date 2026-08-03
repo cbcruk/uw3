@@ -1,11 +1,37 @@
 import { WIND, WIND_BANDS, WIND_REGIONS } from "../../content/tuning/wind.tuning";
 import { dayOfYear } from "../calendar/calendar";
 import type { LatLon } from "../geo/geo.types";
-import { clamp, normalizeHeading } from "../geo/geo.utils";
+import { blendHeadings, clamp, compassIndex, normalizeHeading } from "../geo/geo.utils";
 import type { Wind, WindBand, WindRegime } from "./wind.types";
-import { blendHeadings, smoothNoise } from "./wind.utils";
+import { smoothNoise } from "../rng/noise";
 
 const DAYS_PER_YEAR = 365;
+
+/**
+ * 잡음 층을 서로 어긋나게 하는 오프셋과 배수.
+ *
+ * **튜닝 값이 아니다.** 서로 나누어떨어지지만 않으면 되고, 바꿔도 잡음의 통계는
+ * 그대로다 — 무늬만 달라진다. 그래서 표에 넣지 않는다. 근거 등급을 달 수 없는
+ * 종류의 수이고, 표에 넣으면 "조정하면 뭔가 나아지는 값"으로 오해된다.
+ *
+ * 층을 겹치는 이유는 한 층만으로는 격자 무늬가 눈에 보이기 때문이다.
+ */
+const NOISE_LAYERS = {
+  /** 지브롤터 풍계 블록을 잡음 축 위에 흩는 간격. */
+  regimeStride: 0.7,
+  /** 잡음은 0~1로 나온다. 0.5를 빼 -0.5~0.5의 편차로 만든다. */
+  centre: 0.5,
+  fineFreq: 2.7,
+  fineOffsetX: 5.1,
+  fineOffsetY: -3.3,
+  fineTimeFreq: 2.3,
+  coarseOffsetX: 31.7,
+  coarseOffsetY: -12.3,
+  speedFreq: 2.9,
+  speedOffsetX: -7.4,
+  speedOffsetY: 4.6,
+  speedTimeFreq: 2.1,
+} as const;
 
 /** 연중 위상. 기준일에 0, 반년 뒤 반대 부호가 된다. */
 function seasonalPhase(dayNumber: number): number {
@@ -19,7 +45,8 @@ function seasonalLatShift(dayNumber: number): number {
 
 /** 겨울 1, 여름 0 에 가까운 계수. 지중해·편서풍 강도의 계절 변동에 쓴다. */
 function winterFactor(dayNumber: number): number {
-  return 0.5 - 0.5 * Math.sin(seasonalPhase(dayNumber));
+  const { centre } = NOISE_LAYERS;
+  return centre - centre * Math.sin(seasonalPhase(dayNumber));
 }
 
 function bandAt(effectiveLat: number): WindBand {
@@ -59,7 +86,9 @@ function isInGulfOfLion(position: LatLon): boolean {
  */
 function gibraltarRegime(dayNumber: number): WindRegime {
   const block = Math.floor(dayNumber / WIND.gibraltarRegimeBlockDays);
-  return smoothNoise(block * 0.7, 0, 0) > WIND.gibraltarLevanterThreshold ? "levanter" : "poniente";
+  return smoothNoise(block * NOISE_LAYERS.regimeStride, 0, 0) > WIND.gibraltarLevanterThreshold
+    ? "levanter"
+    : "poniente";
 }
 
 function baseWind(position: LatLon, dayNumber: number): WindBand {
@@ -110,14 +139,26 @@ export function windAt(position: LatLon, dayNumber: number): Wind {
   const noiseY = position.lat / WIND.noiseSpaceDeg;
   const noiseT = dayNumber / WIND.noiseTimeDays;
 
+  const n = NOISE_LAYERS;
   const directionJitter =
-    (smoothNoise(noiseX, noiseY, noiseT) - 0.5) * WIND.directionJitterDeg +
-    (smoothNoise(noiseX * 2.7 + 5.1, noiseY * 2.7 - 3.3, noiseT * 2.3) - 0.5) *
+    (smoothNoise(noiseX, noiseY, noiseT) - n.centre) * WIND.directionJitterDeg +
+    (smoothNoise(
+      noiseX * n.fineFreq + n.fineOffsetX,
+      noiseY * n.fineFreq + n.fineOffsetY,
+      noiseT * n.fineTimeFreq,
+    ) -
+      n.centre) *
       WIND.directionJitterFineDeg;
   const speedJitter =
     WIND.speedJitterBase +
-    WIND.speedJitterCoarse * smoothNoise(noiseX + 31.7, noiseY - 12.3, noiseT) +
-    WIND.speedJitterFine * smoothNoise(noiseX * 2.9 - 7.4, noiseY * 2.9 + 4.6, noiseT * 2.1);
+    WIND.speedJitterCoarse *
+      smoothNoise(noiseX + n.coarseOffsetX, noiseY + n.coarseOffsetY, noiseT) +
+    WIND.speedJitterFine *
+      smoothNoise(
+        noiseX * n.speedFreq + n.speedOffsetX,
+        noiseY * n.speedFreq + n.speedOffsetY,
+        noiseT * n.speedTimeFreq,
+      );
 
   return {
     fromDeg: normalizeHeading(blendHeadings(base.fromDeg, base.fromDeg + directionJitter, 1)),
@@ -139,6 +180,5 @@ export const WIND_REGIME_LABELS: Readonly<Record<WindRegime, string>> = {
 
 export function describeWindDirection(fromDeg: number): string {
   const points = ["북", "북동", "동", "남동", "남", "남서", "서", "북서"];
-  const index = Math.round(normalizeHeading(fromDeg) / 45) % 8;
-  return `${points[index]}풍`;
+  return `${points[compassIndex(fromDeg)]}풍`;
 }

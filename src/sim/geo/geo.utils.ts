@@ -4,6 +4,29 @@ export const EARTH_RADIUS_NM = 3440.065;
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
 
+/**
+ * 1도 = 60분이고 1분 = 1해리다. 좌표계의 **정의**이지 조정 가능한 값이 아니다 —
+ * 표에 넣을 수 없는 종류의 수다.
+ */
+export const NM_PER_DEGREE = 60;
+
+/** 정반대 방위. 바람이 불어오는 쪽에서 흘러가는 쪽을 얻을 때 쓴다. */
+export const OPPOSITE_DEG = 180;
+
+/** 한 바퀴. */
+export const FULL_TURN_DEG = 360;
+
+const COMPASS_POINTS = 8;
+
+/**
+ * 8방위 인덱스. 방위**명**은 쓰는 쪽이 붙인다 — 바람은 "서풍"이 서에서 오는 것이고
+ * 해류는 "남향류"가 남으로 가는 것이다 (SPEC 6.2). 규약이 반대라 이름은 공유하지 않는다.
+ */
+export function compassIndex(deg: number): number {
+  const step = 360 / COMPASS_POINTS;
+  return Math.round(normalizeHeading(deg) / step) % COMPASS_POINTS;
+}
+
 export function toRadians(degrees: number): number {
   return degrees * DEG_TO_RAD;
 }
@@ -46,10 +69,10 @@ export function bearingDeg(from: LatLon, to: LatLon): number {
 
 export function advance(from: LatLon, headingDeg: number, distanceNm: number): LatLon {
   const heading = toRadians(headingDeg);
-  const deltaLat = (distanceNm * Math.cos(heading)) / 60;
+  const deltaLat = (distanceNm * Math.cos(heading)) / NM_PER_DEGREE;
   const midLat = toRadians(from.lat + deltaLat / 2);
   const lonScale = Math.max(Math.cos(midLat), 1e-4);
-  const deltaLon = (distanceNm * Math.sin(heading)) / (60 * lonScale);
+  const deltaLon = (distanceNm * Math.sin(heading)) / (NM_PER_DEGREE * lonScale);
   return {
     lat: clamp(from.lat + deltaLat, -89.9, 89.9),
     lon: wrapLongitude(from.lon + deltaLon),
@@ -71,6 +94,18 @@ export function lerp(a: number, b: number, t: number): number {
 export function smoothstep(t: number): number {
   const x = clamp(t, 0, 1);
   return x * x * (3 - 2 * x);
+}
+
+/**
+ * 방위를 벡터로 바꿔 섞는다. 각도를 그냥 보간하면 359°와 1° 사이에서 한 바퀴를
+ * 거꾸로 돈다 — 경계에서 항적이 튄다.
+ */
+export function blendHeadings(a: number, b: number, t: number): number {
+  const ar = toRadians(a);
+  const br = toRadians(b);
+  const x = lerp(Math.cos(ar), Math.cos(br), t);
+  const y = lerp(Math.sin(ar), Math.sin(br), t);
+  return normalizeHeading(toDegrees(Math.atan2(y, x)));
 }
 
 export function gridSizeOf(bounds: MapBounds): GridSize {

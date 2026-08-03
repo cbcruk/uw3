@@ -1,5 +1,5 @@
 import { HAZARD } from "../../content/tuning/hazards.tuning";
-import { advance, clamp } from "../geo/geo.utils";
+import { OPPOSITE_DEG, advance, clamp } from "../geo/geo.utils";
 import type { HazardContext, HazardDefinition, VoyageState } from "./voyage.types";
 
 function supplyDaysRemaining(state: VoyageState): number {
@@ -54,7 +54,7 @@ const STORM: HazardDefinition = {
     state.fatigue = clamp(state.fatigue + t.fatigueGain * severity, 0, 1);
     state.discipline = clamp(state.discipline - t.disciplineLoss * severity, 0, 1);
 
-    driftShip(context, wind.fromDeg + 180, t.driftNm * severity);
+    driftShip(context, wind.fromDeg + OPPOSITE_DEG, t.driftNm * severity);
 
     const crewNote = crewLoss > 0 ? ` 선원 ${crewLoss}명이 파도에 휩쓸렸다.` : "";
     return `폭풍에 휘말렸다. 선체 ${hullLoss} 손상, 자재 ${timberLoss} 소모.${crewNote}`;

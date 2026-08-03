@@ -14,6 +14,12 @@ export const DEBT_BASELINE: Readonly<Record<SourceGrade, number>> = {
   /** 자료에서 옮긴 값. 이 수는 **줄어들면 안 된다** — 줄었다면 근거를 잃은 것이다. */
   measured: 0,
   qualitative: 19,
-  /** 감으로 정한 값. 이 수는 **늘어나면 안 된다**. */
-  unverified: 99,
+  /**
+   * 감으로 정한 값. 이 수는 **늘어나면 안 된다**.
+   *
+   * 99 → 100 (`driftMentionKnots`). 새로 만든 값이 아니라 `voyage.ts`에 `0.05`로
+   * 박혀 있던 것을 표로 옮긴 것이다. 근거는 늘지도 줄지도 않았고, 세어지지 않던
+   * 하나가 세어졌을 뿐이다 — 이관은 부채를 갚지 않고 드러낸다 (SPEC 6.1).
+   */
+  unverified: 100,
 };

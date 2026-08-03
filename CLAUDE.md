@@ -47,3 +47,13 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
    등록하지 않으면 부채 집계에 잡히지 않아 실제보다 좋아 보인다
 4. `unverified`가 늘면 검증기가 막는다. 늘려야 한다면 `debt-baseline.ts`를 함께
    고치고, 그 diff로 "근거 없는 값을 늘렸다"는 사실을 남긴다
+
+`voyage` `ship` `wind` `current` `fog`에는 **식 안에 숫자를 못 박는다**
+(`no-magic-numbers`). 0·1·2와 이름 붙인 상수는 통과한다. 걸리면 둘 중 하나다.
+
+- **조정 가능한 값이면** → `content/tuning/`의 표로
+- **정의이거나 임의의 수면** → 이름 붙인 상수로. 왜 표가 아닌지를 주석에 적는다
+  (예: 잡음 층 오프셋은 바꿔도 통계가 그대로라 근거 등급을 달 수 없다)
+
+`geo` `calendar` `rng` `map`은 수학 기반이라 이 규칙에서 빠져 있다. 거기에 튜닝
+값을 두면 규칙을 우회하게 되므로, 그런 값이 생기면 파일을 옮긴다.

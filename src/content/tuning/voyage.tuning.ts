@@ -20,6 +20,12 @@ const VOYAGE_SCALARS = {
   lookoutFloor: guess(0.6, "배"),
   lookoutRange: guess(0.4, "배"),
 
+  /**
+   * 정지한 날의 보고에 해류를 언급할 최소 속력. 표시 임계일 뿐 물리에는 안 쓴다.
+   * 이보다 느린 표류는 하루 항정이 1해리도 안 되어 알려도 소용이 없다.
+   */
+  driftMentionKnots: guess(0.05, "kn"),
+
   /** 트러블 압력 합을 실제 발생 확률로 옮기는 배율. */
   hazardRollScale: guess(0.55, "배"),
   /** 하루에 트러블이 터질 확률의 상한. */

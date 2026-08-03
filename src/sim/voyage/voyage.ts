@@ -1,5 +1,5 @@
 import { VOYAGE_TUNING as V } from "../../content/tuning/voyage.tuning";
-import { seasonOf } from "../calendar/calendar";
+import { HOURS_PER_DAY, seasonOf } from "../calendar/calendar";
 import { advance, clamp, haversineNm, relativeWindAngle } from "../geo/geo.utils";
 import { computeSpeedKnots, conditionFactor } from "../ship/sail";
 import type { SailingCondition } from "../ship/ship.types";
@@ -122,7 +122,8 @@ function moveAlongCourse(
  * 태킹은 난이도의 출처지 (SPEC 2) 숨겨야 할 규칙이 아니다.
  */
 function stallReason(state: VoyageState, wind: Wind, current: Current): string {
-  const drift = current.speedKnots >= 0.05 ? ` 배는 ${current.name}에 떠밀려 간다.` : "";
+  const drift =
+    current.speedKnots >= V.driftMentionKnots ? ` 배는 ${current.name}에 떠밀려 간다.` : "";
 
   if (state.sailsSet.every((set) => set === false)) {
     return `돛을 모두 접은 채로는 바람을 받지 못한다.${drift}`;
@@ -258,7 +259,13 @@ export function stepDay(state: VoyageState, context: VoyageContext): DayReport {
     V.baseLookoutNm * (V.lookoutFloor + V.lookoutRange * conditionFactor(condition));
   const movement =
     track.speedKnots > 0
-      ? moveAlongCourse(state, context, track.headingDeg, track.speedKnots * 24, lookoutNm)
+      ? moveAlongCourse(
+          state,
+          context,
+          track.headingDeg,
+          track.speedKnots * HOURS_PER_DAY,
+          lookoutNm,
+        )
       : {
           distanceNm: 0,
           blocked: false,

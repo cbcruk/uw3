@@ -1,5 +1,11 @@
 import type { LatLon } from "../geo/geo.types";
-import { bearingDeg, haversineNm, normalizeHeading, relativeWindAngle } from "../geo/geo.utils";
+import {
+  FULL_TURN_DEG,
+  bearingDeg,
+  haversineNm,
+  normalizeHeading,
+  relativeWindAngle,
+} from "../geo/geo.utils";
 import { findSeaRoute } from "../map/sea-route";
 import type { TileMap } from "../map/tile-map.types";
 import { currentAt, groundTrack } from "../current/current";
@@ -56,7 +62,7 @@ export function planHeading(
 
   let best: NavigatorPlan | null = null;
 
-  for (let offset = 0; offset < 360; offset += CANDIDATE_STEP_DEG) {
+  for (let offset = 0; offset < FULL_TURN_DEG; offset += CANDIDATE_STEP_DEG) {
     const headingDeg = normalizeHeading(offset);
     const speedKnots = computeSpeedKnots({
       shipClass: context.shipClass,

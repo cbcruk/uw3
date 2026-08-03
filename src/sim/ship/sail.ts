@@ -1,10 +1,10 @@
 import { SAIL, SAIL_CURVES } from "../../content/tuning/sail.tuning";
-import { clamp, lerp } from "../geo/geo.utils";
+import { OPPOSITE_DEG, clamp, lerp } from "../geo/geo.utils";
 import type { MastSail, SailingCondition, SailType, ShipClass } from "./ship.types";
 
 export function sailEfficiency(type: SailType, relAngleDeg: number): number {
   const curve = SAIL_CURVES[type].value;
-  const angle = clamp(relAngleDeg, 0, 180);
+  const angle = clamp(relAngleDeg, 0, OPPOSITE_DEG);
   for (let i = 1; i < curve.length; i += 1) {
     const [prevAngle, prevValue] = curve[i - 1] as readonly [number, number];
     const [nextAngle, nextValue] = curve[i] as readonly [number, number];
