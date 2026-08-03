@@ -3,10 +3,14 @@ import { bearingDeg, haversineNm, normalizeHeading } from "../sim/geo/geo.utils"
 import { createGame } from "../sim/world/world";
 import { applyAction } from "../sim/world/world";
 import type { GameAction } from "../sim/world/world.types";
+import { HISTORICAL_VOYAGES } from "../content/voyages";
+import { compareToRecord } from "../sim/voyage/logbook";
 import { createHud } from "./hud/hud";
 import { createMapView } from "./map-view/globe-view";
 
 const TRACK_LIMIT = 400;
+/** v1은 재현 항해 하나에 집중한다 (SPEC 9). */
+const VOYAGE = HISTORICAL_VOYAGES[0]!;
 
 export function mountApp(root: HTMLElement): void {
   const game = createGame();
@@ -38,6 +42,7 @@ export function mountApp(root: HTMLElement): void {
             <button data-action="day">하루만</button>
           </div>
           <p class="controls__note" id="orders"></p>
+          <section id="record" class="record" hidden></section>
         </div>
       </aside>
     </main>
@@ -49,13 +54,15 @@ export function mountApp(root: HTMLElement): void {
   const steeringRoot = root.querySelector<HTMLElement>("#steering");
   const hintRoot = root.querySelector<HTMLElement>("#chart-hint");
   const ordersRoot = root.querySelector<HTMLElement>("#orders");
+  const recordRoot = root.querySelector<HTMLElement>("#record");
   if (
     canvas === null ||
     hudRoot === null ||
     sailsRoot === null ||
     steeringRoot === null ||
     hintRoot === null ||
-    ordersRoot === null
+    ordersRoot === null ||
+    recordRoot === null
   ) {
     throw new Error("app scaffolding missing");
   }
@@ -78,6 +85,7 @@ export function mountApp(root: HTMLElement): void {
   const hintPanel = hintRoot;
   const ordersPanel = ordersRoot;
   const steeringPanel = steeringRoot;
+  const recordPanel = recordRoot;
 
   function renderSails(): void {
     sailsPanel.innerHTML = game.voyage.rig
@@ -116,6 +124,37 @@ export function mountApp(root: HTMLElement): void {
     ordersPanel.textContent = `목적지까지 ${Math.round(rangeNm)}해리, 방위 ${bearing}°${stop}`;
   }
 
+  /**
+   * 재현 항해가 끝나면 기록을 사료와 나란히 놓는다 (SPEC 2, 3).
+   * 기준선이 없으면 없는 대로 내놓는다 — 확인되지 않은 숫자로 대조하느니 그게 낫다.
+   */
+  function renderRecord(): void {
+    if (game.voyage.atPortId !== VOYAGE.endPortId) {
+      recordPanel.hidden = true;
+      return;
+    }
+    const record = compareToRecord(VOYAGE, game.logbook, game.voyage.atPortId);
+    const reference =
+      record.reference.days === null
+        ? `<p class="record__note">사료 기준선 미확인 — ${record.reference.source}</p>`
+        : `<p class="record__note">실제 기록 ${record.reference.days}일 · 당신 ${record.days}일</p>`;
+
+    recordPanel.hidden = false;
+    recordPanel.innerHTML = `
+      <h2>${VOYAGE.name} — 항해 기록</h2>
+      <dl class="record__rows">
+        <div><dt>소요</dt><dd>${record.days}일</dd></div>
+        <div><dt>항정</dt><dd>${Math.round(record.distanceNm)}해리</dd></div>
+        <div><dt>직선거리</dt><dd>${Math.round(record.directNm)}해리</dd></div>
+        <div><dt>우회율</dt><dd>${record.detourRatio.toFixed(2)}배</dd></div>
+        <div><dt>최남단</dt><dd>${record.southmostLat.toFixed(1)}°N</dd></div>
+        <div><dt>돛이 죽은 날</dt><dd>${record.stalledDays}일</dd></div>
+      </dl>
+      ${reference}
+      <p class="record__lesson">${VOYAGE.lesson}</p>
+    `;
+  }
+
   function renderContextButtons(): void {
     const anchorButton = root.querySelector<HTMLButtonElement>('[data-action="anchor"]');
     const portButton = root.querySelector<HTMLButtonElement>('[data-action="port"]');
@@ -152,6 +191,7 @@ export function mountApp(root: HTMLElement): void {
     renderSteering();
     renderContextButtons();
     renderOrders();
+    renderRecord();
     renderHint();
     mapView.render(track);
   }

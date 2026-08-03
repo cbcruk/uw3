@@ -6,7 +6,9 @@ import type { DayReport, VoyageContext, VoyageState } from "./voyage.types";
 
 export const DEFAULT_PASSAGE_OPTIONS: PassageOptions = {
   maxDays: 30,
-  arrivalRangeNm: 30,
+  // 입항 판정 반경과 같아야 한다. 도착 판정이 더 넓으면 항구를 코앞에 두고 멈춰
+  // 플레이어가 한 번 더 명령해야 입항한다.
+  arrivalRangeNm: 12,
   supplyDaysFloor: 20,
 };
 

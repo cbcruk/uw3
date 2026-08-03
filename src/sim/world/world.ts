@@ -8,6 +8,7 @@ import { createTileMap } from "../map/tile-map";
 import { ROUTE_CELLS_PER_DEGREE, WORLD_LAND_CELLS_PER_DEGREE } from "../map/land-mask.const";
 import { findSeaRoute } from "../map/sea-route";
 import { createRngSet } from "../rng/rng";
+import { createLogbook, recordVoyageDay } from "../voyage/logbook";
 import { runPassage } from "../voyage/passage";
 import { stepDay } from "../voyage/voyage";
 import type { DayReport, VoyageContext, VoyageState } from "../voyage/voyage.types";
@@ -90,6 +91,7 @@ export function createGame(config: GameConfig = DEFAULT_CONFIG): Game {
     exploration,
     shipClass,
     voyage,
+    logbook: createLogbook(voyage.day, voyage.position),
     ports: PORTS,
     gold: 5000,
     journal: [
@@ -180,6 +182,11 @@ function voyageContext(game: Game): VoyageContext {
  * 같은 경고가 날마다 반복되면 진짜 새 소식이 묻힌다 (SPEC 4.2 텔레그래프).
  */
 function recordDay(game: Game, report: DayReport, includeWarnings: boolean): JournalEntry[] {
+  // 정박 중의 하루는 항해가 아니다. 입항하는 날은 바다에서 시작했으므로 센다.
+  if (game.voyage.atPortId === null) {
+    recordVoyageDay(game.logbook, report);
+  }
+
   const entries: JournalEntry[] = [
     ...report.logs.map(
       (text): JournalEntry => ({
@@ -261,6 +268,8 @@ export function applyAction(game: Game, action: GameAction): ActionResult {
       game.voyage.departedPortId = game.voyage.atPortId;
       game.voyage.atPortId = null;
       game.voyage.anchored = false;
+      // 출항이 곧 기록의 시작이다. 정박 중의 날짜는 항해가 아니다.
+      game.logbook = createLogbook(game.voyage.day, game.voyage.position);
       const entries: JournalEntry[] =
         port === undefined
           ? []

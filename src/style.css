@@ -256,3 +256,58 @@ button.primary {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.record {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--accent);
+  background: var(--panel);
+  font-size: 12px;
+}
+
+/* [hidden]의 display:none이 위 display:flex에 덮인다. 명시적으로 되돌린다. */
+.record[hidden] {
+  display: none;
+}
+
+.record h2 {
+  margin: 0;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.record__rows {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.record__rows div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.record__rows dt {
+  color: var(--ink-dim);
+}
+
+.record__rows dd {
+  margin: 0;
+  text-align: right;
+}
+
+.record__note,
+.record__lesson {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--ink-dim);
+}
+
+.record__lesson {
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
