@@ -7,6 +7,7 @@ import { haversineNm, normalizeHeading } from "../geo/geo.utils";
 import { createTileMap } from "../map/tile-map";
 import { ROUTE_CELLS_PER_DEGREE, WORLD_LAND_CELLS_PER_DEGREE } from "../map/land-mask.const";
 import { findSeaRoute } from "../map/sea-route";
+import { PASSAGE_TUNING } from "../../content/tuning/voyage.tuning";
 import { createRngSet } from "../rng/rng";
 import { createLogbook, recordVoyageDay } from "../voyage/logbook";
 import { runPassage } from "../voyage/passage";
@@ -14,7 +15,6 @@ import { stepDay } from "../voyage/voyage";
 import type { DayReport, VoyageContext, VoyageState } from "../voyage/voyage.types";
 import type { ActionResult, Game, GameAction, GameConfig, JournalEntry } from "./world.types";
 
-const DOCKING_RANGE_NM = 12;
 const SUPPLY_PER_TON = 18;
 const RESUPPLY_COST_PER_UNIT = 0.4;
 
@@ -173,7 +173,7 @@ function voyageContext(game: Game): VoyageContext {
     shipClass: game.shipClass,
     rng: game.rng.voyage,
     ports: game.ports.map((port) => ({ id: port.id, ...port.anchorage })),
-    dockingRangeNm: DOCKING_RANGE_NM,
+    dockingRangeNm: PASSAGE_TUNING.dockingRangeNm,
   };
 }
 

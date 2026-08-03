@@ -1,3 +1,4 @@
+import { VOYAGE_TUNING as V } from "../../content/tuning/voyage.tuning";
 import { seasonOf } from "../calendar/calendar";
 import { advance, clamp, haversineNm, relativeWindAngle } from "../geo/geo.utils";
 import { computeSpeedKnots, conditionFactor } from "../ship/sail";
@@ -16,12 +17,10 @@ import type {
   VoyageState,
 } from "./voyage.types";
 
-const BASE_LOOKOUT_NM = 16;
 const NO_CURRENT: Current = { toDeg: 0, speedKnots: 0, name: "무해류" };
-const HAZARD_ROLL_SCALE = 0.55;
 
 export function effectiveCrew(state: VoyageState): number {
-  return Math.max(0, state.crew - state.sick * 0.7);
+  return Math.max(0, state.crew - state.sick * V.sickCrewPenalty);
 }
 
 export function sailingCondition(state: VoyageState, crewMin: number): SailingCondition {
@@ -147,35 +146,44 @@ function consumeSupplies(state: VoyageState, logs: string[]): void {
   const waterShortfall = (waterNeeded - waterServed) / Math.max(1, waterNeeded);
 
   if (foodShortfall > 0) {
-    state.fatigue = clamp(state.fatigue + 0.09 * foodShortfall, 0, 1);
-    state.discipline = clamp(state.discipline - 0.12 * foodShortfall, 0, 1);
+    state.fatigue = clamp(state.fatigue + V.foodShortfallFatigue * foodShortfall, 0, 1);
+    state.discipline = clamp(state.discipline - V.foodShortfallDiscipline * foodShortfall, 0, 1);
     logs.push("식량이 바닥났다. 배급을 중단했다.");
   }
   if (waterShortfall > 0) {
-    state.fatigue = clamp(state.fatigue + 0.13 * waterShortfall, 0, 1);
-    state.sick = Math.min(state.crew, state.sick + Math.ceil(state.crew * 0.05 * waterShortfall));
+    state.fatigue = clamp(state.fatigue + V.waterShortfallFatigue * waterShortfall, 0, 1);
+    state.sick = Math.min(
+      state.crew,
+      state.sick + Math.ceil(state.crew * V.waterShortfallSickRatio * waterShortfall),
+    );
     logs.push("물이 떨어졌다. 갈증으로 쓰러지는 자가 나왔다.");
   }
 }
 
 function updateCrewCondition(state: VoyageState, exertion: number, logs: string[]): void {
   if (state.atPortId !== null) {
-    state.fatigue = clamp(state.fatigue - 0.18, 0, 1);
-    state.sick = Math.max(0, state.sick - Math.ceil(state.sick * 0.25));
+    state.fatigue = clamp(state.fatigue - V.portFatigueRecovery, 0, 1);
+    state.sick = Math.max(0, state.sick - Math.ceil(state.sick * V.portSickRecovery));
   } else if (state.anchored) {
-    state.fatigue = clamp(state.fatigue - 0.05, 0, 1);
+    state.fatigue = clamp(state.fatigue - V.anchoredFatigueRecovery, 0, 1);
   } else {
-    state.fatigue = clamp(state.fatigue + 0.012 + 0.03 * exertion, 0, 1);
+    state.fatigue = clamp(state.fatigue + V.seaFatigueBase + V.seaFatigueExertion * exertion, 0, 1);
   }
 
   const disciplineTarget = clamp(
-    1 - state.fatigue * 0.5 - clamp(1 - supplyDays(state) / 20, 0, 1) * 0.45,
+    1 -
+      state.fatigue * V.disciplineFatigueWeight -
+      clamp(1 - supplyDays(state) / V.disciplineSupplyFloorDays, 0, 1) * V.disciplineSupplyWeight,
     0,
     1,
   );
-  state.discipline = clamp(state.discipline + (disciplineTarget - state.discipline) * 0.18, 0, 1);
+  state.discipline = clamp(
+    state.discipline + (disciplineTarget - state.discipline) * V.disciplineApproachRate,
+    0,
+    1,
+  );
 
-  if (state.discipline < 0.15 && state.atPortId === null) {
+  if (state.discipline < V.disciplineWarnThreshold && state.atPortId === null) {
     logs.push("규율이 무너지기 직전이다. 회항을 고려해야 한다.");
   }
 }
@@ -184,7 +192,7 @@ function rollHazard(context: HazardContext): { id: string; message: string } | n
   const candidates = VOYAGE_HAZARDS.map((hazard) => ({
     hazard,
     pressure: hazard.pressure(context),
-  })).filter((entry) => entry.pressure > 0.02);
+  })).filter((entry) => entry.pressure > V.hazardPressureFloor);
 
   if (candidates.length === 0) {
     return null;
@@ -194,7 +202,7 @@ function rollHazard(context: HazardContext): { id: string; message: string } | n
     (sum, entry) => sum + entry.pressure * entry.hazard.baseWeight,
     0,
   );
-  const chance = clamp(totalPressure * HAZARD_ROLL_SCALE, 0, 0.6);
+  const chance = clamp(totalPressure * V.hazardRollScale, 0, V.hazardChanceCap);
   if (!context.rng.chance(chance)) {
     return null;
   }
@@ -246,7 +254,8 @@ export function stepDay(state: VoyageState, context: VoyageContext): DayReport {
     state.anchored || state.atPortId !== null ? NO_CURRENT : currentAt(state.position);
   const track = groundTrack(state.headingDeg, speedKnots, current);
 
-  const lookoutNm = BASE_LOOKOUT_NM * (0.6 + 0.4 * conditionFactor(condition));
+  const lookoutNm =
+    V.baseLookoutNm * (V.lookoutFloor + V.lookoutRange * conditionFactor(condition));
   const movement =
     track.speedKnots > 0
       ? moveAlongCourse(state, context, track.headingDeg, track.speedKnots * 24, lookoutNm)

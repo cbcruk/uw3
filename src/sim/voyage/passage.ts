@@ -1,3 +1,4 @@
+import { PASSAGE_TUNING as P } from "../../content/tuning/voyage.tuning";
 import { haversineNm } from "../geo/geo.utils";
 import { planHeading } from "./navigator";
 import type { PassageOptions, PassageResult, PassageStop } from "./passage.types";
@@ -5,18 +6,10 @@ import { stepDay, supplyDays } from "./voyage";
 import type { DayReport, VoyageContext, VoyageState } from "./voyage.types";
 
 export const DEFAULT_PASSAGE_OPTIONS: PassageOptions = {
-  maxDays: 30,
-  // 입항 판정 반경과 같아야 한다. 도착 판정이 더 넓으면 항구를 코앞에 두고 멈춰
-  // 플레이어가 한 번 더 명령해야 입항한다.
-  arrivalRangeNm: 12,
-  supplyDaysFloor: 20,
+  maxDays: P.maxDays,
+  arrivalRangeNm: P.arrivalRangeNm,
+  supplyDaysFloor: P.supplyDaysFloor,
 };
-
-/**
- * 자동 조타에서 목적지에 가까워지지 않아도 이만큼은 버틴다. 바람이 막힌 해안에서
- * 바다 쪽으로 여유를 버는 며칠은 정상적인 항해다. 그 뒤로도 안 되면 사람이 판단할 문제다.
- */
-const BEATING_DAYS_LIMIT = 4;
 
 function summarize(stop: PassageStop, days: number, state: VoyageState): string {
   const prefix = `${days}일 항해.`;
@@ -121,7 +114,7 @@ export function runPassage(
         beatingDays = 0;
       } else {
         beatingDays += 1;
-        if (beatingDays >= BEATING_DAYS_LIMIT) {
+        if (beatingDays >= P.beatingDaysLimit) {
           return finish("beating");
         }
       }

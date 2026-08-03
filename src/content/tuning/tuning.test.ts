@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vite-plus/test";
-import { SAIL_CURVES, SAIL_TUNING } from "./sail.tuning";
-import { WIND_BANDS, WIND_TUNING } from "./wind.tuning";
-import { gradeTally } from "./tuning";
-import type { SourceGrade, Tuned } from "./tuning.types";
+import { SAIL_CURVES, SAIL_SCALARS } from "./sail.tuning";
+import { WIND_BANDS, WIND_SCALARS } from "./wind.tuning";
+import { HAZARD_TABLES } from "./hazards.tuning";
+import { VOYAGE_TABLES } from "./voyage.tuning";
+import { gradeTally, tuningEntries } from "./tuning";
+import type { Tuned } from "./tuning.types";
 
-const TABLES = [SAIL_TUNING, WIND_TUNING];
-const ANNOTATED: readonly Tuned<unknown>[] = [
-  ...Object.values(SAIL_TUNING),
-  ...Object.values(WIND_TUNING),
-  ...Object.values(SAIL_CURVES),
-  WIND_BANDS,
-];
+/** 수치 표 전부. 새 표를 만들면 여기에 등록해야 검증과 집계에 걸린다. */
+const TABLES = [SAIL_SCALARS, WIND_SCALARS, ...HAZARD_TABLES, ...VOYAGE_TABLES];
+/** 곡선·구간처럼 값이 수가 아닌 항목. 유한성 검사만 빼고 같은 규칙을 받는다. */
+const CURVES: readonly Tuned<unknown>[] = [...Object.values(SAIL_CURVES), WIND_BANDS];
+const ANNOTATED: readonly Tuned<unknown>[] = [...tuningEntries(TABLES), ...CURVES];
 
 describe("튜닝 표", () => {
   /** 근거 없는 값이 근거 있는 값인 척하면 대조 자체가 거짓이 된다 (SPEC 3). */
@@ -51,25 +51,14 @@ describe("튜닝 표", () => {
    * 등급 분포가 곧 이 시뮬레이터의 실제 충실도다 (SPEC 3).
    */
   it("충실도 부채를 집계한다", () => {
-    const tally = gradeTally(TABLES);
-    const curves: Record<SourceGrade, number> = { measured: 0, qualitative: 0, unverified: 0 };
-    for (const entry of [...Object.values(SAIL_CURVES), WIND_BANDS]) {
-      curves[entry.grade] += 1;
-    }
-
-    const total =
-      tally.measured +
-      tally.qualitative +
-      tally.unverified +
-      curves.measured +
-      curves.qualitative +
-      curves.unverified;
+    const tally = gradeTally(ANNOTATED);
+    const total = tally.measured + tally.qualitative + tally.unverified;
 
     console.log(
       `튜닝 표 ${total}항목 — ` +
-        `measured ${tally.measured + curves.measured} · ` +
-        `qualitative ${tally.qualitative + curves.qualitative} · ` +
-        `unverified ${tally.unverified + curves.unverified}`,
+        `measured ${tally.measured} · ` +
+        `qualitative ${tally.qualitative} · ` +
+        `unverified ${tally.unverified}`,
     );
 
     // 표에 아무것도 없으면 이관이 안 된 것이다.

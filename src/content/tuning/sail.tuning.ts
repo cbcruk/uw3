@@ -49,7 +49,7 @@ export const SAIL_CURVES: Readonly<Record<SailType, TunedCurve>> = {
   },
 };
 
-const SAIL_SCALARS = {
+export const SAIL_SCALARS = {
   /** 이 풍속에서 선급 최고 속력이 나온다. */
   nominalWindKnots: {
     value: 14,
@@ -97,5 +97,4 @@ const SAIL_SCALARS = {
   disciplineRange: { value: 0.25, unit: "배", grade: "unverified", source: "감으로 정함" },
 } as const satisfies Record<string, Tuned>;
 
-export const SAIL_TUNING = SAIL_SCALARS;
 export const SAIL = tunedValues(SAIL_SCALARS);

@@ -164,17 +164,23 @@ Shape처럼 보이지만 Knob인 것, 반대인 것을 적어 둔다. 판단이 
 
 ### Knob 이관 현황
 
-| 영역                  | 상태                                                      |
-| --------------------- | --------------------------------------------------------- |
-| 해류                  | 표 (`content/currents.ts`)                                |
-| 돛 (`sail`)           | **표** (`content/tuning/sail.tuning.ts`) — 근거 등급 포함 |
-| 바람 (`wind`)         | **표** (`content/tuning/wind.tuning.ts`) — 근거 등급 포함 |
-| 트러블 (`hazards`)    | 코드 — 리터럴 53개                                        |
-| 항해 (`voyage`)       | 코드 — 리터럴 24개                                        |
-| 구간 항해 (`passage`) | 코드 — 리터럴 8개                                         |
+시뮬 전 영역 이관 완료. 남은 리터럴은 물리 상수(지구 반지름, 60분/도)와 렌더링뿐이다.
 
-이관된 39항목의 근거 등급: **measured 0 · qualitative 12 · unverified 27** (SPEC 6.1).
+| 영역                  | 상태                                                       |
+| --------------------- | ---------------------------------------------------------- |
+| 해류                  | 표 (`content/currents.ts`)                                 |
+| 돛 (`sail`)           | 표 (`content/tuning/sail.tuning.ts`)                       |
+| 바람 (`wind`)         | 표 (`content/tuning/wind.tuning.ts`)                       |
+| 트러블 (`hazards`)    | 표 (`content/tuning/hazards.tuning.ts`) — 4개 표로 분리    |
+| 항해 (`voyage`)       | 표 (`content/tuning/voyage.tuning.ts` / `VOYAGE_SCALARS`)  |
+| 구간 항해 (`passage`) | 표 (`content/tuning/voyage.tuning.ts` / `PASSAGE_SCALARS`) |
+
+전체 118항목의 근거 등급: **measured 0 · qualitative 19 · unverified 99** (SPEC 6.1).
 성공 기준을 충실도로 잡아 놓고 자료에서 옮긴 값이 아직 하나도 없다.
 
 > 표로 빼는 것과 근거를 대는 것은 다른 일이다. 표로 빼면 **못 대는 값이 몇 개인지**가
 > 보인다. 그 숫자가 줄어야 충실도가 나아진다.
+
+이관 전후로 `unverified` 비율은 69% → 84%로 **올랐다.** 나빠진 게 아니라, 코드에
+숨어 있던 값 79개가 집계에 들어왔기 때문이다. 이관은 부채를 갚는 작업이 아니라
+부채를 세는 작업이다.

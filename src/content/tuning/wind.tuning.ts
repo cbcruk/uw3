@@ -25,7 +25,7 @@ export const WIND_BANDS: TunedBands = {
   source: "경계 위도와 풍속은 저작. 파일럿 차트(월별 풍향·풍속 통계)와 대조해야 한다 (SPEC 3.1)",
 };
 
-const WIND_SCALARS = {
+export const WIND_SCALARS = {
   // ── 계절 ────────────────────────────────────────────────
   /** 여름에 기압대가 북상하고 겨울에 남하하는 폭. */
   seasonalLatShiftDeg: {
@@ -136,7 +136,6 @@ const WIND_SCALARS = {
   },
 } as const satisfies Record<string, Tuned>;
 
-export const WIND_TUNING = WIND_SCALARS;
 export const WIND = tunedValues(WIND_SCALARS);
 
 /**
