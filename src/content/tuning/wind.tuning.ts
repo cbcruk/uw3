@@ -1,5 +1,5 @@
 import type { WindBand } from "../../sim/wind/wind.types";
-import { tunedValues } from "./tuning";
+import { internal, tunedValues } from "./tuning";
 import type { Tuned } from "./tuning.types";
 
 interface TunedBands extends Tuned<readonly WindBand[]> {
@@ -124,9 +124,11 @@ export const WIND_SCALARS = {
     source: "감으로 정함. 실제 풍향 변동폭 통계 필요",
   },
   directionJitterFineDeg: { value: 45, unit: "°", grade: "unverified", source: "감으로 정함" },
-  speedJitterBase: { value: 0.5, unit: "배", grade: "unverified", source: "감으로 정함" },
-  speedJitterCoarse: { value: 0.8, unit: "배", grade: "unverified", source: "감으로 정함" },
-  speedJitterFine: { value: 0.4, unit: "배", grade: "unverified", source: "감으로 정함" },
+  // 잡음 층 사이의 배분. 층을 몇 겹 쌓느냐는 우리 구현이라 실측 대응물이 없다.
+  // 반면 위의 공간·시간 크기와 풍향 변동폭은 기상 통계에 대응물이 있다 — 남긴다.
+  speedJitterBase: internal(0.5, "배", "잡음 층 배분. 모델 내부 구현"),
+  speedJitterCoarse: internal(0.8, "배", "잡음 층 배분. 모델 내부 구현"),
+  speedJitterFine: internal(0.4, "배", "잡음 층 배분. 모델 내부 구현"),
   /** 어떤 경우에도 이보다 센 바람은 나오지 않는다. */
   maxWindKnots: {
     value: 45,

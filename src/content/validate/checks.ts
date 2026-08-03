@@ -24,6 +24,9 @@ const SCALAR_TABLES = [SAIL_SCALARS, WIND_SCALARS, ...HAZARD_TABLES, ...VOYAGE_T
 const CURVE_ENTRIES: readonly Tuned<unknown>[] = [...Object.values(SAIL_CURVES), WIND_BANDS];
 const ALL_TUNED: readonly Tuned<unknown>[] = [...tuningEntries(SCALAR_TABLES), ...CURVE_ENTRIES];
 
+/** "모델 내부" 한 마디로는 검토가 안 된다. 무엇의 내부인지까지 적게 한다. */
+const MIN_NA_REASON_LENGTH = 12;
+
 function error(area: string, message: string): Finding {
   return { severity: "error", area, message };
 }
@@ -62,6 +65,22 @@ const tuningAnnotations: Check = {
           error("tuning", `unverified인데 확인할 대상이 적혀 있지 않다: ${entry.source}`),
         );
       }
+      // 확인 대상이 아니라는 것은 **주장**이다. 왜인지 없으면 검토할 수 없고,
+      // 검토할 수 없으면 이 등급은 부채를 버리는 자리가 된다.
+      if (entry.grade === "not-applicable") {
+        if (/감으로 정함/.test(entry.source)) {
+          findings.push(
+            error(
+              "tuning",
+              `not-applicable인데 이유가 "감으로 정함"이다. 그것은 unverified다: ${entry.source}`,
+            ),
+          );
+        } else if (entry.source.length < MIN_NA_REASON_LENGTH) {
+          findings.push(
+            error("tuning", `not-applicable인데 왜 확인 대상이 아닌지가 없다: ${entry.source}`),
+          );
+        }
+      }
     }
 
     for (const table of SCALAR_TABLES) {
@@ -88,14 +107,39 @@ export function debtFindings(
   tally: Readonly<Record<SourceGrade, number>>,
   baseline: Readonly<Record<SourceGrade, number>>,
 ): Finding[] {
-  const total = tally.measured + tally.qualitative + tally.unverified;
+  const verifiable = tally.measured + tally.qualitative + tally.unverified;
+  const notApplicable = tally["not-applicable"];
+  const percent = verifiable === 0 ? 0 : Math.round((tally.measured / verifiable) * 100);
   const findings: Finding[] = [
     note(
       "tuning",
-      `${total}항목 — measured ${tally.measured} · ` +
+      `확인 대상 ${verifiable}항목 — measured ${tally.measured} (${percent}%) · ` +
         `qualitative ${tally.qualitative} · unverified ${tally.unverified}`,
     ),
+    note("tuning", `확인 대상 아님 ${notApplicable}항목 (합 ${verifiable + notApplicable})`),
   ];
+
+  // 재분류로 부채를 지우는 경로를 막는다. `unverified`를 `not-applicable`로
+  // 옮기면 저쪽 래칫은 통과하지만 이쪽에 걸린다.
+  if (notApplicable > baseline["not-applicable"]) {
+    findings.push(
+      error(
+        "tuning",
+        `확인 대상 아님이 늘었다: not-applicable ${baseline["not-applicable"]} → ${notApplicable}. ` +
+          `근거를 못 댈 값인지 다시 보고, 맞다면 debt-baseline.ts를 고쳐라 — ` +
+          `이 등급은 부채를 지우는 데 쓰이기 가장 쉽다`,
+      ),
+    );
+  }
+  if (notApplicable < baseline["not-applicable"]) {
+    findings.push(
+      note(
+        "tuning",
+        `확인 대상 아님이 줄었다: not-applicable ${baseline["not-applicable"]} → ${notApplicable}. ` +
+          `debt-baseline.ts를 낮춘다`,
+      ),
+    );
+  }
 
   if (tally.unverified > baseline.unverified) {
     findings.push(

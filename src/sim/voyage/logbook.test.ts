@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
 import { findPort } from "../../content/ports";
 import { HISTORICAL_VOYAGES, findVoyage } from "../../content/voyages";
+import { findShipClass } from "../../content/ships";
+import { toDayNumber } from "../calendar/calendar";
 import { relativeWindAngle } from "../geo/geo.utils";
 import { computeSpeedKnots } from "../ship/sail";
 import { windAt } from "../wind/wind";
-import { applyAction, createGame } from "../world/world";
+import { DEFAULT_CONFIG, applyAction, createGame } from "../world/world";
 import { compareToRecord } from "./logbook";
 
 const VOLTA = findVoyage("volta-do-mar")!;
@@ -73,10 +75,13 @@ describe("항해 기록", () => {
  * 않았고, 그 사실은 SPEC 10에 미결로 기록했다 — 통과하도록 모델을 만지지 않는다.
  */
 describe("풍대 구조 (충실도)", () => {
-  const day = createGame().voyage.day;
+  // 여기서 필요한 것은 선급과 날짜뿐이다. createGame은 육지 마스크를 두 벌 굽는데
+  // (1/16° + 1/8°), 그걸 호출마다 하면 이 파일 하나가 5초를 먹는다.
+  const day = toDayNumber(DEFAULT_CONFIG.startDate);
+  const SHIP = findShipClass(DEFAULT_CONFIG.shipClassId)!;
 
   function westwardSpeed(lat: number): number {
-    const ship = createGame().shipClass;
+    const ship = SHIP;
     const wind = windAt({ lat, lon: -25 }, day);
     return computeSpeedKnots({
       shipClass: ship,

@@ -1,4 +1,4 @@
-import { tunedValues } from "./tuning";
+import { internal, tunedValues } from "./tuning";
 import type { Tuned } from "./tuning.types";
 
 const guess = (value: number, unit: string, note = "감으로 정함"): Tuned => ({
@@ -17,8 +17,8 @@ const guess = (value: number, unit: string, note = "감으로 정함"): Tuned =>
  * 대조 자료는 SPEC 3.1의 "당대 기록의 승선원 손실률"이다. 아직 하나도 못 댔다.
  */
 const STORM = {
-  baseWeight: guess(1, "가중치"),
-  warningThreshold: guess(0.35, "압력 0~1"),
+  baseWeight: internal(1, "가중치", "트러블끼리의 상대 가중치. 모델 내부 배분"),
+  warningThreshold: internal(0.35, "압력 0~1", "부관이 경고를 올리는 임계. 표시용"),
 
   /** 이 풍속을 넘으면 폭풍 압력이 붙기 시작한다. */
   windOnsetKnots: {
@@ -28,7 +28,7 @@ const STORM = {
     source: "강풍에서 폭풍 위험이 오른다는 것은 자명. 시작점 수치는 저작",
   },
   windRangeKnots: guess(22, "kn"),
-  windWeight: guess(0.6, "배"),
+  windWeight: internal(0.6, "배", "압력 결합 가중치. 모델 내부 개념"),
   winterPressure: {
     value: 0.35,
     unit: "압력 0~1",
@@ -45,8 +45,8 @@ const STORM = {
     source: "고위도일수록 폭풍이 잦다는 것은 실재. 경계 위도는 저작",
   },
   latRangeDeg: guess(18, "°"),
-  latWeight: guess(0.3, "배"),
-  hullWeight: guess(0.2, "배"),
+  latWeight: internal(0.3, "배", "압력 결합 가중치. 모델 내부 개념"),
+  hullWeight: internal(0.2, "배", "압력 결합 가중치. 모델 내부 개념"),
 
   severityBase: guess(0.4, "0~1"),
   severityRange: guess(0.6, "0~1"),
@@ -61,8 +61,8 @@ const STORM = {
 } as const satisfies Record<string, Tuned>;
 
 const SCURVY = {
-  baseWeight: guess(0.9, "가중치"),
-  warningThreshold: guess(0.4, "압력 0~1"),
+  baseWeight: internal(0.9, "가중치", "트러블끼리의 상대 가중치. 모델 내부 배분"),
+  warningThreshold: internal(0.4, "압력 0~1", "부관이 경고를 올리는 임계. 표시용"),
 
   /** 이 일수를 넘겨야 괴혈병 압력이 붙기 시작한다. */
   onsetDaysAtSea: {
@@ -72,12 +72,12 @@ const SCURVY = {
     source: "신선식품 없이 수 주가 지나야 증상이 나타난다는 것은 실재. 정확히 30일은 저작",
   },
   onsetRangeDays: guess(60, "일"),
-  timeWeight: guess(0.7, "배"),
+  timeWeight: internal(0.7, "배", "압력 결합 가중치. 모델 내부 개념"),
   rationFloorDays: guess(25, "일"),
-  rationWeight: guess(0.5, "배"),
-  fatigueWeight: guess(0.3, "배"),
+  rationWeight: internal(0.5, "배", "압력 결합 가중치. 모델 내부 개념"),
+  fatigueWeight: internal(0.3, "배", "압력 결합 가중치. 모델 내부 개념"),
   /** 압력에서 빼는 기본값. 초반에 곧바로 터지지 않게 한다. */
-  pressureOffset: guess(0.2, "압력 0~1"),
+  pressureOffset: internal(0.2, "압력 0~1", "초반 발생을 늦추는 오프셋. 모델 운영 값"),
 
   /** 한 번에 앓아눕는 비율 상한. */
   strickenRatio: guess(0.08, "배"),
@@ -85,8 +85,8 @@ const SCURVY = {
 } as const satisfies Record<string, Tuned>;
 
 const BECALMED = {
-  baseWeight: guess(0.8, "가중치"),
-  warningThreshold: guess(0.45, "압력 0~1"),
+  baseWeight: internal(0.8, "가중치", "트러블끼리의 상대 가중치. 모델 내부 배분"),
+  warningThreshold: internal(0.45, "압력 0~1", "부관이 경고를 올리는 임계. 표시용"),
   /** 이 풍속 아래에서 무풍 압력이 붙는다. */
   calmThresholdKnots: {
     value: 7,
@@ -100,15 +100,15 @@ const BECALMED = {
 } as const satisfies Record<string, Tuned>;
 
 const UNREST = {
-  baseWeight: guess(1.1, "가중치"),
-  warningThreshold: guess(0.4, "압력 0~1"),
+  baseWeight: internal(1.1, "가중치", "트러블끼리의 상대 가중치. 모델 내부 배분"),
+  warningThreshold: internal(0.4, "압력 0~1", "부관이 경고를 올리는 임계. 표시용"),
 
   hungerFloorDays: guess(20, "일"),
-  hungerWeight: guess(0.45, "배"),
+  hungerWeight: internal(0.45, "배", "압력 결합 가중치. 모델 내부 개념"),
   fatigueOnset: guess(0.4, "0~1"),
-  fatigueWeight: guess(0.35, "배"),
-  moraleWeight: guess(0.4, "배"),
-  pressureOffset: guess(0.25, "압력 0~1"),
+  fatigueWeight: internal(0.35, "배", "압력 결합 가중치. 모델 내부 개념"),
+  moraleWeight: internal(0.4, "배", "압력 결합 가중치. 모델 내부 개념"),
+  pressureOffset: internal(0.25, "압력 0~1", "초반 발생을 늦추는 오프셋. 모델 운영 값"),
 
   disciplineLoss: guess(0.15, "0~1"),
   disciplineLossJitter: guess(0.1, "0~1"),

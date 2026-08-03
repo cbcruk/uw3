@@ -1,4 +1,4 @@
-import { tunedValues } from "./tuning";
+import { internal, tunedValues } from "./tuning";
 import type { Tuned } from "./tuning.types";
 
 const guess = (value: number, unit: string, note = "감으로 정함"): Tuned => ({
@@ -17,21 +17,21 @@ const guess = (value: number, unit: string, note = "감으로 정함"): Tuned =>
 const VOYAGE_SCALARS = {
   /** 맑은 날 좌우로 살피는 거리. 컨디션에 따라 줄어든다. */
   baseLookoutNm: guess(16, "해리"),
-  lookoutFloor: guess(0.6, "배"),
-  lookoutRange: guess(0.4, "배"),
+  // 컨디션이 시야에 미치는 몫. 견시 **거리**는 실재하지만 이 배분은 모델 것이다.
+  lookoutFloor: internal(0.6, "배", "컨디션→시야 결합 계수. 모델 내부 배분"),
+  lookoutRange: internal(0.4, "배", "컨디션→시야 결합 계수. 모델 내부 배분"),
 
   /**
    * 정지한 날의 보고에 해류를 언급할 최소 속력. 표시 임계일 뿐 물리에는 안 쓴다.
    * 이보다 느린 표류는 하루 항정이 1해리도 안 되어 알려도 소용이 없다.
    */
-  driftMentionKnots: guess(0.05, "kn"),
+  driftMentionKnots: internal(0.05, "kn", "항해일지 표시 임계. 물리에 쓰지 않는다"),
 
-  /** 트러블 압력 합을 실제 발생 확률로 옮기는 배율. */
-  hazardRollScale: guess(0.55, "배"),
-  /** 하루에 트러블이 터질 확률의 상한. */
-  hazardChanceCap: guess(0.6, "확률"),
-  /** 이 압력 아래인 트러블은 후보에서 뺀다. */
-  hazardPressureFloor: guess(0.02, "압력 0~1"),
+  // "압력"은 우리 모델의 개념이다. 사료에 압력→확률 변환 계수 같은 것은 없다.
+  // 대조 대상은 이 값들이 아니라 이들이 만들어내는 **발생률**이다.
+  hazardRollScale: internal(0.55, "배", "압력 합→확률 변환. 모델 내부 개념"),
+  hazardChanceCap: internal(0.6, "확률", "하루 확률 상한. 모델 내부 안전장치"),
+  hazardPressureFloor: internal(0.02, "압력 0~1", "후보 컷오프. 계산 정리용"),
 
   /** 병자 한 명이 유효 인원에서 빠지는 비율. */
   sickCrewPenalty: guess(0.7, "명/명"),
@@ -56,41 +56,31 @@ const VOYAGE_SCALARS = {
   disciplineSupplyFloorDays: guess(20, "일"),
   /** 규율이 목표치로 다가가는 속도. */
   disciplineApproachRate: guess(0.18, "배/일"),
-  /** 이 아래로 떨어지면 항해일지에 경고가 뜬다. */
-  disciplineWarnThreshold: guess(0.15, "0~1"),
+  disciplineWarnThreshold: internal(0.15, "0~1", "경고를 띄우는 임계. 표시용"),
 
-  /** 이 세기 이상이면 해류가 항해일지에 언급된다. */
-  currentMentionKnots: guess(0.05, "kn"),
+  currentMentionKnots: internal(0.05, "kn", "항해일지 표시 임계. 물리에 쓰지 않는다"),
 
-  /** 하루 항정을 쪼개는 스텝. 타일 한 변의 이 비율로 잡는다. */
-  courseStepTileRatio: {
-    value: 0.5,
-    unit: "배",
-    grade: "qualitative",
-    source: "충돌 판정이 이동보다 촘촘해야 한다는 요구에서 나온 값 (SHAPE.md P4)",
-  },
-  courseStepFloorNm: guess(2, "해리"),
+  // 수치 적분의 스텝 크기다. 작을수록 정확하고 느릴 뿐, 세계가 달라지지 않는다.
+  courseStepTileRatio: internal(
+    0.5,
+    "배",
+    "이동 적분 스텝. 충돌 판정이 이동보다 촘촘하기만 하면 된다 (SHAPE P4)",
+  ),
+  courseStepFloorNm: internal(2, "해리", "이동 적분 스텝의 하한"),
 } as const satisfies Record<string, Tuned>;
 
 /**
  * 구간 항해의 정지 임계. **정지 조건 목록은 Shape, 임계값은 Knob**이다 (SHAPE.md §1).
+ *
+ * 다섯 전부 `not-applicable`이다. 이것들이 정하는 것은 바다가 아니라 **언제
+ * 플레이어에게 제어를 돌려주는가**다. 사료에 "도달 판정 반경은 12해리였다"는 없다.
  */
 const PASSAGE_SCALARS = {
-  /** 한 번의 명령으로 진행할 최대 일수. */
-  maxDays: guess(30, "일"),
-  /** 목적지 도달로 인정할 반경. 입항 반경과 같아야 한다. */
-  arrivalRangeNm: {
-    value: 12,
-    unit: "해리",
-    grade: "qualitative",
-    source: "입항 판정 반경과 같아야 항구를 코앞에 두고 멈추지 않는다. 값 자체는 저작",
-  },
-  /** 이 일수 아래로 보급이 떨어지면 멈춘다. */
-  supplyDaysFloor: guess(20, "일"),
-  /** 목적지에 가까워지지 않아도 이만큼은 버틴다. */
-  beatingDaysLimit: guess(4, "일"),
-  /** 입항으로 인정할 반경. */
-  dockingRangeNm: guess(12, "해리"),
+  maxDays: internal(30, "일", "한 번의 명령으로 진행할 최대 일수. 제어를 돌려주는 시점"),
+  arrivalRangeNm: internal(12, "해리", "도달 판정 반경. 입항 반경과 같아야 한다"),
+  supplyDaysFloor: internal(20, "일", "멈추고 물어보는 보급 임계. 제어를 돌려주는 시점"),
+  beatingDaysLimit: internal(4, "일", "역주를 참는 일수. 제어를 돌려주는 시점"),
+  dockingRangeNm: internal(12, "해리", "입항으로 인정할 판정 반경. 조작 편의 값"),
 } as const satisfies Record<string, Tuned>;
 
 export const VOYAGE_TABLES = [VOYAGE_SCALARS, PASSAGE_SCALARS] as const;

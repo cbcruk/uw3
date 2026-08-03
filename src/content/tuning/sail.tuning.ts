@@ -1,5 +1,5 @@
 import type { SailType } from "../../sim/ship/ship.types";
-import { tunedValues } from "./tuning";
+import { internal, tunedValues } from "./tuning";
 import type { Tuned } from "./tuning.types";
 
 type Curve = readonly (readonly [angleDeg: number, efficiency: number])[];
@@ -87,14 +87,17 @@ export const SAIL_SCALARS = {
   },
 
   // ── 컨디션 계수 — 각 항의 최저 배수와 가변 폭 ──────────
-  hullFloor: { value: 0.45, unit: "배", grade: "unverified", source: "감으로 정함" },
-  hullRange: { value: 0.55, unit: "배", grade: "unverified", source: "감으로 정함" },
-  crewFloor: { value: 0.35, unit: "배", grade: "unverified", source: "감으로 정함" },
-  crewRange: { value: 0.65, unit: "배", grade: "unverified", source: "감으로 정함" },
-  /** 피로가 최대일 때 깎이는 비율. */
-  fatiguePenalty: { value: 0.35, unit: "배", grade: "unverified", source: "감으로 정함" },
-  disciplineFloor: { value: 0.75, unit: "배", grade: "unverified", source: "감으로 정함" },
-  disciplineRange: { value: 0.25, unit: "배", grade: "unverified", source: "감으로 정함" },
+  //
+  // 선체·승원·피로가 속력을 깎는다는 것은 실재하지만, "컨디션"은 우리가 만든
+  // 0~1 스칼라다. 사료에 hullFloor 0.45에 대응하는 수는 없다. 대조할 수 있는
+  // 것은 이 계수가 아니라 손상된 배가 실제로 얼마나 느렸는가다.
+  hullFloor: internal(0.45, "배", "컨디션 스칼라의 결합 계수. 모델 내부"),
+  hullRange: internal(0.55, "배", "컨디션 스칼라의 결합 계수. 모델 내부"),
+  crewFloor: internal(0.35, "배", "컨디션 스칼라의 결합 계수. 모델 내부"),
+  crewRange: internal(0.65, "배", "컨디션 스칼라의 결합 계수. 모델 내부"),
+  fatiguePenalty: internal(0.35, "배", "컨디션 스칼라의 결합 계수. 모델 내부"),
+  disciplineFloor: internal(0.75, "배", "컨디션 스칼라의 결합 계수. 모델 내부"),
+  disciplineRange: internal(0.25, "배", "컨디션 스칼라의 결합 계수. 모델 내부"),
 } as const satisfies Record<string, Tuned>;
 
 export const SAIL = tunedValues(SAIL_SCALARS);

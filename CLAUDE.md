@@ -48,11 +48,15 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 수치를 새로 넣을 때:
 
 1. 코드에 박지 말고 `content/tuning/`의 표에 넣는다
-2. **근거 등급을 단다** — `measured` / `qualitative` / `unverified`
+2. **근거 등급을 단다** — `measured` / `qualitative` / `unverified`, 그리고
+   현실에 대응물이 없으면 `not-applicable`(판정 반경·압력 가중치·적분 스텝 따위).
+   판정: 이 값 하나만 놓고 "사료에서 이 수를 찾았다"고 말할 수 있는가?
+   애매하면 확인 대상에 남긴다 — 이 등급은 부채를 지우는 데 쓰이기 가장 쉽다
 3. 새 표를 만들었으면 `content/validate/checks.ts`의 `SCALAR_TABLES`에 등록한다.
    등록하지 않으면 부채 집계에 잡히지 않아 실제보다 좋아 보인다
-4. `unverified`가 늘면 검증기가 막는다. 늘려야 한다면 `debt-baseline.ts`를 함께
-   고치고, 그 diff로 "근거 없는 값을 늘렸다"는 사실을 남긴다
+4. `unverified`가 늘면 검증기가 막는다. `not-applicable`이 늘어도 막는다 —
+   등급을 바꿔 부채를 지우는 경로다. 늘려야 한다면 `debt-baseline.ts`를 함께
+   고치고, 그 diff로 무엇을 늘렸는지를 남긴다
 
 `voyage` `ship` `wind` `current` `fog`에는 **식 안에 숫자를 못 박는다**
 (`no-magic-numbers`). 0·1·2와 이름 붙인 상수는 통과한다. 걸리면 둘 중 하나다.
