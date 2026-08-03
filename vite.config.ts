@@ -12,6 +12,13 @@ export default defineConfig({
         command: "node scripts/validate.mjs",
         cache: false,
       },
+      // 헤드리스 충실도 측정. 통과/실패가 없는 **측정**이므로 CI 게이트가 아니다 —
+      // 시뮬을 고쳤을 때 무엇이 움직였는지 보려고 사람이 부른다.
+      // `vp run harness -- --json`으로 기계가 읽을 형태를 낸다.
+      harness: {
+        command: "node scripts/harness.mjs",
+        cache: false,
+      },
     },
   },
   staged: {

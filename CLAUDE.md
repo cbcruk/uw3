@@ -39,6 +39,12 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 | `vp test`         | 코드가 맞게 도는가 | `src/sim/`       |
 | `vp run validate` | 자료가 쓸 만한가   | `src/content/`   |
 
+`vp run harness`는 세 번째다 — **통과·실패가 없다.** 시뮬을 여러 시드로 돌려
+수치를 낼 뿐이고, 읽는 것은 사람이다. 물리나 표를 건드렸으면 전후로 돌려
+무엇이 움직였는지 본다 (`-- --json`으로 diff 뜨기 좋은 형태).
+
+단일 시드로 충실도를 판단하지 않는다. SPEC 3.3의 표가 한 번 그렇게 틀렸다.
+
 수치를 새로 넣을 때:
 
 1. 코드에 박지 말고 `content/tuning/`의 표에 넣는다
