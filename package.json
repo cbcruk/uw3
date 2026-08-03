@@ -10,9 +10,12 @@
     "prepare": "vp config"
   },
   "devDependencies": {
+    "@types/topojson-client": "^3.1.5",
+    "topojson-client": "^3.1.0",
     "typescript": "~6.0.2",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "world-atlas": "^2.0.2"
   },
   "devEngines": {
     "packageManager": {
