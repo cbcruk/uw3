@@ -11,7 +11,6 @@ export const DEBT_BASELINE: Readonly<Record<SourceGrade, number>> = {
   /** 자료에서 옮긴 값. 이 수는 **줄어들면 안 된다** — 줄었다면 근거를 잃은 것이다. */
   measured: 0,
   qualitative: 18,
-  /** 감으로 정한 값. 이 수는 **늘어나면 안 된다**. */
   /**
    * 감으로 정한 값. 이 수는 **늘어나면 안 된다**.
    *
