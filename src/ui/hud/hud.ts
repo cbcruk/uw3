@@ -1,4 +1,5 @@
 import { formatGameDate, seasonOf } from "../../sim/calendar/calendar";
+import { currentAt, describeCurrentDirection } from "../../sim/current/current";
 import { relativeWindAngle } from "../../sim/geo/geo.utils";
 import { WIND_REGIME_LABELS, describeWindDirection, windAt } from "../../sim/wind/wind";
 import type { Hud, HudOptions } from "./hud.types";
@@ -20,6 +21,7 @@ export function createHud(options: HudOptions): Hud {
     render(): void {
       const { voyage } = game;
       const wind = windAt(voyage.position, voyage.day);
+      const current = currentAt(voyage.position);
       const relAngle = relativeWindAngle(voyage.headingDeg, wind.fromDeg);
 
       const gauges = buildGauges(game)
@@ -54,6 +56,7 @@ export function createHud(options: HudOptions): Hud {
           <div><dt>침로</dt><dd>${Math.round(voyage.headingDeg)}° ${voyage.steering === "manual" ? "(수동)" : "(항해사)"}</dd></div>
           <div><dt>바람</dt><dd>${describeWindDirection(wind.fromDeg)} ${wind.speedKnots.toFixed(1)}kn</dd></div>
           <div><dt>풍계</dt><dd>${WIND_REGIME_LABELS[wind.regime]}</dd></div>
+          <div class="readout__wide"><dt>해류</dt><dd>${current.speedKnots < 0.05 ? "없음" : `${current.name.replace(/\s*해류$/, "")} ${describeCurrentDirection(current.toDeg)} ${current.speedKnots.toFixed(1)}kn`}</dd></div>
           <div><dt>풍향각</dt><dd>${Math.round(relAngle)}° ${relAngle < 35 ? "(정풍)" : relAngle > 140 ? "(순풍)" : "(횡풍)"}</dd></div>
           <div><dt>선급</dt><dd>${game.shipClass.name}</dd></div>
           <div><dt>자재 / 탄약</dt><dd>${Math.round(voyage.timber)} / ${Math.round(voyage.ammo)}</dd></div>

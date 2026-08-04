@@ -1,18 +1,20 @@
-import { WORLD_BOUNDS, LANDMASSES } from "../../content/coastline";
 import { PORTS, PORT_ANCHORAGES, findPort } from "../../content/ports";
+import { LAND_POLYGONS } from "../../content/world-land";
 import { findShipClass } from "../../content/ships";
 import { formatGameDate, toDayNumber } from "../calendar/calendar";
 import { createExplorationState } from "../fog/fog-of-war";
 import { haversineNm, normalizeHeading } from "../geo/geo.utils";
 import { createTileMap } from "../map/tile-map";
+import { ROUTE_CELLS_PER_DEGREE, WORLD_LAND_CELLS_PER_DEGREE } from "../map/land-mask.const";
 import { findSeaRoute } from "../map/sea-route";
+import { PASSAGE_TUNING } from "../../content/tuning/voyage.tuning";
 import { createRngSet } from "../rng/rng";
+import { createLogbook, recordVoyageDay } from "../voyage/logbook";
 import { runPassage } from "../voyage/passage";
 import { stepDay } from "../voyage/voyage";
 import type { DayReport, VoyageContext, VoyageState } from "../voyage/voyage.types";
 import type { ActionResult, Game, GameAction, GameConfig, JournalEntry } from "./world.types";
 
-const DOCKING_RANGE_NM = 12;
 const SUPPLY_PER_TON = 18;
 const RESUPPLY_COST_PER_UNIT = 0.4;
 
@@ -38,8 +40,14 @@ export function createGame(config: GameConfig = DEFAULT_CONFIG): Game {
   }
 
   const tileMap = createTileMap({
-    bounds: WORLD_BOUNDS,
-    landmasses: LANDMASSES,
+    polygons: LAND_POLYGONS,
+    cellsPerDegree: WORLD_LAND_CELLS_PER_DEGREE,
+    navigableAnchorages: PORT_ANCHORAGES,
+  });
+  // 항로 탐색은 성긴 격자로 한다. 충돌 해상도로 A*를 돌리면 배열만 수백 MB다.
+  const routeMap = createTileMap({
+    polygons: LAND_POLYGONS,
+    cellsPerDegree: ROUTE_CELLS_PER_DEGREE,
     navigableAnchorages: PORT_ANCHORAGES,
   });
   const exploration = createExplorationState(tileMap.size);
@@ -47,7 +55,7 @@ export function createGame(config: GameConfig = DEFAULT_CONFIG): Game {
   const crew = Math.round((shipClass.crewMin + shipClass.crewMax) / 2);
 
   const voyage: VoyageState = {
-    position: { lat: startPort.lat, lon: startPort.lon },
+    position: { ...startPort.anchorage },
     day: toDayNumber(config.startDate),
     // 리스본은 편서풍을 정면으로 받는다. 270°로 시작하면 첫 출항이 영구 정지로 보인다.
     // 남서 침로는 실제 리스본 출항의 첫 다리이자, 라틴돛이 물 수 있는 각이다.
@@ -79,9 +87,11 @@ export function createGame(config: GameConfig = DEFAULT_CONFIG): Game {
     config,
     rng: createRngSet(config.seed),
     tileMap,
+    routeMap,
     exploration,
     shipClass,
     voyage,
+    logbook: createLogbook(voyage.day, voyage.position),
     ports: PORTS,
     gold: 5000,
     journal: [
@@ -99,7 +109,7 @@ export function createGame(config: GameConfig = DEFAULT_CONFIG): Game {
 export function nearestPort(game: Game): { portId: string; distanceNm: number } | null {
   let best: { portId: string; distanceNm: number } | null = null;
   for (const port of game.ports) {
-    const distanceNm = haversineNm(game.voyage.position, { lat: port.lat, lon: port.lon });
+    const distanceNm = haversineNm(game.voyage.position, port.anchorage);
     if (best === null || distanceNm < best.distanceNm) {
       best = { portId: port.id, distanceNm };
     }
@@ -158,11 +168,12 @@ function dockAt(game: Game, portId: string | null): JournalEntry[] {
 function voyageContext(game: Game): VoyageContext {
   return {
     tileMap: game.tileMap,
+    routeMap: game.routeMap,
     exploration: game.exploration,
     shipClass: game.shipClass,
     rng: game.rng.voyage,
-    ports: game.ports,
-    dockingRangeNm: DOCKING_RANGE_NM,
+    ports: game.ports.map((port) => ({ id: port.id, ...port.anchorage })),
+    dockingRangeNm: PASSAGE_TUNING.dockingRangeNm,
   };
 }
 
@@ -171,6 +182,11 @@ function voyageContext(game: Game): VoyageContext {
  * 같은 경고가 날마다 반복되면 진짜 새 소식이 묻힌다 (SPEC 4.2 텔레그래프).
  */
 function recordDay(game: Game, report: DayReport, includeWarnings: boolean): JournalEntry[] {
+  // 정박 중의 하루는 항해가 아니다. 입항하는 날은 바다에서 시작했으므로 센다.
+  if (game.voyage.atPortId === null) {
+    recordVoyageDay(game.logbook, report);
+  }
+
   const entries: JournalEntry[] = [
     ...report.logs.map(
       (text): JournalEntry => ({
@@ -227,7 +243,7 @@ export function applyAction(game: Game, action: GameAction): ActionResult {
       // 목적지를 걸면 자동 조타다. 두 명령이 조타 방식을 그대로 드러낸다.
       game.voyage.steering = "auto";
       // 갈 수 없는 곳을 목적지로 걸어두면 항해 명령이 매번 헛돈다. 지금 거절한다.
-      if (findSeaRoute(game.tileMap, game.voyage.position, action.target) === null) {
+      if (findSeaRoute(game.routeMap, game.voyage.position, action.target) === null) {
         const entries: JournalEntry[] = [
           { day: game.voyage.day, kind: "system", text: "그곳으로 이어지는 바닷길이 없다." },
         ];
@@ -252,6 +268,8 @@ export function applyAction(game: Game, action: GameAction): ActionResult {
       game.voyage.departedPortId = game.voyage.atPortId;
       game.voyage.atPortId = null;
       game.voyage.anchored = false;
+      // 출항이 곧 기록의 시작이다. 정박 중의 날짜는 항해가 아니다.
+      game.logbook = createLogbook(game.voyage.day, game.voyage.position);
       const entries: JournalEntry[] =
         port === undefined
           ? []

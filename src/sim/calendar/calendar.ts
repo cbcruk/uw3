@@ -2,6 +2,12 @@ import type { GameDate, Season } from "./calendar.types";
 
 export const EPOCH: GameDate = { year: 1500, month: 1, day: 1 };
 
+/**
+ * 하루와 시간의 다리. 속력은 노트(해리/시)로 오고 시뮬 단위는 하루다 (SHAPE T1).
+ * 달력의 정의이지 조정 가능한 값이 아니다.
+ */
+export const HOURS_PER_DAY = 24;
+
 function daysFromCivil(year: number, month: number, day: number): number {
   const y = month <= 2 ? year - 1 : year;
   const era = Math.floor(y / 400);

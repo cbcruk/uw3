@@ -35,3 +35,23 @@ jobs:
 
       # 시뮬은 테스트가 잡지만 번들 단계 실패는 여기서만 드러난다.
       - run: vp build
+
+  # 자료 검증은 따로 세운다. 테스트와 같은 칸에 있으면 "코드가 깨졌다"로 읽힌다.
+  # 이쪽이 빨개지면 봐야 할 곳은 `content/`다.
+  validate:
+    name: validate · 자료
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: "24"
+          cache: true
+
+      - run: vp install --frozen-lockfile
+
+      # 부채 집계가 로그에 남는다. PR에서 이 수가 늘었는지 눈으로 볼 수 있다.
+      - run: vp run validate

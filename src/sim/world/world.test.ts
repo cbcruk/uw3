@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
-import { bearingDeg, haversineNm } from "../geo/geo.utils";
+import { currentAt } from "../current/current";
+import { bearingDeg, haversineNm, normalizeHeading } from "../geo/geo.utils";
 import { windAt } from "../wind/wind";
 import type { Game, GameAction } from "./world.types";
 import { DEFAULT_CONFIG, applyAction, createGame, replay } from "./world";
@@ -69,8 +70,11 @@ describe("항해 진행", () => {
     expect(game.exploration.revealedCount()).toBeGreaterThan(revealedBefore);
   });
 
-  /** SPEC 8.2: 돛은 정풍 방향으로 전진하지 못한다. 리스본은 편서풍을 정면으로 받는다. */
-  it("맞바람 침로로는 전진하지 못한다", () => {
+  /**
+   * SPEC 6: 돛은 정풍 방향으로 추진력을 내지 못한다.
+   * 해류가 배를 떠밀 수는 있으므로 판정은 항정이 아니라 돛 속력으로 한다.
+   */
+  it("맞바람 침로에서는 돛이 추진력을 내지 못한다", () => {
     const game = createGame();
     applyAction(game, { type: "depart" });
 
@@ -79,7 +83,7 @@ describe("항해 진행", () => {
       const wind = windAt(game.voyage.position, game.voyage.day);
       applyAction(game, { type: "set-heading", headingDeg: wind.fromDeg });
       const { report } = applyAction(game, { type: "advance-day" });
-      stalledDays += (report?.distanceNm ?? 0) === 0 ? 1 : 0;
+      stalledDays += (report?.speedKnots ?? 0) === 0 ? 1 : 0;
     }
 
     expect(stalledDays).toBe(20);
@@ -123,7 +127,7 @@ describe("항해 진행", () => {
     applyAction(game, { type: "set-heading", headingDeg: wind.fromDeg });
     const { report } = applyAction(game, { type: "advance-day" });
 
-    expect(report?.distanceNm).toBe(0);
+    expect(report?.speedKnots).toBe(0);
     expect(report?.logs.some((text) => text.includes("정풍"))).toBe(true);
   });
 
@@ -135,7 +139,7 @@ describe("항해 진행", () => {
     });
     const { report } = applyAction(game, { type: "advance-day" });
 
-    expect(report?.distanceNm).toBe(0);
+    expect(report?.speedKnots).toBe(0);
     expect(report?.logs.some((text) => text.includes("돛을 모두 접은"))).toBe(true);
   });
 
@@ -259,5 +263,75 @@ describe("풍계", () => {
         expect(Number.isFinite(wind.fromDeg)).toBe(true);
       }
     }
+  });
+});
+
+/**
+ * SPEC 3.2: 충실도 주장은 실행되는 테스트여야 한다.
+ * 해류를 넣는 이유는 "배가 침로대로 가지 않는다"는 감각 하나다.
+ */
+describe("해류가 항적에 미치는 영향", () => {
+  /** 카나리아 해류는 아프리카 서안을 남으로 흐른다. 남하하는 배를 밀어준다. */
+  function sailOneDay(position: { lat: number; lon: number }, headingDeg: number) {
+    const game = createGame();
+    applyAction(game, { type: "depart" });
+    game.voyage.position = { ...position };
+    applyAction(game, { type: "set-heading", headingDeg });
+    const { report } = applyAction(game, { type: "advance-day" });
+    return report;
+  }
+
+  const CANARY = { lat: 27, lon: -18 };
+
+  it("순류로 남하하면 돛 속력만으로 갈 거리보다 멀리 간다", () => {
+    const report = sailOneDay(CANARY, 180);
+
+    expect(report).not.toBeNull();
+    expect(report!.current.speedKnots).toBeGreaterThan(0.3);
+    expect(report!.distanceNm).toBeGreaterThan(report!.speedKnots * 24);
+  });
+
+  /**
+   * 바람에서 같은 각도로 벌린 두 침로는 돛 속력이 같다. 그런데 하나는 해류를 타고
+   * 하나는 거스르므로 실제 항정이 달라진다 — 이 차이가 온전히 해류의 몫이다.
+   */
+  it("돛 속력이 같아도 해류를 거스르면 덜 간다", () => {
+    // 바람에서 좌우로 꼭 같은 각을 벌리면 돛 속력이 같다. 남은 차이는 해류뿐이다.
+    const probe = createGame();
+    applyAction(probe, { type: "depart" });
+    probe.voyage.position = { ...CANARY };
+    const wind = windAt(CANARY, probe.voyage.day);
+    const current = currentAt(CANARY);
+
+    const starboard = normalizeHeading(wind.fromDeg + 90);
+    const port = normalizeHeading(wind.fromDeg - 90);
+    const alignment = (heading: number): number =>
+      Math.abs(((heading - current.toDeg + 540) % 360) - 180);
+    const [withCurrent, againstCurrent] =
+      alignment(starboard) < alignment(port) ? [starboard, port] : [port, starboard];
+
+    const carried = sailOneDay(CANARY, withCurrent);
+    const opposed = sailOneDay(CANARY, againstCurrent);
+
+    expect(carried!.speedKnots).toBeCloseTo(opposed!.speedKnots, 6);
+    expect(carried!.speedKnots).toBeGreaterThan(0);
+    expect(carried!.distanceNm).toBeGreaterThan(opposed!.distanceNm);
+  });
+
+  /** 침로와 실제 진행 방위가 어긋나는 것이 해류의 본질이다. */
+  it("가로지르면 항적이 침로에서 벗어난다", () => {
+    const report = sailOneDay(CANARY, 270);
+
+    expect(report).not.toBeNull();
+    const drift = Math.abs(((report!.trackDeg - 270 + 540) % 360) - 180);
+    expect(drift).toBeGreaterThan(1);
+  });
+
+  it("해류가 없는 바다에서는 항적이 침로와 같다", () => {
+    const report = sailOneDay({ lat: 0, lon: -30 }, 270);
+
+    expect(report).not.toBeNull();
+    const drift = Math.abs(((report!.trackDeg - 270 + 540) % 360) - 180);
+    expect(drift).toBeLessThan(12);
   });
 });

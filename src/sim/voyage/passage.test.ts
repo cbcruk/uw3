@@ -39,14 +39,14 @@ describe("자동 조타", () => {
   it("곶을 돌아 카디스까지 간다", () => {
     const cadiz = findPort("cadiz");
     expect(cadiz).toBeDefined();
-    const { game } = sailTo({ lat: cadiz!.lat, lon: cadiz!.lon });
+    const { game } = sailTo(cadiz!.anchorage);
     expect(game.voyage.atPortId).toBe("cadiz");
   });
 
   it("해협을 통과해 세우타까지 간다", () => {
     const ceuta = findPort("ceuta");
     expect(ceuta).toBeDefined();
-    const { rangeNm } = sailTo({ lat: ceuta!.lat, lon: ceuta!.lon });
+    const { rangeNm } = sailTo(ceuta!.anchorage);
     expect(rangeNm).toBeLessThan(40);
   });
 

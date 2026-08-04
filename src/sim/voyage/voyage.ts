@@ -1,9 +1,13 @@
-import { seasonOf } from "../calendar/calendar";
+import { VOYAGE_TUNING as V } from "../../content/tuning/voyage.tuning";
+import { HOURS_PER_DAY, seasonOf } from "../calendar/calendar";
 import { advance, clamp, haversineNm, relativeWindAngle } from "../geo/geo.utils";
+import { leewayTrackDeg } from "../ship/leeway";
 import { computeSpeedKnots, conditionFactor } from "../ship/sail";
 import type { SailingCondition } from "../ship/ship.types";
+import { currentAt, groundTrack } from "../current/current";
 import { windAt } from "../wind/wind";
 import type { Wind } from "../wind/wind.types";
+import type { Current } from "../current/current.types";
 import { courseStepNm } from "./course";
 import { VOYAGE_HAZARDS } from "./hazards";
 import type {
@@ -14,11 +18,10 @@ import type {
   VoyageState,
 } from "./voyage.types";
 
-const BASE_LOOKOUT_NM = 16;
-const HAZARD_ROLL_SCALE = 0.55;
+const NO_CURRENT: Current = { toDeg: 0, speedKnots: 0, name: "무해류" };
 
 export function effectiveCrew(state: VoyageState): number {
-  return Math.max(0, state.crew - state.sick * 0.7);
+  return Math.max(0, state.crew - state.sick * V.sickCrewPenalty);
 }
 
 export function sailingCondition(state: VoyageState, crewMin: number): SailingCondition {
@@ -78,6 +81,7 @@ function clearDepartureLock(state: VoyageState, context: VoyageContext): void {
 function moveAlongCourse(
   state: VoyageState,
   context: VoyageContext,
+  trackDeg: number,
   distanceNm: number,
   lookoutNm: number,
 ): Movement {
@@ -95,7 +99,7 @@ function moveAlongCourse(
   );
 
   for (let i = 0; i < steps; i += 1) {
-    const next = advance(state.position, state.headingDeg, legNm);
+    const next = advance(state.position, trackDeg, legNm);
     if (!context.tileMap.isNavigable(next)) {
       blocked = true;
       break;
@@ -118,14 +122,17 @@ function moveAlongCourse(
  * 전진 0인 날은 반드시 이유를 남긴다. 침묵하면 플레이어는 정풍을 고장으로 읽는다.
  * 태킹은 난이도의 출처지 (SPEC 2) 숨겨야 할 규칙이 아니다.
  */
-function stallReason(state: VoyageState, wind: Wind): string {
+function stallReason(state: VoyageState, wind: Wind, current: Current): string {
+  const drift =
+    current.speedKnots >= V.driftMentionKnots ? ` 배는 ${current.name}에 떠밀려 간다.` : "";
+
   if (state.sailsSet.every((set) => set === false)) {
-    return "돛을 모두 접은 채로는 바람을 받지 못한다.";
+    return `돛을 모두 접은 채로는 바람을 받지 못한다.${drift}`;
   }
   if (wind.speedKnots < 1) {
-    return "무풍이다. 돛이 늘어진 채 하루가 지났다.";
+    return `무풍이다. 돛이 늘어진 채 하루가 지났다.${drift}`;
   }
-  return `정풍이다. 침로 ${Math.round(state.headingDeg)}°로는 바람을 물지 못한다. 침로를 좌우로 틀어 태킹해야 한다.`;
+  return `정풍이다. 침로 ${Math.round(state.headingDeg)}°로는 바람을 물지 못한다. 침로를 좌우로 틀어 태킹해야 한다.${drift}`;
 }
 
 function consumeSupplies(state: VoyageState, logs: string[]): void {
@@ -141,35 +148,44 @@ function consumeSupplies(state: VoyageState, logs: string[]): void {
   const waterShortfall = (waterNeeded - waterServed) / Math.max(1, waterNeeded);
 
   if (foodShortfall > 0) {
-    state.fatigue = clamp(state.fatigue + 0.09 * foodShortfall, 0, 1);
-    state.discipline = clamp(state.discipline - 0.12 * foodShortfall, 0, 1);
+    state.fatigue = clamp(state.fatigue + V.foodShortfallFatigue * foodShortfall, 0, 1);
+    state.discipline = clamp(state.discipline - V.foodShortfallDiscipline * foodShortfall, 0, 1);
     logs.push("식량이 바닥났다. 배급을 중단했다.");
   }
   if (waterShortfall > 0) {
-    state.fatigue = clamp(state.fatigue + 0.13 * waterShortfall, 0, 1);
-    state.sick = Math.min(state.crew, state.sick + Math.ceil(state.crew * 0.05 * waterShortfall));
+    state.fatigue = clamp(state.fatigue + V.waterShortfallFatigue * waterShortfall, 0, 1);
+    state.sick = Math.min(
+      state.crew,
+      state.sick + Math.ceil(state.crew * V.waterShortfallSickRatio * waterShortfall),
+    );
     logs.push("물이 떨어졌다. 갈증으로 쓰러지는 자가 나왔다.");
   }
 }
 
 function updateCrewCondition(state: VoyageState, exertion: number, logs: string[]): void {
   if (state.atPortId !== null) {
-    state.fatigue = clamp(state.fatigue - 0.18, 0, 1);
-    state.sick = Math.max(0, state.sick - Math.ceil(state.sick * 0.25));
+    state.fatigue = clamp(state.fatigue - V.portFatigueRecovery, 0, 1);
+    state.sick = Math.max(0, state.sick - Math.ceil(state.sick * V.portSickRecovery));
   } else if (state.anchored) {
-    state.fatigue = clamp(state.fatigue - 0.05, 0, 1);
+    state.fatigue = clamp(state.fatigue - V.anchoredFatigueRecovery, 0, 1);
   } else {
-    state.fatigue = clamp(state.fatigue + 0.012 + 0.03 * exertion, 0, 1);
+    state.fatigue = clamp(state.fatigue + V.seaFatigueBase + V.seaFatigueExertion * exertion, 0, 1);
   }
 
   const disciplineTarget = clamp(
-    1 - state.fatigue * 0.5 - clamp(1 - supplyDays(state) / 20, 0, 1) * 0.45,
+    1 -
+      state.fatigue * V.disciplineFatigueWeight -
+      clamp(1 - supplyDays(state) / V.disciplineSupplyFloorDays, 0, 1) * V.disciplineSupplyWeight,
     0,
     1,
   );
-  state.discipline = clamp(state.discipline + (disciplineTarget - state.discipline) * 0.18, 0, 1);
+  state.discipline = clamp(
+    state.discipline + (disciplineTarget - state.discipline) * V.disciplineApproachRate,
+    0,
+    1,
+  );
 
-  if (state.discipline < 0.15 && state.atPortId === null) {
+  if (state.discipline < V.disciplineWarnThreshold && state.atPortId === null) {
     logs.push("규율이 무너지기 직전이다. 회항을 고려해야 한다.");
   }
 }
@@ -178,7 +194,7 @@ function rollHazard(context: HazardContext): { id: string; message: string } | n
   const candidates = VOYAGE_HAZARDS.map((hazard) => ({
     hazard,
     pressure: hazard.pressure(context),
-  })).filter((entry) => entry.pressure > 0.02);
+  })).filter((entry) => entry.pressure > V.hazardPressureFloor);
 
   if (candidates.length === 0) {
     return null;
@@ -188,7 +204,7 @@ function rollHazard(context: HazardContext): { id: string; message: string } | n
     (sum, entry) => sum + entry.pressure * entry.hazard.baseWeight,
     0,
   );
-  const chance = clamp(totalPressure * HAZARD_ROLL_SCALE, 0, 0.6);
+  const chance = clamp(totalPressure * V.hazardRollScale, 0, V.hazardChanceCap);
   if (!context.rng.chance(chance)) {
     return null;
   }
@@ -235,10 +251,25 @@ export function stepDay(state: VoyageState, context: VoyageContext): DayReport {
           condition,
         });
 
-  const lookoutNm = BASE_LOOKOUT_NM * (0.6 + 0.4 * conditionFactor(condition));
+  // 돛이 멈춰도 해류는 배를 밀고 간다. 닻을 내렸거나 입항 중일 때만 제자리다.
+  const current =
+    state.anchored || state.atPortId !== null ? NO_CURRENT : currentAt(state.position);
+  // 배는 뱃머리가 향한 곳으로 가지 않는다 (SHAPE P9). 돛은 침로에 맞춰 조정하지만
+  // 실제로 물 위를 지나는 방위는 그보다 풍하로 밀려 있다.
+  const sailTrackDeg = leewayTrackDeg(state.headingDeg, wind.fromDeg, wind.speedKnots, speedKnots);
+  const track = groundTrack(sailTrackDeg, speedKnots, current);
+
+  const lookoutNm =
+    V.baseLookoutNm * (V.lookoutFloor + V.lookoutRange * conditionFactor(condition));
   const movement =
-    speedKnots > 0
-      ? moveAlongCourse(state, context, speedKnots * 24, lookoutNm)
+    track.speedKnots > 0
+      ? moveAlongCourse(
+          state,
+          context,
+          track.headingDeg,
+          track.speedKnots * HOURS_PER_DAY,
+          lookoutNm,
+        )
       : {
           distanceNm: 0,
           blocked: false,
@@ -253,13 +284,11 @@ export function stepDay(state: VoyageState, context: VoyageContext): DayReport {
   if (movement.blocked) {
     logs.push("전방에 육지. 더 나아갈 수 없다.");
   }
-  if (
-    movement.distanceNm === 0 &&
-    !state.anchored &&
-    state.atPortId === null &&
-    !movement.blocked
-  ) {
-    logs.push(stallReason(state, wind));
+  // 판단 기준은 항정이 아니라 **돛이 물었는가**다. 해류에 떠밀려 위치가 변해도
+  // 돛이 죽었으면 배는 선장의 뜻대로 가고 있지 않다.
+  // 육지에 막힌 것과는 별개의 사실이므로 둘 다 남긴다.
+  if (speedKnots === 0 && !state.anchored && state.atPortId === null) {
+    logs.push(stallReason(state, wind, current));
   }
 
   consumeSupplies(state, logs);
@@ -290,6 +319,8 @@ export function stepDay(state: VoyageState, context: VoyageContext): DayReport {
     day: state.day,
     position: { ...state.position },
     wind,
+    current,
+    trackDeg: track.headingDeg,
     speedKnots,
     distanceNm: movement.distanceNm,
     blockedByLand: movement.blocked,

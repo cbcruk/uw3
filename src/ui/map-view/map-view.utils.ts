@@ -1,4 +1,3 @@
-import type { LatLon, MapBounds } from "../../sim/geo/geo.types";
 import type { MapPalette } from "./map-view.types";
 
 export const MAP_PALETTE: MapPalette = {
@@ -12,32 +11,9 @@ export const MAP_PALETTE: MapPalette = {
   port: "#e0a83c",
   wind: "#7fb3d5",
   destination: "#8fd6a0",
+  equator: "#ffffff22",
+  current: "#4fa3c7",
 };
-
-export interface Projection {
-  scale: number;
-  toCanvas(position: LatLon): { x: number; y: number };
-  toLatLon(x: number, y: number): LatLon;
-}
-
-export function createProjection(bounds: MapBounds, widthPx: number): Projection {
-  const scale = widthPx / (bounds.maxLon - bounds.minLon);
-  return {
-    scale,
-    toCanvas(position: LatLon): { x: number; y: number } {
-      return {
-        x: (position.lon - bounds.minLon) * scale,
-        y: (bounds.maxLat - position.lat) * scale,
-      };
-    },
-    toLatLon(x: number, y: number): LatLon {
-      return {
-        lon: bounds.minLon + x / scale,
-        lat: bounds.maxLat - y / scale,
-      };
-    },
-  };
-}
 
 export function drawArrow(
   ctx: CanvasRenderingContext2D,

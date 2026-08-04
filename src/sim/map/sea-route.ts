@@ -60,14 +60,15 @@ export function findSeaRoute(tileMap: TileMap, from: LatLon, to: LatLon): LatLon
     return null;
   }
 
-  const cellCount = size.width * size.height;
-  const cameFrom = new Int32Array(cellCount).fill(-1);
-  const gScore = new Float64Array(cellCount).fill(Infinity);
-  const closed = new Uint8Array(cellCount);
+  // 격자가 수백만 칸이라 조밀 배열은 수십 MB가 된다. 실제로 방문하는 칸은
+  // 그중 극히 일부이므로 희소 자료구조를 쓴다.
+  const cameFrom = new Map<number, number>();
+  const gScore = new Map<number, number>();
+  const closed = new Set<number>();
 
   const startIndex = tileIndex(size, start);
   const goalIndex = tileIndex(size, goal);
-  gScore[startIndex] = 0;
+  gScore.set(startIndex, 0);
 
   // 격자가 작아 (수만 칸) 정렬 삽입 큐로 충분하다. 비용순 오름차순 유지.
   const open: { index: number; tile: TileCoord; f: number }[] = [
@@ -81,19 +82,19 @@ export function findSeaRoute(tileMap: TileMap, from: LatLon, to: LatLon): LatLon
     }
     if (current.index === goalIndex) {
       const path: LatLon[] = [];
-      let cursor = current.index;
-      while (cursor !== -1) {
+      let cursor: number | undefined = current.index;
+      while (cursor !== undefined) {
         const x = cursor % size.width;
         const y = (cursor - x) / size.width;
         path.push(tileCenter(bounds, { x, y }));
-        cursor = cameFrom[cursor] ?? -1;
+        cursor = cameFrom.get(cursor);
       }
       return path.reverse();
     }
-    if (closed[current.index] === 1) {
+    if (closed.has(current.index)) {
       continue;
     }
-    closed[current.index] = 1;
+    closed.add(current.index);
 
     for (const [dx, dy] of NEIGHBOURS) {
       const next = { x: current.tile.x + dx, y: current.tile.y + dy };
@@ -104,17 +105,17 @@ export function findSeaRoute(tileMap: TileMap, from: LatLon, to: LatLon): LatLon
         continue;
       }
       const nextIndex = tileIndex(size, next);
-      if (closed[nextIndex] === 1) {
+      if (closed.has(nextIndex)) {
         continue;
       }
       const step = dx !== 0 && dy !== 0 ? DIAGONAL_COST : 1;
-      const tentative = (gScore[current.index] ?? Infinity) + step;
-      if (tentative >= (gScore[nextIndex] ?? Infinity)) {
+      const tentative = (gScore.get(current.index) ?? Infinity) + step;
+      if (tentative >= (gScore.get(nextIndex) ?? Infinity)) {
         continue;
       }
 
-      gScore[nextIndex] = tentative;
-      cameFrom[nextIndex] = current.index;
+      gScore.set(nextIndex, tentative);
+      cameFrom.set(nextIndex, current.index);
       const entry = { index: nextIndex, tile: next, f: tentative + octile(next, goal) };
       let low = 0;
       let high = open.length;

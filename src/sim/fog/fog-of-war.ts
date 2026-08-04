@@ -1,14 +1,26 @@
 import type { GridSize, LatLon, MapBounds, TileCoord } from "../geo/geo.types";
-import { haversineNm, isTileInside, latLonToTile, tileCenter } from "../geo/geo.utils";
+import {
+  NM_PER_DEGREE,
+  haversineNm,
+  isTileInside,
+  latLonToTile,
+  tileCenter,
+} from "../geo/geo.utils";
 import type { ExplorationState } from "./fog-of-war.types";
+
+/** 탐사 여부는 타일당 1비트다. 격자가 수백만 칸이라 바이트로 두면 메모리가 8배다. */
+const BITS_PER_BYTE = 8;
+/** index >> 3 = index / 8 (바이트 번호), index & 7 = 바이트 안의 비트 자리. */
+const BYTE_SHIFT = 3;
+const BIT_MASK = 7;
 
 export function createExplorationState(
   size: GridSize,
-  revealed = new Uint8Array(Math.ceil((size.width * size.height) / 8)),
+  revealed = new Uint8Array(Math.ceil((size.width * size.height) / BITS_PER_BYTE)),
 ): ExplorationState {
   const bitAt = (tile: TileCoord): { byte: number; mask: number } => {
     const index = tile.y * size.width + tile.x;
-    return { byte: index >> 3, mask: 1 << (index & 7) };
+    return { byte: index >> BYTE_SHIFT, mask: 1 << (index & BIT_MASK) };
   };
 
   const isRevealed = (tile: TileCoord): boolean => {
@@ -25,7 +37,7 @@ export function createExplorationState(
     isRevealed,
     revealAround(bounds: MapBounds, position: LatLon, radiusNm: number): number {
       const center = latLonToTile(bounds, position);
-      const tileSpanNm = bounds.tileSize * 60;
+      const tileSpanNm = bounds.tileSize * NM_PER_DEGREE;
       const span = Math.ceil(radiusNm / tileSpanNm) + 1;
       let newlyRevealed = 0;
 

@@ -2,6 +2,7 @@ import type { Port } from "../../content/content.types";
 import type { ExplorationState } from "../fog/fog-of-war.types";
 import type { LatLon } from "../geo/geo.types";
 import type { TileMap } from "../map/tile-map.types";
+import type { Logbook } from "../voyage/logbook.types";
 import type { PassageResult } from "../voyage/passage.types";
 import type { RngSet } from "../rng/rng.types";
 import type { ShipClass } from "../ship/ship.types";
@@ -26,9 +27,13 @@ export interface Game {
   config: GameConfig;
   rng: RngSet;
   tileMap: TileMap;
+  /** 항로 탐색용 성긴 격자. */
+  routeMap: TileMap;
   exploration: ExplorationState;
   shipClass: ShipClass;
   voyage: VoyageState;
+  /** 이번 항해의 기록. 사료 대조의 근거다. */
+  logbook: Logbook;
   ports: readonly Port[];
   gold: number;
   journal: JournalEntry[];

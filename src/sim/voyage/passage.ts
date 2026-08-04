@@ -1,3 +1,4 @@
+import { PASSAGE_TUNING as P } from "../../content/tuning/voyage.tuning";
 import { haversineNm } from "../geo/geo.utils";
 import { planHeading } from "./navigator";
 import type { PassageOptions, PassageResult, PassageStop } from "./passage.types";
@@ -5,16 +6,10 @@ import { stepDay, supplyDays } from "./voyage";
 import type { DayReport, VoyageContext, VoyageState } from "./voyage.types";
 
 export const DEFAULT_PASSAGE_OPTIONS: PassageOptions = {
-  maxDays: 30,
-  arrivalRangeNm: 30,
-  supplyDaysFloor: 20,
+  maxDays: P.maxDays,
+  arrivalRangeNm: P.arrivalRangeNm,
+  supplyDaysFloor: P.supplyDaysFloor,
 };
-
-/**
- * 자동 조타에서 목적지에 가까워지지 않아도 이만큼은 버틴다. 바람이 막힌 해안에서
- * 바다 쪽으로 여유를 버는 며칠은 정상적인 항해다. 그 뒤로도 안 되면 사람이 판단할 문제다.
- */
-const BEATING_DAYS_LIMIT = 4;
 
 function summarize(stop: PassageStop, days: number, state: VoyageState): string {
   const prefix = `${days}일 항해.`;
@@ -34,7 +29,7 @@ function summarize(stop: PassageStop, days: number, state: VoyageState): string 
     case "blocked":
       return `${prefix} 전방에 육지. 침로를 다시 잡아야 한다.`;
     case "stuck":
-      return `${prefix} 배가 나아가지 못한다. 침로도 돛도 소용이 없다.`;
+      return `${prefix} 돛이 바람을 물지 못한다. 배는 해류에 맡겨진 상태다.`;
     case "ended":
       return `${prefix} 항해가 끝났다.`;
     case "max-days":
@@ -107,7 +102,8 @@ export function runPassage(
     if (state.steering === "manual" && report.blockedByLand) {
       return finish("blocked");
     }
-    if (report.distanceNm === 0) {
+    // 해류에 떠밀리는 것은 전진이 아니다. 돛이 죽었으면 선장에게 돌려준다.
+    if (report.speedKnots === 0) {
       return finish("stuck");
     }
 
@@ -118,7 +114,7 @@ export function runPassage(
         beatingDays = 0;
       } else {
         beatingDays += 1;
-        if (beatingDays >= BEATING_DAYS_LIMIT) {
+        if (beatingDays >= P.beatingDaysLimit) {
           return finish("beating");
         }
       }

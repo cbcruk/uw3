@@ -1,7 +1,14 @@
 import type { LatLon } from "../geo/geo.types";
-import { bearingDeg, haversineNm, normalizeHeading, relativeWindAngle } from "../geo/geo.utils";
+import {
+  FULL_TURN_DEG,
+  bearingDeg,
+  haversineNm,
+  normalizeHeading,
+  relativeWindAngle,
+} from "../geo/geo.utils";
 import { findSeaRoute } from "../map/sea-route";
 import type { TileMap } from "../map/tile-map.types";
+import { currentAt, groundTrack } from "../current/current";
 import { computeSpeedKnots } from "../ship/sail";
 import { windAt } from "../wind/wind";
 import { projectCourse } from "./course";
@@ -42,19 +49,20 @@ export function planHeading(
   context: VoyageContext,
   destination: LatLon,
 ): NavigatorPlan | null {
-  const route = findSeaRoute(context.tileMap, state.position, destination);
+  const route = findSeaRoute(context.routeMap, state.position, destination);
   if (route === null) {
     return null;
   }
   const aim = aimPoint(state.position, route, context.tileMap);
 
   const wind = windAt(state.position, state.day);
+  const current = currentAt(state.position);
   const condition = sailingCondition(state, context.shipClass.crewMin);
   const startRangeNm = haversineNm(state.position, aim);
 
   let best: NavigatorPlan | null = null;
 
-  for (let offset = 0; offset < 360; offset += CANDIDATE_STEP_DEG) {
+  for (let offset = 0; offset < FULL_TURN_DEG; offset += CANDIDATE_STEP_DEG) {
     const headingDeg = normalizeHeading(offset);
     const speedKnots = computeSpeedKnots({
       shipClass: context.shipClass,
@@ -64,14 +72,17 @@ export function planHeading(
       windSpeedKnots: wind.speedKnots,
       condition,
     });
-    if (speedKnots <= 0) {
+    // 침로가 아니라 해류를 더한 대지 항적으로 평가한다. 그러지 않으면
+    // 항해사가 고른 침로와 배가 실제로 가는 방향이 매일 어긋난다.
+    const track = groundTrack(headingDeg, speedKnots, current);
+    if (track.speedKnots <= 0) {
       continue;
     }
 
     const projection = projectCourse(
       state.position,
-      headingDeg,
-      speedKnots * HOURS_PER_DAY,
+      track.headingDeg,
+      track.speedKnots * HOURS_PER_DAY,
       context.tileMap,
     );
     if (projection.travelledNm <= 0) {
@@ -80,7 +91,7 @@ export function planHeading(
 
     const gainNm = startRangeNm - haversineNm(projection.end, aim);
     if (best === null || gainNm > best.gainNm) {
-      best = { headingDeg, gainNm, speedKnots, blocked: projection.blocked };
+      best = { headingDeg, gainNm, speedKnots: track.speedKnots, blocked: projection.blocked };
     }
   }
 
