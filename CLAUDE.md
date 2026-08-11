@@ -20,6 +20,7 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 - `SPEC.md` — 무엇을 만드는가. 판단이 흔들리면 여기로 돌아온다
 - `SHAPE.md` — **표로 바꿀 수 없는 것들.** 결과가 안 맞을 때 여기를 먼저 본다
 - `SPEC-uw3-game.md` — 보류된 게임 노선. 기록용
+- `docs/egress-request.md` — 사료 원문이 막혀 있다. `measured`가 0인 이유
 
 ### 결과가 안 맞을 때의 순서
 
