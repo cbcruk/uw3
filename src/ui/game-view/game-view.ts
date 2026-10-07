@@ -3,6 +3,7 @@ import { HOURS_PER_DAY, formatGameDate } from "../../sim/calendar/calendar";
 import { WIND_REGIME_LABELS, describeWindDirection, windAt } from "../../sim/wind/wind";
 import type { Direction } from "../../game/grid/direction.types";
 import { applyCommand, createRun, dayNumberOf, rangeTowardNm } from "../../game/run/run";
+import { isInSight } from "../../game/fog/fog";
 import { canEnter } from "../../game/travel/travel";
 import type { RunConfig, RunState } from "../../game/run/run.types";
 import type { LogLine } from "./game-view.types";
@@ -24,6 +25,9 @@ const CONFIG: RunConfig = {
 };
 
 const LOG_LIMIT = 14;
+
+/** 본 적은 있지만 지금은 안 보이는 칸에 덮는 색. 원본의 "기억한 타일"이다. */
+const FOG_DIM = "rgba(5, 9, 15, 0.62)";
 
 /** 나침반 3×3 칸 배치. 가운데는 자기 자리다. */
 const COMPASS_LAYOUT: readonly (Direction | null)[] = [
@@ -132,7 +136,7 @@ function drawRegion(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, ru
     for (let x = 0; x < cols; x += 1) {
       const cell = { x: x0 + x, y: y0 + y };
       const terrain = grid.terrainAt(cell);
-      if (terrain === null) {
+      if (terrain === null || !run.explored.has(cell)) {
         continue;
       }
       const style = TERRAIN_STYLE[terrain];
@@ -142,6 +146,10 @@ function drawRegion(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, ru
         glyph(x, y, "⚓", "#e0a83c");
       } else {
         glyph(x, y, style.glyph, style.glyphColor);
+      }
+      if (!isInSight(grid, player.cell, player.conveyance, cell)) {
+        ctx.fillStyle = FOG_DIM;
+        ctx.fillRect(offsetX + x * tile, offsetY + y * tile, tile, tile);
       }
     }
   }
@@ -170,6 +178,7 @@ function renderStatus(run: RunState): string {
       <div><dt>탈것</dt><dd>${CONVEYANCE_LABEL[run.player.conveyance]}</dd></div>
       <div><dt>바람</dt><dd>${describeWindDirection(wind.fromDeg)} ${wind.speedKnots.toFixed(1)}kn · ${WIND_REGIME_LABELS[wind.regime]}</dd></div>
       <div><dt>해역</dt><dd>(${run.region.rx}, ${run.region.ry}) · 들른 곳 ${run.visitedRegions.size}</dd></div>
+      <div><dt>탐사</dt><dd>${run.explored.count().toLocaleString()}칸</dd></div>
       <div><dt>경과</dt><dd>${(run.elapsedHours / HOURS_PER_DAY).toFixed(1)}일</dd></div>
     </dl>
   `;

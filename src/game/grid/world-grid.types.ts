@@ -28,6 +28,8 @@ export interface WorldGrid {
   portAt(cell: Cell): string | null;
   cellOfPort(portId: string): Cell | null;
   cellCenter(cell: Cell): LatLon;
+  /** 칸의 일련번호. 경도 순환을 반영한다. 칸별 상태를 배열에 담을 때 쓴다. */
+  indexOf(cell: Cell): number;
   cellOf(position: LatLon): Cell | null;
   /** 경도 순환을 반영한 이웃. 격자 밖이면 `null`. */
   neighbor(cell: Cell, dir: Direction): Cell | null;

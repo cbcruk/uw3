@@ -5,6 +5,7 @@ import { LAND_POLYGONS } from "../../content/world-land";
 import { HOURS_PER_DAY, toDayNumber } from "../../sim/calendar/calendar";
 import { WORLD_LAND_CELLS_PER_DEGREE } from "../../sim/map/land-mask.const";
 import { createTileMap } from "../../sim/map/tile-map";
+import { cellsInSight, createExploredMap, sightRadiusNm } from "../fog/fog";
 import { DIRECTIONS } from "../grid/direction";
 import { createWorldGrid } from "../grid/world-grid";
 import type { Cell, WorldGrid } from "../grid/world-grid.types";
@@ -40,7 +41,7 @@ export function createRun(config: RunConfig, grid: WorldGrid = createWorld()): R
     throw new Error(`unknown port: ${config.startPortId}`);
   }
   const region = regionOf(cell);
-  return {
+  const run: RunState = {
     config,
     grid,
     shipClass,
@@ -48,9 +49,12 @@ export function createRun(config: RunConfig, grid: WorldGrid = createWorld()): R
     player: { id: PLAYER_ID, cell, conveyance: "ship" },
     berth: null,
     region,
+    explored: createExploredMap(grid),
     visitedRegions: new Set([regionKey(region)]),
     commands: [],
   };
+  lookAround(run);
+  return run;
 }
 
 /**
@@ -67,6 +71,7 @@ export function applyCommand(run: RunState, command: Command): RunEvent[] {
     return events;
   }
   run.commands.push(command);
+  lookAround(run);
   const dayAfter = currentDay(run);
   if (dayAfter > dayBefore) {
     events.push({ type: "day-start", day: dayAfter });
@@ -110,6 +115,12 @@ export function rangeTowardNm(run: RunState, dir: Direction): number {
     dir,
     shipClass: run.shipClass,
   });
+}
+
+/** 지금 자리에서 보이는 칸을 탐사 기록에 더한다. 하선하면 시야가 좁아진다. */
+function lookAround(run: RunState): void {
+  const { grid, player } = run;
+  run.explored.reveal(cellsInSight(grid, player.cell, sightRadiusNm(player.conveyance)));
 }
 
 function resolveCommand(run: RunState, command: Command, events: RunEvent[]): boolean {

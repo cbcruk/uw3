@@ -1,5 +1,6 @@
 import type { GameDate } from "../../sim/calendar/calendar.types";
 import type { ShipClass } from "../../sim/ship/ship.types";
+import type { ExploredMap } from "../fog/fog.types";
 import type { Direction } from "../grid/direction.types";
 import type { Cell, WorldGrid } from "../grid/world-grid.types";
 import type { RegionId } from "../region/region.types";
@@ -60,6 +61,8 @@ export interface RunState {
   player: Traveler;
   berth: Berth | null;
   region: RegionId;
+  /** 한 번이라도 본 칸. 명령 로그에서 파생되므로 재현하면 같아진다 (R8). */
+  explored: ExploredMap;
   /** 들어가 본 영역. 던전에서 내려가 본 층에 해당한다. */
   visitedRegions: Set<string>;
   /** `seed + 명령 로그 = 완전 재현` (R8). */

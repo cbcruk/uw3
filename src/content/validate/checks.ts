@@ -11,6 +11,7 @@ import { LEEWAY_TABLES } from "../tuning/leeway.tuning";
 import { VOYAGE_TABLES } from "../tuning/voyage.tuning";
 import { GRID_TABLES } from "../game/grid.tuning";
 import { MOUNT_TABLES } from "../game/mounts.tuning";
+import { SIGHT_TABLES } from "../game/sight.tuning";
 import { TERRAIN_ZONES } from "../game/terrain-zones";
 import { gradeTally, tuningEntries } from "../tuning/tuning";
 import type { SourceGrade, Tuned } from "../tuning/tuning.types";
@@ -38,7 +39,7 @@ const ALL_TUNED: readonly Tuned<unknown>[] = [...tuningEntries(SCALAR_TABLES), .
  * 게임 레이어의 표 (SPEC-roguelike §4). 근거 표기 규칙은 똑같이 받지만 **부채 래칫에는
  * 넣지 않는다** — 저 집계는 시뮬레이터의 충실도이고, 칸 폭 같은 값이 섞이면 분모가 거짓이 된다.
  */
-const GAME_SCALAR_TABLES = [...GRID_TABLES, ...MOUNT_TABLES];
+const GAME_SCALAR_TABLES = [...GRID_TABLES, ...MOUNT_TABLES, ...SIGHT_TABLES];
 const GAME_TUNED: readonly Tuned<unknown>[] = tuningEntries(GAME_SCALAR_TABLES);
 
 /** "모델 내부" 한 마디로는 검토가 안 된다. 무엇의 내부인지까지 적게 한다. */

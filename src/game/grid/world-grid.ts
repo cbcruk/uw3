@@ -142,6 +142,7 @@ export function createWorldGrid(options: WorldGridOptions): WorldGrid {
     portAt: (cell) => (isInside(cell) ? (portByIndex.get(indexOf(cell)) ?? null) : null),
     cellOfPort: (portId) => cellByPort.get(portId) ?? null,
     cellCenter,
+    indexOf,
     cellOf,
     neighbor,
     stepNm(from: Cell, dir: Direction): number {
