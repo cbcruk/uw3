@@ -62,7 +62,7 @@ describe("탐사 기록", () => {
   it("움직이면 늘고, 막힌 걸음은 늘리지 않는다", () => {
     const run = createRun(CONFIG, grid);
     const before = run.explored.count();
-    applyCommand(run, { type: "move", dir: "w" });
+    applyCommand(run, { type: "move", dir: "ne" });
     expect(run.explored.count()).toBe(before);
     applyCommand(run, { type: "move", dir: "s" });
     expect(run.explored.count()).toBeGreaterThan(before);

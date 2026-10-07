@@ -10,8 +10,8 @@ import { DIRECTIONS } from "../grid/direction";
 import { createWorldGrid } from "../grid/world-grid";
 import type { Cell, WorldGrid } from "../grid/world-grid.types";
 import { regionKey, regionOf, sameRegion } from "../region/region";
-import { canEnter, dailyRangeNm } from "../travel/travel";
-import type { Mount } from "../travel/travel.types";
+import { canEnter, passageToward } from "../travel/travel";
+import type { Mount, Passage } from "../travel/travel.types";
 import type { Direction } from "../grid/direction.types";
 import type { Command, RunConfig, RunEvent, RunState } from "./run.types";
 
@@ -101,13 +101,13 @@ export function dayNumberOf(run: RunState): number {
   return toDayNumber(run.config.startDate) + currentDay(run);
 }
 
-/** 지금 자리에서 그 방향으로 하루에 갈 수 있는 해리. 화면이 방향별 행정을 보여 줄 때도 쓴다. */
-export function rangeTowardNm(run: RunState, dir: Direction): number {
+/** 지금 자리에서 그 방향으로 하루에 얼마나 나아가는가. 화면의 나침반도 이것을 쓴다. */
+export function passageFrom(run: RunState, dir: Direction): Passage {
   const terrain = run.grid.terrainAt(run.player.cell);
   if (terrain === null) {
-    return 0;
+    return { rangeNm: 0, tacking: false };
   }
-  return dailyRangeNm({
+  return passageToward({
     conveyance: run.player.conveyance,
     terrain,
     position: run.grid.cellCenter(run.player.cell),
@@ -115,6 +115,10 @@ export function rangeTowardNm(run: RunState, dir: Direction): number {
     dir,
     shipClass: run.shipClass,
   });
+}
+
+export function rangeTowardNm(run: RunState, dir: Direction): number {
+  return passageFrom(run, dir).rangeNm;
 }
 
 /** 지금 자리에서 보이는 칸을 탐사 기록에 더한다. 하선하면 시야가 좁아진다. */

@@ -4,7 +4,8 @@ import { findShipClass } from "../../content/ships";
 import { toDayNumber } from "../../sim/calendar/calendar";
 import type { ShipClass } from "../../sim/ship/ship.types";
 import { regionKey } from "../region/region";
-import { dailyRangeNm } from "../travel/travel";
+import { DIRECTIONS } from "../grid/direction";
+import { dailyRangeNm, passageToward } from "../travel/travel";
 import { applyCommand, createRun, createWorld, currentDay, rangeTowardNm, replayRun } from "./run";
 import type { Command, RunConfig, RunEvent } from "./run.types";
 
@@ -28,12 +29,43 @@ describe("배의 하루 행정 — 시뮬의 바람과 돛을 그대로 쓴다",
   const shipClass = findShipClass(CONFIG.shipClassId) as ShipClass;
   const dayNumber = toDayNumber(CONFIG.startDate);
 
-  it("편서풍대에서 서쪽으로는 못 가고 동쪽으로는 간다", () => {
+  it("편서풍대에서 서쪽은 태킹이라 동쪽보다 훨씬 느리다", () => {
     const position = { lat: 40, lon: -30 };
-    const range = (dir: "w" | "e"): number =>
-      dailyRangeNm({ conveyance: "ship", terrain: "sea", position, dayNumber, dir, shipClass });
-    expect(range("w")).toBe(0);
-    expect(range("e")).toBeGreaterThan(0);
+    const passage = (dir: "w" | "e") =>
+      passageToward({ conveyance: "ship", terrain: "sea", position, dayNumber, dir, shipClass });
+    expect(passage("w").tacking).toBe(true);
+    expect(passage("e").tacking).toBe(false);
+    expect(passage("w").rangeNm).toBeGreaterThan(0);
+    expect(passage("w").rangeNm).toBeLessThan(passage("e").rangeNm / 2);
+  });
+
+  it("바람이 있으면 바다에서 막힌 방향이 없다 — 폭 1칸 수로에서도 갇히지 않는다", () => {
+    const position = { lat: 38.7, lon: -9.4 };
+    for (const dir of DIRECTIONS) {
+      const range = dailyRangeNm({
+        conveyance: "ship",
+        terrain: "sea",
+        position,
+        dayNumber,
+        dir,
+        shipClass,
+      });
+      expect(range).toBeGreaterThan(0);
+    }
+  });
+
+  it("라틴돛이 사각돛보다 역풍에 강하다", () => {
+    const latina = findShipClass("caravela-latina") as ShipClass;
+    const base = {
+      conveyance: "ship" as const,
+      terrain: "sea" as const,
+      position: { lat: 40, lon: -30 },
+      dayNumber,
+      dir: "w" as const,
+    };
+    expect(dailyRangeNm({ ...base, shipClass: latina })).toBeGreaterThan(
+      dailyRangeNm({ ...base, shipClass }),
+    );
   });
 
   it("무역풍대에서는 서쪽이 빠르다", () => {
@@ -85,11 +117,17 @@ describe("런 — 방향키 한 번이 한 칸", () => {
     expect(run.commands).toHaveLength(0);
   });
 
-  it("3월 리스본에서 서쪽은 바람이 벽이다 — 편서풍이 게임에서도 산다", () => {
-    const run = createRun(CONFIG, grid);
-    const events = applyCommand(run, { type: "move", dir: "w" });
-    expect(eventsOf(events, "blocked")[0]?.reason).toBe("wind");
-    expect(run.elapsedHours).toBe(0);
+  it("3월 리스본에서 서쪽은 막히지 않지만 남쪽보다 두 배 가까이 걸린다", () => {
+    const west = eventsOf(
+      applyCommand(createRun(CONFIG, grid), { type: "move", dir: "w" }),
+      "move",
+    );
+    const south = eventsOf(
+      applyCommand(createRun(CONFIG, grid), { type: "move", dir: "s" }),
+      "move",
+    );
+    expect(west).toHaveLength(1);
+    expect(west[0]?.hours).toBeGreaterThan((south[0]?.hours ?? 0) * 1.5);
   });
 
   it("기다리면 다음 날로 넘어간다", () => {

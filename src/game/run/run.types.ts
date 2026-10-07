@@ -32,7 +32,10 @@ export type Command =
   | { type: "disembark"; mount: Mount }
   | { type: "embark" };
 
-/** 막힌 이유. 막힌 걸음은 시간을 쓰지 않는다 — 원본에서 벽에 부딪힌 것과 같다. */
+/**
+ * 막힌 이유. 막힌 걸음은 시간을 쓰지 않는다 — 원본에서 벽에 부딪힌 것과 같다.
+ * `wind`는 무풍일 때뿐이다. 맞바람은 태킹으로 느리게 갈 뿐 막지 않는다.
+ */
 export type BlockReason = "terrain" | "edge" | "wind";
 
 /** 코어가 내는 렌더·로그용 이벤트. 렌더러는 이 배열만 소비한다 (원본 `GridEvent`). */

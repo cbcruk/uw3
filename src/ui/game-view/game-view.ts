@@ -2,7 +2,7 @@ import { GRID } from "../../content/game/grid.tuning";
 import { HOURS_PER_DAY, formatGameDate } from "../../sim/calendar/calendar";
 import { WIND_REGIME_LABELS, describeWindDirection, windAt } from "../../sim/wind/wind";
 import type { Direction } from "../../game/grid/direction.types";
-import { applyCommand, createRun, dayNumberOf, rangeTowardNm } from "../../game/run/run";
+import { applyCommand, createRun, dayNumberOf, passageFrom } from "../../game/run/run";
 import { isInSight } from "../../game/fog/fog";
 import { canEnter } from "../../game/travel/travel";
 import type { RunConfig, RunState } from "../../game/run/run.types";
@@ -196,10 +196,12 @@ function renderCompass(run: RunState): string {
       const wall = terrain === "sea" ? "바다" : "뭍";
       return `<div class="rl-compass__cell rl-compass__cell--wall"><span>${DIRECTION_LABEL[dir]}</span>${wall}</div>`;
     }
-    const hours = hoursPerCell(run.grid.stepNm(run.player.cell, dir), rangeTowardNm(run, dir));
-    const text = hours === null ? "역풍" : `${hours.toFixed(1)}h`;
+    const passage = passageFrom(run, dir);
+    const hours = hoursPerCell(run.grid.stepNm(run.player.cell, dir), passage.rangeNm);
+    const tack = passage.tacking ? " ⤳" : "";
+    const text = hours === null ? "무풍" : `${hours.toFixed(1)}h${tack}`;
     const tone = hours === null ? "rl-compass__cell--blocked" : "";
     return `<div class="rl-compass__cell ${tone}"><span>${DIRECTION_LABEL[dir]}</span>${text}</div>`;
   });
-  return `<p class="rl-compass__title">한 칸에 걸리는 시간</p><div class="rl-compass__grid">${cells.join("")}</div>`;
+  return `<p class="rl-compass__title">한 칸에 걸리는 시간 · ⤳ 태킹</p><div class="rl-compass__grid">${cells.join("")}</div>`;
 }

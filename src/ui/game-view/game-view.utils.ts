@@ -90,7 +90,7 @@ export function describeEvent(event: RunEvent): LogLine | null {
   switch (event.type) {
     case "blocked":
       if (event.reason === "wind") {
-        return { text: "바람을 거슬러 그쪽으로는 나아갈 수 없다", tone: "warn" };
+        return { text: "바람이 없어 나아갈 수 없다. 기다려야 한다", tone: "warn" };
       }
       return {
         text: event.reason === "edge" ? "지도의 끝이다" : "그쪽으로는 갈 수 없다",
