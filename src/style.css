@@ -311,3 +311,73 @@ button.primary {
   padding-top: 6px;
   border-top: 1px solid var(--line);
 }
+
+.rl-canvas {
+  cursor: default;
+}
+
+.chart__hint a {
+  color: var(--accent);
+}
+
+.rl-compass__title {
+  margin: 16px 0 6px;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.rl-compass__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.rl-compass__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  border: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.rl-compass__cell span {
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+
+.rl-compass__cell--self {
+  justify-content: center;
+  color: var(--accent);
+  font-size: 18px;
+}
+
+.rl-compass__cell--blocked {
+  color: var(--bad);
+}
+
+.rl-compass__cell--wall {
+  color: var(--ink-dim);
+  opacity: 0.6;
+}
+
+.rl-log {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.rl-log__item {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.rl-log__item--warn {
+  color: var(--warn);
+}
+
+.rl-log__item--good {
+  color: var(--good);
+}

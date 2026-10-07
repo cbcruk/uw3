@@ -1,0 +1,15 @@
+import type { Command } from "../../game/run/run.types";
+
+/** 키 하나가 내는 명령. 명령이 아닌 키면 `null`. */
+export type KeyBinding = (key: string, code: string) => Command | null;
+
+export interface TileStyle {
+  fill: string;
+  glyph: string;
+  glyphColor: string;
+}
+
+export interface LogLine {
+  text: string;
+  tone: "info" | "warn" | "good";
+}

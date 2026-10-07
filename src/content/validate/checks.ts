@@ -9,6 +9,9 @@ import { WIND_BANDS, WIND_SCALARS } from "../tuning/wind.tuning";
 import { HAZARD_TABLES } from "../tuning/hazards.tuning";
 import { LEEWAY_TABLES } from "../tuning/leeway.tuning";
 import { VOYAGE_TABLES } from "../tuning/voyage.tuning";
+import { GRID_TABLES } from "../game/grid.tuning";
+import { MOUNT_TABLES } from "../game/mounts.tuning";
+import { TERRAIN_ZONES } from "../game/terrain-zones";
 import { gradeTally, tuningEntries } from "../tuning/tuning";
 import type { SourceGrade, Tuned } from "../tuning/tuning.types";
 import { ROUTE_CELLS_PER_DEGREE, WORLD_LAND_CELLS_PER_DEGREE } from "../../sim/map/land-mask.const";
@@ -30,6 +33,13 @@ const SCALAR_TABLES = [
 /** 곡선·구간처럼 값이 수가 아닌 항목. 유한성 검사만 빼고 같은 규칙을 받는다. */
 const CURVE_ENTRIES: readonly Tuned<unknown>[] = [...Object.values(SAIL_CURVES), WIND_BANDS];
 const ALL_TUNED: readonly Tuned<unknown>[] = [...tuningEntries(SCALAR_TABLES), ...CURVE_ENTRIES];
+
+/**
+ * 게임 레이어의 표 (SPEC-roguelike §4). 근거 표기 규칙은 똑같이 받지만 **부채 래칫에는
+ * 넣지 않는다** — 저 집계는 시뮬레이터의 충실도이고, 칸 폭 같은 값이 섞이면 분모가 거짓이 된다.
+ */
+const GAME_SCALAR_TABLES = [...GRID_TABLES, ...MOUNT_TABLES];
+const GAME_TUNED: readonly Tuned<unknown>[] = tuningEntries(GAME_SCALAR_TABLES);
 
 /** "모델 내부" 한 마디로는 검토가 안 된다. 무엇의 내부인지까지 적게 한다. */
 const MIN_NA_REASON_LENGTH = 12;
@@ -53,7 +63,7 @@ const tuningAnnotations: Check = {
   run(): Finding[] {
     const findings: Finding[] = [];
 
-    for (const entry of ALL_TUNED) {
+    for (const entry of [...ALL_TUNED, ...GAME_TUNED]) {
       const label = `${entry.source.slice(0, 40)}…`;
       if (entry.unit.length === 0) {
         findings.push(error("tuning", `단위가 비어 있다: ${label}`));
@@ -90,7 +100,7 @@ const tuningAnnotations: Check = {
       }
     }
 
-    for (const table of SCALAR_TABLES) {
+    for (const table of [...SCALAR_TABLES, ...GAME_SCALAR_TABLES]) {
       for (const [key, entry] of Object.entries(table)) {
         if (!Number.isFinite(entry.value)) {
           findings.push(
@@ -384,6 +394,28 @@ const shipsWellFormed: Check = {
   },
 };
 
+/** 게임 레이어는 따로 센다. 시뮬의 래칫에 섞지 않으니 알림만 낸다. */
+const gameLayer: Check = {
+  name: "게임 레이어 · 표와 지형 구역",
+  run(): Finding[] {
+    const tally = gradeTally(GAME_TUNED);
+    const findings: Finding[] = [
+      note(
+        "game",
+        `게임 표 ${GAME_TUNED.length}항목 (시뮬 집계와 별도) — measured ${tally.measured} · ` +
+          `qualitative ${tally.qualitative} · unverified ${tally.unverified} · ` +
+          `not-applicable ${tally["not-applicable"]}`,
+      ),
+    ];
+    for (const zone of TERRAIN_ZONES) {
+      if (zone.minLat >= zone.maxLat || zone.minLon >= zone.maxLon) {
+        findings.push(error("game", `지형 구역의 경계가 뒤집혔다: ${zone.id}`));
+      }
+    }
+    return findings;
+  },
+};
+
 export const CHECKS: readonly Check[] = [
   tuningAnnotations,
   debtRatchet,
@@ -391,4 +423,5 @@ export const CHECKS: readonly Check[] = [
   currentsWellFormed,
   voyagesGrounded,
   shipsWellFormed,
+  gameLayer,
 ];

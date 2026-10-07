@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
+import { latitudeOfMercatorY, mercatorY } from "./mercator.utils";
 import {
   advance,
   angleDifference,
@@ -86,5 +87,14 @@ describe("타일 변환", () => {
 
   it("북서 모서리가 (0, 0) 타일이다", () => {
     expect(latLonToTile(BOUNDS, { lat: 45.99, lon: -13.99 })).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe("메르카토르", () => {
+  it("적도는 0이고 위도와 왕복한다", () => {
+    expect(mercatorY(0)).toBeCloseTo(0, 12);
+    for (const lat of [-70, -30, 15, 45, 75]) {
+      expect(latitudeOfMercatorY(mercatorY(lat))).toBeCloseTo(lat, 9);
+    }
   });
 });

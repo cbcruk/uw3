@@ -51,6 +51,8 @@ export default defineConfig({
           "src/sim/wind/**",
           "src/sim/current/**",
           "src/sim/fog/**",
+          // 게임 레이어도 같다. 표는 `content/game/`에 있다 (SPEC-roguelike §4).
+          "src/game/**",
         ],
         rules: {
           "no-magic-numbers": [
