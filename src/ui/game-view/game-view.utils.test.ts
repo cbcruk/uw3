@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { commandForKey, withParticle } from './game-view.utils'
+import { createRun, createWorld } from '../../game/run/run'
+import type { Cell } from '../../game/grid/world-grid.types'
+import { TRADE_LOT_TONS, commandForKey, tradeCommandForKey, withParticle } from './game-view.utils'
 
 describe('키 → 명령', () => {
   it('방향키 하나가 한 칸 이동이다', () => {
@@ -24,6 +26,40 @@ describe('키 → 명령', () => {
 
   it('스페이스바는 이동이 아니다', () => {
     expect(commandForKey(' ', 'Space')).toBeNull()
+  })
+})
+
+describe('시장의 키 — 숫자는 사기, Shift+숫자는 팔기', () => {
+  const grid = createWorld()
+  const config = {
+    seed: 1,
+    startDate: { year: 1502, month: 3, day: 1 },
+    startPortId: 'angra',
+    shipClassId: 'caravela-redonda',
+  }
+
+  it('정박 중이면 시장 목록과 화물 목록의 N번째를 한 짐씩 오간다', () => {
+    const run = createRun(config, grid)
+    expect(tradeCommandForKey('Digit3', false, run)).toEqual({
+      type: 'buy',
+      goodId: 'woad',
+      tons: TRADE_LOT_TONS,
+    })
+    expect(tradeCommandForKey('Digit9', false, run)).toBeNull()
+    expect(tradeCommandForKey('Digit1', true, run)).toBeNull()
+    run.supplies.cargo = { salt: 4 }
+    expect(tradeCommandForKey('Digit1', true, run)).toEqual({
+      type: 'sell',
+      goodId: 'salt',
+      tons: TRADE_LOT_TONS,
+    })
+  })
+
+  it('바다에서는 숫자키가 아무 명령도 아니고, 숫자패드는 여전히 이동이다', () => {
+    const run = createRun(config, grid)
+    run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell
+    expect(tradeCommandForKey('Digit1', false, run)).toBeNull()
+    expect(commandForKey('1', 'Digit1')).toBeNull()
   })
 })
 

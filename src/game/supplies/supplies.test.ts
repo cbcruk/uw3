@@ -2,10 +2,21 @@ import { describe, expect, it } from 'vite-plus/test'
 import { PROVISION } from '../../content/game/provisions.tuning'
 import { findShipClass } from '../../content/ships'
 import type { ShipClass } from '../../sim/ship/ship.types'
-import { consumeDay, createSupplies, daysOfSupply, expeditionEndOf, resupply } from './supplies'
+import {
+  consumeDay,
+  createSupplies,
+  daysOfSupply,
+  expeditionEndOf,
+  provisionLimit,
+  settleProvisions,
+} from './supplies'
 import type { Supplies } from './supplies.types'
 
 const shipClass = findShipClass('caravela-redonda') as ShipClass
+
+function s0(): Supplies {
+  return createSupplies(shipClass)
+}
 
 function supplies(overrides: Partial<Supplies>): Supplies {
   return { ...createSupplies(shipClass), ...overrides }
@@ -55,10 +66,27 @@ describe('보급 — 하루치를 먹고, 모자라면 선원을 잃는다', () 
     expect(daysOfSupply(supplies({ crew: 0 }))).toBe(0)
   })
 
-  it('항구에서 채우면 상한까지 찬다', () => {
-    const s = supplies({ food: 1, water: 2 })
-    resupply(s)
+  it('항구에서 채우면 상한까지 사서 채우고 그 값을 낸다', () => {
+    const s = supplies({ food: 1, water: 2, gold: 10_000 })
+    const settled = settleProvisions(s)
     expect(s.food).toBe(s.capacity)
     expect(s.water).toBe(s.capacity)
+    expect(settled.gold).toBe(-Math.ceil((settled.food + settled.water) * PROVISION.provisionPrice))
+    expect(settled.short).toBe(false)
+  })
+
+  it('금화가 모자라면 살 수 있는 만큼만, 모자란 몫에 비례해 나눠 산다', () => {
+    const s = supplies({ food: 0, water: 0, gold: 40 })
+    const settled = settleProvisions(s)
+    expect(settled.short).toBe(true)
+    expect(s.food + s.water).toBe(Math.floor(40 / PROVISION.provisionPrice))
+    expect(Math.abs(s.food - s.water)).toBeLessThanOrEqual(1)
+    expect(s.gold).toBeGreaterThanOrEqual(0)
+  })
+
+  it('화물이 자리를 차지하면 식량·물의 상한이 그만큼 준다', () => {
+    const s = supplies({ cargo: { salt: s0().holdTons / 2 } })
+    expect(provisionLimit(s)).toBe(Math.floor(s.capacity / 2))
+    expect(provisionLimit(supplies({ cargo: { salt: s0().holdTons } }))).toBe(0)
   })
 })

@@ -23,8 +23,9 @@ import { bearingDeg, haversineNm } from '../../sim/geo/geo.utils'
 import { loadActive, loadMeta, saveActive, saveMeta } from './game-storage'
 import { renderExpeditionPanel } from './expedition-panel'
 import { drawRegion } from './region-renderer'
+import { renderMarket } from './market-panel'
 import { canEnter } from '../../game/travel/travel'
-import { daysOfSupply } from '../../game/supplies/supplies'
+import { cargoTons, daysOfSupply } from '../../game/supplies/supplies'
 import type { RunConfig, RunState } from '../../game/run/run.types'
 import type { LogLine } from './game-view.types'
 import {
@@ -32,6 +33,7 @@ import {
   DIRECTION_LABEL,
   encounterName,
   commandForKey,
+  tradeCommandForKey,
   describeDrift,
   describeEvent,
   hoursPerCell,
@@ -85,11 +87,12 @@ export function mountGame(root: HTMLElement): void {
     <main class="layout">
       <section class="chart">
         <canvas id="rl-canvas" class="rl-canvas"></canvas>
-        <p class="chart__hint">방향키 이동 · y u b n 대각선 · . 기다림(다음 날) · h 말 하선 · c 낙타 하선 · e 승선 · r 선원 고용(항구) · 적에게 가면 공격 · t 내주고 놓여나기 · <a href="#sim">시뮬레이터 →</a></p>
+        <p class="chart__hint">방향키 이동 · y u b n 대각선 · . 기다림(다음 날) · h 말 하선 · c 낙타 하선 · e 승선 · r 선원 고용(항구) · 1–9 사기 · ⇧1–9 팔기(항구) · 적에게 가면 공격 · t 내주고 놓여나기 · <a href="#sim">시뮬레이터 →</a></p>
       </section>
       <aside class="panel">
         <div id="rl-expedition" class="rl-expedition"></div>
         <div id="rl-status" class="hud"></div>
+        <div id="rl-market"></div>
         <div id="rl-compass" class="rl-compass"></div>
         <ul id="rl-log" class="rl-log"></ul>
       </aside>
@@ -99,12 +102,14 @@ export function mountGame(root: HTMLElement): void {
   const canvas = root.querySelector<HTMLCanvasElement>('#rl-canvas')
   const expeditionRoot = root.querySelector<HTMLElement>('#rl-expedition')
   const statusRoot = root.querySelector<HTMLElement>('#rl-status')
+  const marketRoot = root.querySelector<HTMLElement>('#rl-market')
   const compassRoot = root.querySelector<HTMLElement>('#rl-compass')
   const logRoot = root.querySelector<HTMLElement>('#rl-log')
   if (
     canvas === null ||
     expeditionRoot === null ||
     statusRoot === null ||
+    marketRoot === null ||
     compassRoot === null ||
     logRoot === null
   ) {
@@ -120,6 +125,7 @@ export function mountGame(root: HTMLElement): void {
     drawRegion(ctx, canvas, run)
     expeditionRoot.innerHTML = renderExpeditionPanel(run, session.daily, meta, dailyKey(new Date()))
     statusRoot.innerHTML = renderStatus(run)
+    marketRoot.innerHTML = renderMarket(run)
     compassRoot.innerHTML = renderCompass(run)
     logRoot.innerHTML = log
       .map((line) => `<li class="rl-log__item rl-log__item--${line.tone}">${line.text}</li>`)
@@ -151,7 +157,9 @@ export function mountGame(root: HTMLElement): void {
   })
 
   window.addEventListener('keydown', (event: KeyboardEvent) => {
-    const command = commandForKey(event.key, event.code)
+    const command =
+      commandForKey(event.key, event.code) ??
+      tradeCommandForKey(event.code, event.shiftKey, session.run)
     if (command === null || event.metaKey || event.ctrlKey) {
       return
     }
@@ -209,6 +217,8 @@ function renderStatus(run: RunState): string {
       <div class="readout__wide"><dt>바람</dt><dd>${describeWindDirection(wind.fromDeg)} ${wind.speedKnots.toFixed(1)}kn · ${WIND_REGIME_LABELS[wind.regime]}</dd></div>
       <div class="readout__wide"><dt>해류</dt><dd>${describeCurrent(position)}</dd></div>
       <div class="readout__wide"><dt>위치</dt><dd>${lat} ${lon}</dd></div>
+      <div><dt>금화</dt><dd>${supplies.gold.toLocaleString()}두카트</dd></div>
+      <div><dt>화물</dt><dd>${cargoTons(supplies.cargo)}/${supplies.holdTons}톤</dd></div>
       <div><dt>해역</dt><dd>(${run.region.rx}, ${run.region.ry})</dd></div>
       <div><dt>들른 곳</dt><dd>${run.visitedRegions.size}</dd></div>
       <div><dt>탐사</dt><dd>${run.explored.count().toLocaleString()}칸</dd></div>

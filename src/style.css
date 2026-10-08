@@ -443,3 +443,49 @@ button.primary {
 .rl-board__tag {
   color: var(--accent);
 }
+
+.rl-market {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  font-size: 13px;
+}
+
+.rl-market__title {
+  margin: 0 0 6px;
+  color: var(--ink-dim);
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.rl-market__list {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.rl-market__list:last-child {
+  margin-bottom: 0;
+}
+
+.rl-market__list li {
+  padding: 2px 0;
+}
+
+.rl-market__list kbd {
+  display: inline-block;
+  min-width: 26px;
+  color: var(--accent);
+  font-family: inherit;
+}
+
+.rl-market__price {
+  float: right;
+  color: var(--ink-dim);
+}
+
+.rl-market__empty {
+  color: var(--ink-dim);
+}

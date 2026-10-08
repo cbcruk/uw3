@@ -106,4 +106,11 @@ describe('리더보드 순서 — 도착 > 짧은 날수 > 남긴 선원', () =>
     const sorted = [lost, slow, fewer, base].sort(compareRecords)
     expect(sorted).toEqual([base, fewer, slow, lost])
   })
+
+  it('금화는 날수·선원이 같을 때만 순서를 가른다', () => {
+    const rich = { ...base, gold: 5000 }
+    const richButSlow = { ...base, days: 11, gold: 99999 }
+    const poor = { ...base, gold: 100 }
+    expect([poor, richButSlow, rich].sort(compareRecords)).toEqual([rich, poor, richButSlow])
+  })
 })

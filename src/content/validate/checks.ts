@@ -15,6 +15,8 @@ import { ENCOUNTER_TABLES } from '../game/encounters.tuning'
 import { MOUNT_TABLES } from '../game/mounts.tuning'
 import { PROVISION_TABLES } from '../game/provisions.tuning'
 import { SIGHT_TABLES } from '../game/sight.tuning'
+import { TRADE_TABLES } from '../game/trade.tuning'
+import { findGoodByName } from '../game/goods'
 import { TERRAIN_ZONES } from '../game/terrain-zones'
 import { gradeTally, tuningEntries } from '../tuning/tuning'
 import type { SourceGrade, Tuned } from '../tuning/tuning.types'
@@ -49,6 +51,7 @@ const GAME_SCALAR_TABLES = [
   ...PROVISION_TABLES,
   ...ENCOUNTER_TABLES,
   ...COMBAT_TABLES,
+  ...TRADE_TABLES,
 ]
 const GAME_TUNED: readonly Tuned<unknown>[] = tuningEntries(GAME_SCALAR_TABLES)
 
@@ -419,6 +422,14 @@ const gameLayer: Check = {
     for (const zone of TERRAIN_ZONES) {
       if (zone.minLat >= zone.maxLat || zone.minLon >= zone.maxLon) {
         findings.push(error('game', `지형 구역의 경계가 뒤집혔다: ${zone.id}`))
+      }
+    }
+    // 항구 자료는 품목을 이름으로 적는다. 표에 없는 이름은 시장에서 조용히 사라진다.
+    for (const port of PORTS) {
+      for (const name of port.goods) {
+        if (findGoodByName(name) === undefined) {
+          findings.push(error('game', `${port.id}의 품목이 교역 표에 없다: ${name}`))
+        }
       }
     }
     return findings

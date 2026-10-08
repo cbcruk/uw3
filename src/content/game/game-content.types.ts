@@ -37,3 +37,26 @@ export interface EncounterKind {
   /** 배로 움직이는 종류의 선형. 바람을 받는 방식이 선형마다 다르다. 뭍의 종류는 없다. */
   shipClassId?: string
 }
+
+/** 교역 품목의 식별자. 값 표(`trade.tuning.ts`)의 키와 같다. */
+export type GoodId =
+  | 'salt'
+  | 'olive-oil'
+  | 'wine'
+  | 'cork'
+  | 'tuna'
+  | 'grain'
+  | 'hides'
+  | 'wax'
+  | 'raisins'
+  | 'sugar'
+  | 'alum'
+  | 'silk'
+  | 'woad'
+  | 'wheat'
+
+/** 교역 품목. 항구 자료(`Port.goods`)는 이름으로 이 표를 가리킨다. */
+export interface Good {
+  id: GoodId
+  name: string
+}

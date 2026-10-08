@@ -27,7 +27,8 @@ import {
   resolveDrift,
 } from '../travel/drift'
 import type { EastNorth } from '../travel/drift.types'
-import { consumeDay, createSupplies, expeditionEndOf, resupply } from '../supplies/supplies'
+import { consumeDay, createSupplies, expeditionEndOf, settleProvisions } from '../supplies/supplies'
+import { buyGoods, sellGoods } from '../trade/trade'
 import type { Mount, Passage } from '../travel/travel.types'
 import type { Direction } from '../grid/direction.types'
 import type { Command, RunConfig, RunEvent, RunState } from './run.types'
@@ -156,10 +157,22 @@ function passDay(run: RunState, day: number, events: RunEvent[]): void {
   if (ration.starving || ration.thirsty) {
     events.push({ type: 'ration', ...ration })
   }
-  if (dockedPortId(run) !== null) {
-    resupply(run.supplies)
+  const portId = dockedPortId(run)
+  if (portId !== null) {
+    restock(run, portId, events)
   }
   concludeIfEnded(run, events)
+}
+
+/**
+ * 항구에서 식량·물을 화물이 남긴 자리까지 맞춘다 (R21·R53). 바뀐 것이 없으면 알리지 않는다 —
+ * 정박한 채 날이 바뀔 때마다 같은 줄이 쌓이지 않게.
+ */
+function restock(run: RunState, portId: string, events: RunEvent[]): void {
+  const settled = settleProvisions(run.supplies)
+  if (settled.food !== 0 || settled.water !== 0 || settled.short) {
+    events.push({ type: 'resupply', portId, ...settled })
+  }
 }
 
 /** 선원이나 선체가 바닥났으면 원정을 끝낸다. 이미 끝났으면 아무것도 하지 않는다. */
@@ -286,6 +299,9 @@ function resolveCommand(run: RunState, command: Command, events: RunEvent[]): bo
       return hire(run, events)
     case 'tribute':
       return tribute(run, events)
+    case 'buy':
+    case 'sell':
+      return trade(run, command, events)
   }
 }
 
@@ -368,9 +384,9 @@ function enterCell(run: RunState, next: Cell, events: RunEvent[]): void {
   const portId = player.conveyance === 'ship' ? grid.portAt(next) : null
   if (portId !== null) {
     player.driftNm = NO_DRIFT
-    resupply(run.supplies)
     run.dockedPorts.add(portId)
-    events.push({ type: 'dock', portId }, { type: 'resupply', portId })
+    events.push({ type: 'dock', portId })
+    restock(run, portId, events)
     if (portId === run.config.goalPortId && run.ended === null) {
       run.ended = 'arrived'
       events.push({ type: 'ended', reason: 'arrived' })
@@ -407,9 +423,9 @@ function disembark(run: RunState, mount: Mount, events: RunEvent[]): boolean {
 }
 
 /**
- * 항구에서 선원을 정원까지 채운다. 값은 아직 받지 않는다 — 대가는 시간과 보급이다.
+ * 항구에서 선원을 정원까지 모은다. 한 사람마다 `hireWage`를 내고, 금화가 모자라면 낼 수 있는 만큼만 모은다.
  *
- * 사람이 늘면 백병전에 강해지지만 하루에 먹는 양도 는다. 버틸 날이 줄어든다 (R47).
+ * 대가는 셋이다 — 금화, 시간, 그리고 보급. 사람이 늘면 백병전에 강해지지만 하루에 먹는 양도 는다 (R47).
  */
 function hire(run: RunState, events: RunEvent[]): boolean {
   const portId = dockedPortId(run)
@@ -421,14 +437,25 @@ function hire(run: RunState, events: RunEvent[]): boolean {
     })
     return false
   }
-  const hired = run.shipClass.crewMax - run.supplies.crew
-  if (hired <= 0) {
+  const wanted = run.shipClass.crewMax - run.supplies.crew
+  if (wanted <= 0) {
     events.push({ type: 'rejected', command: 'hire', reason: '이미 정원이 찼다' })
     return false
   }
+  const hired = Math.min(wanted, Math.floor(run.supplies.gold / PROVISION.hireWage))
+  if (hired <= 0) {
+    events.push({
+      type: 'rejected',
+      command: 'hire',
+      reason: `금화가 모자라다 (한 명 ${PROVISION.hireWage}두카트)`,
+    })
+    return false
+  }
+  const wage = Math.ceil(hired * PROVISION.hireWage)
   run.supplies.crew += hired
+  run.supplies.gold -= wage
   run.elapsedHours += PROVISION.hireHours
-  events.push({ type: 'hire', portId, hired })
+  events.push({ type: 'hire', portId, hired, wage })
   return true
 }
 
@@ -472,6 +499,43 @@ function tribute(run: RunState, events: RunEvent[]): boolean {
     })
   }
   run.encounters = run.encounters.filter((encounter) => encounter.crew > 0)
+  return true
+}
+
+/**
+ * 정박한 항구의 시장에서 화물을 사고판다. 시간이 들지 않는다 (R55).
+ *
+ * 거래 뒤에는 곧바로 식량·물을 맞춘다 — 화물을 사면 밀려난 식량·물을 되팔고, 팔면 빈 자리를 채운다 (R53).
+ */
+function trade(
+  run: RunState,
+  command: Extract<Command, { type: 'buy' | 'sell' }>,
+  events: RunEvent[],
+): boolean {
+  const portId = dockedPortId(run)
+  if (portId === null) {
+    events.push({
+      type: 'rejected',
+      command: command.type,
+      reason: '항구에 정박한 배에서만 사고팔 수 있다',
+    })
+    return false
+  }
+  const deal = command.type === 'buy' ? buyGoods : sellGoods
+  const result = deal(run.supplies, portId, command.goodId, command.tons)
+  if (!result.ok) {
+    events.push({ type: 'rejected', command: command.type, reason: result.reason })
+    return false
+  }
+  events.push({
+    type: 'trade',
+    portId,
+    side: command.type,
+    goodId: command.goodId,
+    tons: result.tons,
+    gold: result.gold,
+  })
+  restock(run, portId, events)
   return true
 }
 

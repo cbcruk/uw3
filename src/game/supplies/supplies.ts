@@ -1,9 +1,16 @@
 import { PROVISION } from '../../content/game/provisions.tuning'
+import { TRADE } from '../../content/game/trade.tuning'
 import type { ShipClass } from '../../sim/ship/ship.types'
 import { supplyCapacity } from '../../sim/world/world'
-import type { ExpeditionEnd, RationReport, Supplies } from './supplies.types'
+import type {
+  Cargo,
+  ExpeditionEnd,
+  ProvisionSettlement,
+  RationReport,
+  Supplies,
+} from './supplies.types'
 
-/** 출항 때의 보급. 시뮬의 새 게임과 같은 규칙이다 — 선원은 정원의 가운데, 식량·물은 가득. */
+/** 출항 때의 보급. 시뮬의 새 게임과 같은 규칙이다 — 선원은 정원의 가운데, 식량·물은 가득, 화물칸은 비었다. */
 export function createSupplies(shipClass: ShipClass): Supplies {
   const capacity = supplyCapacity(shipClass.capacityTons)
   return {
@@ -13,6 +20,9 @@ export function createSupplies(shipClass: ShipClass): Supplies {
     hull: shipClass.hullPoints,
     hullMax: shipClass.hullPoints,
     capacity,
+    holdTons: shipClass.capacityTons,
+    gold: TRADE.startGold,
+    cargo: {},
   }
 }
 
@@ -37,10 +47,52 @@ export function consumeDay(supplies: Supplies): RationReport {
   return { lost, starving: foodShort > 0, thirsty: waterShort > 0 }
 }
 
-/** 항구에서 식량과 물을 가득 채운다. 값은 아직 받지 않는다 — 교역이 들어오면 바뀐다. */
-export function resupply(supplies: Supplies): void {
-  supplies.food = supplies.capacity
-  supplies.water = supplies.capacity
+/** 화물칸에 실은 톤 수. */
+export function cargoTons(cargo: Cargo): number {
+  return Object.values(cargo).reduce((sum, tons) => sum + tons, 0)
+}
+
+/**
+ * 화물이 남긴 자리에 실을 수 있는 식량·물 각각의 상한.
+ *
+ * 빈 배면 `capacity`다. 화물이 적재량의 3분의 1을 차지하면 식량·물도 3분의 1이 준다 (R53).
+ */
+export function provisionLimit(supplies: Supplies): number {
+  const freeTons = Math.max(0, supplies.holdTons - cargoTons(supplies.cargo))
+  return Math.floor((supplies.capacity * freeTons) / supplies.holdTons)
+}
+
+/**
+ * 항구에서 식량·물을 화물이 남긴 자리까지 맞춘다. 모자라면 사고, 넘치면 같은 값에 되판다.
+ *
+ * 금화가 모자라면 살 수 있는 만큼만 산다. 식량과 물에는 모자란 몫에 비례해 나눈다.
+ * 사는 값은 올림, 되파는 값은 내림이다 — 사고팔기를 되풀이해 금화가 불어나지 않게 한다.
+ */
+export function settleProvisions(supplies: Supplies): ProvisionSettlement {
+  const before = { food: supplies.food, water: supplies.water, gold: supplies.gold }
+  const price = PROVISION.provisionPrice
+  const limit = provisionLimit(supplies)
+  const surplus = Math.max(0, supplies.food - limit) + Math.max(0, supplies.water - limit)
+  supplies.food = Math.min(supplies.food, limit)
+  supplies.water = Math.min(supplies.water, limit)
+  supplies.gold += Math.floor(surplus * price)
+
+  const foodNeed = limit - supplies.food
+  const waterNeed = limit - supplies.water
+  const need = foodNeed + waterNeed
+  const bought = Math.min(need, Math.floor(supplies.gold / price))
+  if (bought > 0) {
+    const food = Math.floor((bought * foodNeed) / need)
+    supplies.food += food
+    supplies.water += bought - food
+    supplies.gold -= Math.min(supplies.gold, Math.ceil(bought * price))
+  }
+  return {
+    food: supplies.food - before.food,
+    water: supplies.water - before.water,
+    gold: supplies.gold - before.gold,
+    short: bought < need,
+  }
 }
 
 /** 식량과 물 중 먼저 떨어지는 쪽으로 며칠을 버티는가. 선원이 없으면 0. */
