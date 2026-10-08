@@ -1,15 +1,15 @@
-import landTopology from "world-atlas/land-50m.json";
-import { feature } from "topojson-client";
-import type { LandPolygon } from "../sim/map/land-mask.types";
+import landTopology from 'world-atlas/land-50m.json'
+import { feature } from 'topojson-client'
+import type { LandPolygon } from '../sim/map/land-mask.types'
 
 interface RawGeometry {
-  type: string;
-  coordinates: unknown;
+  type: string
+  coordinates: unknown
 }
 
 interface RawCollection {
-  features?: { geometry: RawGeometry }[];
-  geometry?: RawGeometry;
+  features?: { geometry: RawGeometry }[]
+  geometry?: RawGeometry
 }
 
 /**
@@ -19,25 +19,25 @@ interface RawCollection {
  * world-atlas의 TopoJSON 타입은 느슨하다. 경계에서 한 번만 좁히고 아래로는 정확한 타입을 넘긴다.
  */
 export const LAND_POLYGONS: readonly LandPolygon[] = (() => {
-  const topology = landTopology as unknown as Parameters<typeof feature>[0];
-  const collection = feature(topology, topology.objects.land as never) as unknown as RawCollection;
+  const topology = landTopology as unknown as Parameters<typeof feature>[0]
+  const collection = feature(topology, topology.objects.land as never) as unknown as RawCollection
   const geometries =
     collection.features === undefined
       ? [collection.geometry]
-      : collection.features.map((entry) => entry.geometry);
+      : collection.features.map((entry) => entry.geometry)
 
-  const polygons: LandPolygon[] = [];
+  const polygons: LandPolygon[] = []
   for (const geometry of geometries) {
     if (geometry === undefined) {
-      continue;
+      continue
     }
-    if (geometry.type === "Polygon") {
-      polygons.push(geometry.coordinates as LandPolygon);
-    } else if (geometry.type === "MultiPolygon") {
+    if (geometry.type === 'Polygon') {
+      polygons.push(geometry.coordinates as LandPolygon)
+    } else if (geometry.type === 'MultiPolygon') {
       for (const polygon of geometry.coordinates as LandPolygon[]) {
-        polygons.push(polygon);
+        polygons.push(polygon)
       }
     }
   }
-  return polygons;
-})();
+  return polygons
+})()

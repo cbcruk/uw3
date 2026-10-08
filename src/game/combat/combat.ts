@@ -1,17 +1,17 @@
-import { COMBAT } from "../../content/game/combat.tuning";
-import type { EncounterKindId } from "../../content/game/game-content.types";
-import { createRng, hashString, mixSeed } from "../../sim/rng/rng";
-import type { Rng } from "../../sim/rng/rng.types";
-import type { Encounter } from "../encounter/encounter.types";
-import type { Supplies } from "../supplies/supplies.types";
-import type { Conveyance } from "../travel/travel.types";
-import type { CombatEvent } from "./combat.types";
+import { COMBAT } from '../../content/game/combat.tuning'
+import type { EncounterKindId } from '../../content/game/game-content.types'
+import { createRng, hashString, mixSeed } from '../../sim/rng/rng'
+import type { Rng } from '../../sim/rng/rng.types'
+import type { Encounter } from '../encounter/encounter.types'
+import type { Supplies } from '../supplies/supplies.types'
+import type { Conveyance } from '../travel/travel.types'
+import type { CombatEvent } from './combat.types'
 
 const FOE_LETHALITY: Readonly<Record<EncounterKindId, number>> = {
   pirate: COMBAT.pirateLethality,
   bandit: COMBAT.banditLethality,
   beast: COMBAT.beastLethality,
-};
+}
 
 /**
  * 맞붙은 한 합을 치른다. 양쪽 머릿수와 (배라면) 선체를 제자리에서 깎는다.
@@ -25,30 +25,30 @@ const FOE_LETHALITY: Readonly<Record<EncounterKindId, number>> = {
  * 처음 머릿수의 절반 아래로 줄면 물러난다 (R46). 짐승도 같다 — 무리가 반으로 줄면 흩어진다.
  */
 export function fightRound(options: {
-  seed: number;
-  supplies: Supplies;
-  conveyance: Conveyance;
-  foe: Encounter;
-  initiated: boolean;
+  seed: number
+  supplies: Supplies
+  conveyance: Conveyance
+  foe: Encounter
+  initiated: boolean
 }): CombatEvent[] {
-  const { supplies, foe, conveyance, initiated } = options;
-  const rng = createRng(mixSeed(options.seed, hashString(`${foe.id}#${foe.rounds}`)));
-  foe.rounds += 1;
+  const { supplies, foe, conveyance, initiated } = options
+  const rng = createRng(mixSeed(options.seed, hashString(`${foe.id}#${foe.rounds}`)))
+  foe.rounds += 1
 
-  const crewLost = Math.min(supplies.crew, casualties(foe.crew * FOE_LETHALITY[foe.kind], rng));
-  const foeLost = Math.min(foe.crew, casualties(supplies.crew * COMBAT.playerLethality, rng));
+  const crewLost = Math.min(supplies.crew, casualties(foe.crew * FOE_LETHALITY[foe.kind], rng))
+  const foeLost = Math.min(foe.crew, casualties(supplies.crew * COMBAT.playerLethality, rng))
   const hullLost =
-    foe.kind === "pirate" && conveyance === "ship"
+    foe.kind === 'pirate' && conveyance === 'ship'
       ? Math.min(supplies.hull, casualties(foe.crew * COMBAT.pirateHullDamage, rng))
-      : 0;
+      : 0
 
-  supplies.crew -= crewLost;
-  supplies.hull -= hullLost;
-  foe.crew -= foeLost;
+  supplies.crew -= crewLost
+  supplies.hull -= hullLost
+  foe.crew -= foeLost
 
   const events: CombatEvent[] = [
     {
-      type: "combat",
+      type: 'combat',
       encounterId: foe.id,
       kind: foe.kind,
       initiated,
@@ -57,20 +57,20 @@ export function fightRound(options: {
       foeLost,
       foeLeft: foe.crew,
     },
-  ];
+  ]
   if (foe.crew <= 0) {
-    events.push({ type: "defeated", encounterId: foe.id, kind: foe.kind });
+    events.push({ type: 'defeated', encounterId: foe.id, kind: foe.kind })
   } else if (foe.crew <= foe.crewAtStart * COMBAT.routRatio) {
     // 물러난 무리는 격자에서 지운다. 돌아오게 하려면 조우마다 퇴각 상태와 회복이 필요하다.
-    events.push({ type: "routed", encounterId: foe.id, kind: foe.kind, fled: foe.crew });
-    foe.crew = 0;
+    events.push({ type: 'routed', encounterId: foe.id, kind: foe.kind, fled: foe.crew })
+    foe.crew = 0
   }
-  return events;
+  return events
 }
 
 /** 기댓값을 운으로 흔들고 정수로 만든다. 소수 몫은 확률로 올린다 — 작은 무리도 피해를 낸다. */
 function casualties(expected: number, rng: Rng): number {
-  const rolled = expected * rng.range(1 - COMBAT.rollSpread, 1 + COMBAT.rollSpread);
-  const whole = Math.floor(rolled);
-  return whole + (rng.chance(rolled - whole) ? 1 : 0);
+  const rolled = expected * rng.range(1 - COMBAT.rollSpread, 1 + COMBAT.rollSpread)
+  const whole = Math.floor(rolled)
+  return whole + (rng.chance(rolled - whole) ? 1 : 0)
 }

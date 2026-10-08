@@ -1,4 +1,4 @@
-import type { SourceGrade } from "./tuning.types";
+import type { SourceGrade } from './tuning.types'
 
 /**
  * 충실도 부채의 현재 상한 (SPEC 6.1).
@@ -27,5 +27,5 @@ export const DEBT_BASELINE: Readonly<Record<SourceGrade, number>> = {
    * 재분류가 **눈에 보이는 diff**를 남긴다.
    */
   // 44 → 46: 압류 풍속 배율의 상·하한 클램프 둘.
-  "not-applicable": 46,
-};
+  'not-applicable': 46,
+}

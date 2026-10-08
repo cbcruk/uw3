@@ -1,4 +1,4 @@
-import type { CurrentStream } from "../sim/current/current.types";
+import type { CurrentStream } from '../sim/current/current.types'
 
 /**
  * 주요 표층 환류. 방위는 **흘러가는 쪽**이다 (SPEC 6 — 바람과 규약이 반대).
@@ -12,7 +12,7 @@ import type { CurrentStream } from "../sim/current/current.types";
 export const CURRENT_STREAMS: readonly CurrentStream[] = [
   // ── 북대서양 환류 (시계 방향) ───────────────────────────
   {
-    name: "북적도해류",
+    name: '북적도해류',
     lat: 12,
     latSpan: 9,
     minLon: -60,
@@ -21,7 +21,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
     speedKnots: 0.7,
   },
   {
-    name: "멕시코 만류",
+    name: '멕시코 만류',
     lat: 33,
     latSpan: 6,
     minLon: -80,
@@ -30,7 +30,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
     speedKnots: 2.6,
   },
   {
-    name: "북대서양 해류",
+    name: '북대서양 해류',
     lat: 48,
     latSpan: 9,
     minLon: -50,
@@ -39,7 +39,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
     speedKnots: 0.6,
   },
   {
-    name: "카나리아 해류",
+    name: '카나리아 해류',
     lat: 27,
     latSpan: 8,
     minLon: -25,
@@ -48,7 +48,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
     speedKnots: 0.7,
   },
   {
-    name: "포르투갈 해류",
+    name: '포르투갈 해류',
     lat: 39,
     latSpan: 5,
     minLon: -14,
@@ -57,7 +57,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
     speedKnots: 0.4,
   },
   {
-    name: "적도반류",
+    name: '적도반류',
     lat: 6,
     latSpan: 3,
     minLon: -45,
@@ -68,7 +68,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
 
   // ── 남대서양 환류 (반시계 방향) ─────────────────────────
   {
-    name: "남적도해류",
+    name: '남적도해류',
     lat: -8,
     latSpan: 8,
     minLon: -35,
@@ -77,7 +77,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
     speedKnots: 0.8,
   },
   {
-    name: "브라질 해류",
+    name: '브라질 해류',
     lat: -25,
     latSpan: 8,
     minLon: -50,
@@ -86,7 +86,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
     speedKnots: 1.2,
   },
   {
-    name: "남대서양 해류",
+    name: '남대서양 해류',
     lat: -42,
     latSpan: 8,
     minLon: -50,
@@ -95,7 +95,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
     speedKnots: 0.6,
   },
   {
-    name: "벵겔라 해류",
+    name: '벵겔라 해류',
     lat: -25,
     latSpan: 9,
     minLon: 5,
@@ -106,7 +106,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
 
   // ── 인도양 ──────────────────────────────────────────────
   {
-    name: "아굴라스 해류",
+    name: '아굴라스 해류',
     lat: -33,
     latSpan: 5,
     minLon: 22,
@@ -115,7 +115,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
     speedKnots: 2.8,
   },
   {
-    name: "남인도양 해류",
+    name: '남인도양 해류',
     lat: -12,
     latSpan: 9,
     minLon: 55,
@@ -126,7 +126,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
 
   // ── 태평양 ──────────────────────────────────────────────
   {
-    name: "북태평양 북적도해류",
+    name: '북태평양 북적도해류',
     lat: 13,
     latSpan: 9,
     minLon: -160,
@@ -135,7 +135,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
     speedKnots: 0.7,
   },
   {
-    name: "쿠로시오",
+    name: '쿠로시오',
     lat: 30,
     latSpan: 6,
     minLon: 125,
@@ -144,7 +144,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
     speedKnots: 2.2,
   },
   {
-    name: "캘리포니아 해류",
+    name: '캘리포니아 해류',
     lat: 33,
     latSpan: 8,
     minLon: -130,
@@ -153,7 +153,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
     speedKnots: 0.6,
   },
   {
-    name: "훔볼트 해류",
+    name: '훔볼트 해류',
     lat: -22,
     latSpan: 9,
     minLon: -82,
@@ -162,7 +162,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
     speedKnots: 0.7,
   },
   {
-    name: "남태평양 남적도해류",
+    name: '남태평양 남적도해류',
     lat: -8,
     latSpan: 8,
     minLon: -150,
@@ -173,7 +173,7 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
 
   // ── 남극 순환류 — 지구를 감싸는 유일한 해류 ─────────────
   {
-    name: "남극 순환류",
+    name: '남극 순환류',
     lat: -55,
     latSpan: 12,
     minLon: -180,
@@ -181,4 +181,4 @@ export const CURRENT_STREAMS: readonly CurrentStream[] = [
     toDeg: 90,
     speedKnots: 0.9,
   },
-];
+]

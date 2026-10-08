@@ -1,15 +1,15 @@
-import type { LatLon } from "../../sim/geo/geo.types";
-import type { Direction } from "./direction.types";
+import type { LatLon } from '../../sim/geo/geo.types'
+import type { Direction } from './direction.types'
 
 /** 칸 하나의 지형. 칸마다 하나다 — 혼합 지형은 다른 구조다 (SPEC-roguelike R1). */
-export type Terrain = "sea" | "grassland" | "desert";
+export type Terrain = 'sea' | 'grassland' | 'desert'
 
-export type LandTerrain = Exclude<Terrain, "sea">;
+export type LandTerrain = Exclude<Terrain, 'sea'>
 
 /** 격자 칸. `x`는 경도 방향이라 순환하고, `y`는 북에서 남으로 는다. */
 export interface Cell {
-  x: number;
-  y: number;
+  x: number
+  y: number
 }
 
 /**
@@ -18,23 +18,23 @@ export interface Cell {
  * 칸의 지형은 그 칸이 속한 영역을 처음 물을 때 굽는다 (R4).
  */
 export interface WorldGrid {
-  width: number;
-  height: number;
+  width: number
+  height: number
   /** 칸 한 변의 경도 폭. 메르카토르라 행 높이도 같은 각도다. */
-  cellDeg: number;
+  cellDeg: number
   /** 격자 밖(극 쪽)이면 `null`. */
-  terrainAt(cell: Cell): Terrain | null;
+  terrainAt(cell: Cell): Terrain | null
   /** 정박지가 이 칸에 있는 항구. */
-  portAt(cell: Cell): string | null;
-  cellOfPort(portId: string): Cell | null;
-  cellCenter(cell: Cell): LatLon;
+  portAt(cell: Cell): string | null
+  cellOfPort(portId: string): Cell | null
+  cellCenter(cell: Cell): LatLon
   /** 칸의 일련번호. 경도 순환을 반영한다. 칸별 상태를 배열에 담을 때 쓴다. */
-  indexOf(cell: Cell): number;
-  cellOf(position: LatLon): Cell | null;
+  indexOf(cell: Cell): number
+  cellOf(position: LatLon): Cell | null
   /** 경도 순환을 반영한 이웃. 격자 밖이면 `null`. */
-  neighbor(cell: Cell, dir: Direction): Cell | null;
+  neighbor(cell: Cell, dir: Direction): Cell | null
   /** 이웃 칸으로 한 걸음의 실제 거리. 이동 비용은 칸 수가 아니라 해리다 (R3). */
-  stepNm(from: Cell, dir: Direction): number;
+  stepNm(from: Cell, dir: Direction): number
   /** 지금까지 구운 영역 수. 영역을 지연해서 굽는지 테스트가 본다. */
-  bakedRegionCount(): number;
+  bakedRegionCount(): number
 }

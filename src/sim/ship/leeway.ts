@@ -1,5 +1,5 @@
-import { LEEWAY } from "../../content/tuning/leeway.tuning";
-import { angleDifference, clamp, toRadians } from "../geo/geo.utils";
+import { LEEWAY } from '../../content/tuning/leeway.tuning'
+import { angleDifference, clamp, toRadians } from '../geo/geo.utils'
 
 /**
  * 압류각 — 뱃머리 방향과 실제 진행 방향이 벌어지는 크기 (SHAPE P9).
@@ -12,13 +12,13 @@ import { angleDifference, clamp, toRadians } from "../geo/geo.utils";
  * 최소 각(무보각 한계)에서 최대가 되므로, 압류는 클로스홀드에서 가장 크다.
  */
 export function leewayAngleDeg(relAngleDeg: number, windSpeedKnots: number): number {
-  const sideForceFraction = clamp(Math.cos(toRadians(relAngleDeg)), 0, 1);
+  const sideForceFraction = clamp(Math.cos(toRadians(relAngleDeg)), 0, 1)
   const windFactor = clamp(
     windSpeedKnots / LEEWAY.referenceWindKnots,
     LEEWAY.windScaleFloor,
     LEEWAY.windScaleCap,
-  );
-  return LEEWAY.referenceDeg * sideForceFraction * windFactor;
+  )
+  return LEEWAY.referenceDeg * sideForceFraction * windFactor
 }
 
 /**
@@ -35,9 +35,9 @@ export function leewayTrackDeg(
 ): number {
   // 돛이 물지 못하면 옆으로 미는 힘도 없다. 표류는 해류가 맡는다.
   if (sailSpeedKnots <= 0) {
-    return headingDeg;
+    return headingDeg
   }
-  const signed = angleDifference(headingDeg, windFromDeg);
-  const leewayDeg = leewayAngleDeg(Math.abs(signed), windSpeedKnots);
-  return headingDeg + Math.sign(signed) * leewayDeg;
+  const signed = angleDifference(headingDeg, windFromDeg)
+  const leewayDeg = leewayAngleDeg(Math.abs(signed), windSpeedKnots)
+  return headingDeg + Math.sign(signed) * leewayDeg
 }

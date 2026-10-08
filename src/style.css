@@ -10,7 +10,7 @@
   --bad: #c4614c;
 
   color-scheme: dark;
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
   color: var(--ink);
   background: var(--paper);
 }

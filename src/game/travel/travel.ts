@@ -1,41 +1,41 @@
-import { MOUNT } from "../../content/game/mounts.tuning";
-import { HOURS_PER_DAY } from "../../sim/calendar/calendar";
-import type { LatLon } from "../../sim/geo/geo.types";
+import { MOUNT } from '../../content/game/mounts.tuning'
+import { HOURS_PER_DAY } from '../../sim/calendar/calendar'
+import type { LatLon } from '../../sim/geo/geo.types'
 import {
   FULL_TURN_DEG,
   angleDifference,
   relativeWindAngle,
   toRadians,
-} from "../../sim/geo/geo.utils";
-import { leewayTrackDeg } from "../../sim/ship/leeway";
-import { computeSpeedKnots } from "../../sim/ship/sail";
-import type { SailingCondition, ShipClass } from "../../sim/ship/ship.types";
-import { windAt } from "../../sim/wind/wind";
-import { headingOf } from "../grid/direction";
-import type { Direction } from "../grid/direction.types";
-import type { LandTerrain, Terrain } from "../grid/world-grid.types";
-import { currentAlongKnots, currentKnots } from "./drift";
-import type { Conveyance, Mount, Passage } from "./travel.types";
+} from '../../sim/geo/geo.utils'
+import { leewayTrackDeg } from '../../sim/ship/leeway'
+import { computeSpeedKnots } from '../../sim/ship/sail'
+import type { SailingCondition, ShipClass } from '../../sim/ship/ship.types'
+import { windAt } from '../../sim/wind/wind'
+import { headingOf } from '../grid/direction'
+import type { Direction } from '../grid/direction.types'
+import type { LandTerrain, Terrain } from '../grid/world-grid.types'
+import { currentAlongKnots, currentKnots } from './drift'
+import type { Conveyance, Mount, Passage } from './travel.types'
 
 /**
  * 선원·선체가 온전한 배. P1에는 보급·선원 상태가 없어서 컨디션 항을 1로 둔다.
  * P3에서 상태 벡터가 들어오면 이 상수가 사라진다 (SPEC-roguelike §5).
  */
-const FRESH_SHIP: SailingCondition = { hullRatio: 1, crewRatio: 1, fatigue: 0, discipline: 1 };
+const FRESH_SHIP: SailingCondition = { hullRatio: 1, crewRatio: 1, fatigue: 0, discipline: 1 }
 
 /**
  * 태킹 침로 후보 간격. 시뮬 항해사(`navigator.ts`)와 같은 값이다 — 5°면 클로스홀드 각을
  * 놓치지 않는다. 계산 해상도라 표에 두지 않는다.
  */
-const HEADING_STEP_DEG = 5;
+const HEADING_STEP_DEG = 5
 
 const MOUNT_RANGE_NM: Readonly<Record<Mount, Readonly<Record<LandTerrain, number>>>> = {
   horse: { grassland: MOUNT.horseGrassland, desert: MOUNT.horseDesert },
   camel: { grassland: MOUNT.camelGrassland, desert: MOUNT.camelDesert },
-};
+}
 
 export function canEnter(conveyance: Conveyance, terrain: Terrain): boolean {
-  return conveyance === "ship" ? terrain === "sea" : terrain !== "sea";
+  return conveyance === 'ship' ? terrain === 'sea' : terrain !== 'sea'
 }
 
 /**
@@ -51,23 +51,23 @@ export function canEnter(conveyance: Conveyance, terrain: Terrain): boolean {
  * 바람·돛·압류·해류 모두 시뮬의 값을 그대로 쓰고 배율을 곱하지 않는다 (R7).
  */
 export function passageToward(options: {
-  conveyance: Conveyance;
-  terrain: Terrain;
-  position: LatLon;
-  dayNumber: number;
-  dir: Direction;
-  shipClass: ShipClass;
+  conveyance: Conveyance
+  terrain: Terrain
+  position: LatLon
+  dayNumber: number
+  dir: Direction
+  shipClass: ShipClass
 }): Passage {
-  const { conveyance, terrain, position, dayNumber, dir, shipClass } = options;
+  const { conveyance, terrain, position, dayNumber, dir, shipClass } = options
   if (!canEnter(conveyance, terrain)) {
-    return { rangeNm: 0, sailRangeNm: 0, tacking: false };
+    return { rangeNm: 0, sailRangeNm: 0, tacking: false }
   }
-  if (conveyance !== "ship") {
-    const rangeNm = MOUNT_RANGE_NM[conveyance][terrain as LandTerrain];
-    return { rangeNm, sailRangeNm: rangeNm, tacking: false };
+  if (conveyance !== 'ship') {
+    const rangeNm = MOUNT_RANGE_NM[conveyance][terrain as LandTerrain]
+    return { rangeNm, sailRangeNm: rangeNm, tacking: false }
   }
-  const wind = windAt(position, dayNumber);
-  const target = headingOf(dir);
+  const wind = windAt(position, dayNumber)
+  const target = headingOf(dir)
   const sailKnots = (headingDeg: number): number =>
     computeSpeedKnots({
       shipClass,
@@ -76,24 +76,24 @@ export function passageToward(options: {
       relAngleDeg: relativeWindAngle(headingDeg, wind.fromDeg),
       windSpeedKnots: wind.speedKnots,
       condition: FRESH_SHIP,
-    });
+    })
 
-  let bestKnots = 0;
+  let bestKnots = 0
   for (let heading = 0; heading < FULL_TURN_DEG; heading += HEADING_STEP_DEG) {
-    const knots = sailKnots(heading);
-    const track = leewayTrackDeg(heading, wind.fromDeg, wind.speedKnots, knots);
-    const made = knots * Math.cos(toRadians(angleDifference(track, target)));
-    bestKnots = Math.max(bestKnots, made);
+    const knots = sailKnots(heading)
+    const track = leewayTrackDeg(heading, wind.fromDeg, wind.speedKnots, knots)
+    const made = knots * Math.cos(toRadians(angleDifference(track, target)))
+    bestKnots = Math.max(bestKnots, made)
   }
-  const along = currentAlongKnots(currentKnots(position), dir);
+  const along = currentAlongKnots(currentKnots(position), dir)
   return {
     rangeNm: Math.max(0, bestKnots + along) * HOURS_PER_DAY,
     sailRangeNm: bestKnots * HOURS_PER_DAY,
     tacking: bestKnots > 0 && sailKnots(target) <= 0,
-  };
+  }
 }
 
 /** {@linkcode passageToward}의 하루 행정만. */
 export function dailyRangeNm(options: Parameters<typeof passageToward>[0]): number {
-  return passageToward(options).rangeNm;
+  return passageToward(options).rangeNm
 }

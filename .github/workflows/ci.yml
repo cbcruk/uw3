@@ -22,7 +22,7 @@ jobs:
       # setup-vp가 Vite+ 설치, Node 버전, 패키지 매니저, 의존성 캐시를 한 번에 맡는다.
       - uses: voidzero-dev/setup-vp@v1
         with:
-          node-version: "24"
+          node-version: '24'
           cache: true
 
       - run: vp install --frozen-lockfile
@@ -48,7 +48,7 @@ jobs:
 
       - uses: voidzero-dev/setup-vp@v1
         with:
-          node-version: "24"
+          node-version: '24'
           cache: true
 
       - run: vp install --frozen-lockfile

@@ -1,5 +1,5 @@
-import { internal, tunedValues } from "./tuning";
-import type { Tuned } from "./tuning.types";
+import { internal, tunedValues } from './tuning'
+import type { Tuned } from './tuning.types'
 
 /**
  * 압류(leeway) — 뱃머리 방향과 실제 진행 방향의 어긋남 (SHAPE P9).
@@ -33,26 +33,26 @@ const LEEWAY_SCALARS = {
    */
   referenceDeg: {
     value: 10,
-    unit: "°",
-    grade: "qualitative",
+    unit: '°',
+    grade: 'qualitative',
     source:
-      "클로스홀드 최대·순풍 0이라는 형태와 얕은 흘수가 불리하다는 것은 실재. " +
-      "현대 요트 3~5°, 강풍 소형정 10°, 항해 실무 보정 10~15°, 클리퍼 강풍 20~30°의 " +
-      "사이에서 저작 (강풍 배율까지 곱하면 16°로 실무 범위 위쪽). " +
-      "당대 캐러벨의 실측 압류각 자료 필요",
+      '클로스홀드 최대·순풍 0이라는 형태와 얕은 흘수가 불리하다는 것은 실재. ' +
+      '현대 요트 3~5°, 강풍 소형정 10°, 항해 실무 보정 10~15°, 클리퍼 강풍 20~30°의 ' +
+      '사이에서 저작 (강풍 배율까지 곱하면 16°로 실무 범위 위쪽). ' +
+      '당대 캐러벨의 실측 압류각 자료 필요',
   },
   /** 이 풍속에서 위 각도가 그대로 나온다. 세면 커지고 약하면 줄어든다. */
   referenceWindKnots: {
     value: 14,
-    unit: "kn",
-    grade: "unverified",
-    source: "감으로 정함. 압류각을 풍속별로 잰 자료 필요",
+    unit: 'kn',
+    grade: 'unverified',
+    source: '감으로 정함. 압류각을 풍속별로 잰 자료 필요',
   },
   // 풍속 배율의 위아래를 자른다. 무풍에서 0으로 죽거나 폭풍에서 발산하지 않게
   // 하는 것이 전부다 — 어느 자료에도 이런 수는 없다.
-  windScaleFloor: internal(0.4, "배", "풍속 배율의 하한. 모델 내부 클램프"),
-  windScaleCap: internal(1.6, "배", "풍속 배율의 상한. 모델 내부 클램프"),
-} as const satisfies Record<string, Tuned>;
+  windScaleFloor: internal(0.4, '배', '풍속 배율의 하한. 모델 내부 클램프'),
+  windScaleCap: internal(1.6, '배', '풍속 배율의 상한. 모델 내부 클램프'),
+} as const satisfies Record<string, Tuned>
 
-export const LEEWAY_TABLES = [LEEWAY_SCALARS] as const;
-export const LEEWAY = tunedValues(LEEWAY_SCALARS);
+export const LEEWAY_TABLES = [LEEWAY_SCALARS] as const
+export const LEEWAY = tunedValues(LEEWAY_SCALARS)

@@ -1,24 +1,24 @@
-import { GRID } from "../../content/game/grid.tuning";
-import type { TerrainZone } from "../../content/game/game-content.types";
-import type { LatLon } from "../../sim/geo/geo.types";
-import { FULL_TURN_DEG, NM_PER_DEGREE, toRadians, wrapLongitude } from "../../sim/geo/geo.utils";
-import type { TileMap } from "../../sim/map/tile-map.types";
-import { regionKey, regionOf } from "../region/region";
-import { DIRECTION_DELTA, isDiagonal } from "./direction";
-import type { Direction } from "./direction.types";
-import { latitudeOfMercatorY, mercatorY } from "../../sim/geo/mercator.utils";
-import type { Cell, LandTerrain, Terrain, WorldGrid } from "./world-grid.types";
+import { GRID } from '../../content/game/grid.tuning'
+import type { TerrainZone } from '../../content/game/game-content.types'
+import type { LatLon } from '../../sim/geo/geo.types'
+import { FULL_TURN_DEG, NM_PER_DEGREE, toRadians, wrapLongitude } from '../../sim/geo/geo.utils'
+import type { TileMap } from '../../sim/map/tile-map.types'
+import { regionKey, regionOf } from '../region/region'
+import { DIRECTION_DELTA, isDiagonal } from './direction'
+import type { Direction } from './direction.types'
+import { latitudeOfMercatorY, mercatorY } from '../../sim/geo/mercator.utils'
+import type { Cell, LandTerrain, Terrain, WorldGrid } from './world-grid.types'
 
 /** 경도의 서쪽 끝. 정의다. */
-const WEST_EDGE_LON = -180;
+const WEST_EDGE_LON = -180
 
-const TERRAIN_CODES: readonly Terrain[] = ["sea", "grassland", "desert"];
+const TERRAIN_CODES: readonly Terrain[] = ['sea', 'grassland', 'desert']
 
 export interface WorldGridOptions {
   /** 시뮬의 충돌 판정 마스크(1/16°). 게임 격자는 여기서 파생한다 (R2). */
-  landMap: TileMap;
-  zones: readonly TerrainZone[];
-  anchorages: readonly { id: string; anchorage: LatLon }[];
+  landMap: TileMap
+  zones: readonly TerrainZone[]
+  anchorages: readonly { id: string; anchorage: LatLon }[]
 }
 
 /**
@@ -29,41 +29,41 @@ export interface WorldGridOptions {
  * 영역을 처음 물을 때 굽는다 (R4).
  */
 export function createWorldGrid(options: WorldGridOptions): WorldGrid {
-  const { landMap, zones, anchorages } = options;
-  const cellDeg = GRID.cellDeg;
-  const cellRad = toRadians(cellDeg);
-  const topY = mercatorY(GRID.maxLat);
-  const width = Math.round(FULL_TURN_DEG / cellDeg);
-  const height = Math.round((2 * topY) / cellRad);
+  const { landMap, zones, anchorages } = options
+  const cellDeg = GRID.cellDeg
+  const cellRad = toRadians(cellDeg)
+  const topY = mercatorY(GRID.maxLat)
+  const width = Math.round(FULL_TURN_DEG / cellDeg)
+  const height = Math.round((2 * topY) / cellRad)
 
-  const wrapX = (x: number): number => ((x % width) + width) % width;
-  const isInside = (cell: Cell): boolean => cell.y >= 0 && cell.y < height;
-  const indexOf = (cell: Cell): number => cell.y * width + wrapX(cell.x);
+  const wrapX = (x: number): number => ((x % width) + width) % width
+  const isInside = (cell: Cell): boolean => cell.y >= 0 && cell.y < height
+  const indexOf = (cell: Cell): number => cell.y * width + wrapX(cell.x)
 
-  const latOfRow = (y: number): number => latitudeOfMercatorY(topY - y * cellRad);
+  const latOfRow = (y: number): number => latitudeOfMercatorY(topY - y * cellRad)
   const cellCenter = (cell: Cell): LatLon => ({
     lat: latOfRow(cell.y + 1 / 2),
     lon: WEST_EDGE_LON + (wrapX(cell.x) + 1 / 2) * cellDeg,
-  });
+  })
   const cellOf = (position: LatLon): Cell | null => {
-    const y = Math.floor((topY - mercatorY(position.lat)) / cellRad);
+    const y = Math.floor((topY - mercatorY(position.lat)) / cellRad)
     if (y < 0 || y >= height) {
-      return null;
+      return null
     }
-    const x = Math.floor((wrapLongitude(position.lon) - WEST_EDGE_LON) / cellDeg);
-    return { x: wrapX(x), y };
-  };
+    const x = Math.floor((wrapLongitude(position.lon) - WEST_EDGE_LON) / cellDeg)
+    return { x: wrapX(x), y }
+  }
 
   /** 정박지 칸은 바다다. 시뮬이 정박지 앞바다를 여는 것(W5)과 같은 이유다. */
-  const forcedSea = new Set<number>();
-  const portByIndex = new Map<number, string>();
-  const cellByPort = new Map<string, Cell>();
+  const forcedSea = new Set<number>()
+  const portByIndex = new Map<number, string>()
+  const cellByPort = new Map<string, Cell>()
   for (const { id, anchorage } of anchorages) {
-    const cell = cellOf(anchorage);
+    const cell = cellOf(anchorage)
     if (cell !== null) {
-      forcedSea.add(indexOf(cell));
-      portByIndex.set(indexOf(cell), id);
-      cellByPort.set(id, cell);
+      forcedSea.add(indexOf(cell))
+      portByIndex.set(indexOf(cell), id)
+      cellByPort.set(id, cell)
     }
   }
 
@@ -74,65 +74,65 @@ export function createWorldGrid(options: WorldGridOptions): WorldGrid {
         position.lat < z.maxLat &&
         position.lon >= z.minLon &&
         position.lon < z.maxLon,
-    );
-    return zone?.terrain ?? "grassland";
-  };
+    )
+    return zone?.terrain ?? 'grassland'
+  }
 
   const classify = (cell: Cell): Terrain => {
     if (forcedSea.has(indexOf(cell))) {
-      return "sea";
+      return 'sea'
     }
-    const samples = GRID.samplesPerAxis;
-    const westLon = WEST_EDGE_LON + wrapX(cell.x) * cellDeg;
-    let seaCount = 0;
+    const samples = GRID.samplesPerAxis
+    const westLon = WEST_EDGE_LON + wrapX(cell.x) * cellDeg
+    let seaCount = 0
     for (let sy = 0; sy < samples; sy += 1) {
-      const lat = latOfRow(cell.y + (sy + 1 / 2) / samples);
+      const lat = latOfRow(cell.y + (sy + 1 / 2) / samples)
       for (let sx = 0; sx < samples; sx += 1) {
-        const lon = westLon + ((sx + 1 / 2) / samples) * cellDeg;
+        const lon = westLon + ((sx + 1 / 2) / samples) * cellDeg
         if (landMap.isNavigable({ lat, lon })) {
-          seaCount += 1;
+          seaCount += 1
         }
       }
     }
     if (seaCount / (samples * samples) >= GRID.seaFractionMin) {
-      return "sea";
+      return 'sea'
     }
-    return landTerrainAt(cellCenter(cell));
-  };
+    return landTerrainAt(cellCenter(cell))
+  }
 
-  const terrain = new Uint8Array(width * height);
-  const baked = new Set<string>();
+  const terrain = new Uint8Array(width * height)
+  const baked = new Set<string>()
 
   const bakeRegionOf = (cell: Cell): void => {
-    const region = regionOf({ x: wrapX(cell.x), y: cell.y });
-    const key = regionKey(region);
+    const region = regionOf({ x: wrapX(cell.x), y: cell.y })
+    const key = regionKey(region)
     if (baked.has(key)) {
-      return;
+      return
     }
-    baked.add(key);
-    const x0 = region.rx * GRID.regionCols;
-    const y0 = region.ry * GRID.regionRows;
-    const y1 = Math.min(height, y0 + GRID.regionRows);
+    baked.add(key)
+    const x0 = region.rx * GRID.regionCols
+    const y0 = region.ry * GRID.regionRows
+    const y1 = Math.min(height, y0 + GRID.regionRows)
     for (let y = y0; y < y1; y += 1) {
       for (let x = x0; x < x0 + GRID.regionCols; x += 1) {
-        terrain[y * width + x] = TERRAIN_CODES.indexOf(classify({ x, y }));
+        terrain[y * width + x] = TERRAIN_CODES.indexOf(classify({ x, y }))
       }
     }
-  };
+  }
 
   const terrainAt = (cell: Cell): Terrain | null => {
     if (!isInside(cell)) {
-      return null;
+      return null
     }
-    bakeRegionOf(cell);
-    return TERRAIN_CODES[terrain[indexOf(cell)] ?? 0] ?? "sea";
-  };
+    bakeRegionOf(cell)
+    return TERRAIN_CODES[terrain[indexOf(cell)] ?? 0] ?? 'sea'
+  }
 
   const neighbor = (cell: Cell, dir: Direction): Cell | null => {
-    const { dx, dy } = DIRECTION_DELTA[dir];
-    const next = { x: wrapX(cell.x + dx), y: cell.y + dy };
-    return isInside(next) ? next : null;
-  };
+    const { dx, dy } = DIRECTION_DELTA[dir]
+    const next = { x: wrapX(cell.x + dx), y: cell.y + dy }
+    return isInside(next) ? next : null
+  }
 
   return {
     width,
@@ -146,11 +146,11 @@ export function createWorldGrid(options: WorldGridOptions): WorldGrid {
     cellOf,
     neighbor,
     stepNm(from: Cell, dir: Direction): number {
-      const to = neighbor(from, dir) ?? from;
-      const midLat = (cellCenter(from).lat + cellCenter(to).lat) / 2;
-      const sideNm = cellDeg * NM_PER_DEGREE * Math.cos(toRadians(midLat));
-      return isDiagonal(dir) ? sideNm * Math.SQRT2 : sideNm;
+      const to = neighbor(from, dir) ?? from
+      const midLat = (cellCenter(from).lat + cellCenter(to).lat) / 2
+      const sideNm = cellDeg * NM_PER_DEGREE * Math.cos(toRadians(midLat))
+      return isDiagonal(dir) ? sideNm * Math.SQRT2 : sideNm
     },
     bakedRegionCount: () => baked.size,
-  };
+  }
 }

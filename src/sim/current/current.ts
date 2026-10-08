@@ -1,5 +1,5 @@
-import { CURRENT_STREAMS } from "../../content/currents";
-import type { LatLon } from "../geo/geo.types";
+import { CURRENT_STREAMS } from '../../content/currents'
+import type { LatLon } from '../geo/geo.types'
 import {
   FULL_TURN_DEG,
   angleDifference,
@@ -7,35 +7,35 @@ import {
   normalizeHeading,
   toDegrees,
   toRadians,
-} from "../geo/geo.utils";
-import type { Current, CurrentStream } from "./current.types";
+} from '../geo/geo.utils'
+import type { Current, CurrentStream } from './current.types'
 
 /** 경도 구간 밖으로 이만큼까지는 서서히 약해지며 이어진다. */
-const LON_FEATHER_DEG = 6;
+const LON_FEATHER_DEG = 6
 /** 벡터 합이 이보다 작으면 방위가 수치 잡음이 된다. 방위 대신 "무해류"를 낸다. */
-const CURRENT_EPSILON_KNOTS = 0.01;
+const CURRENT_EPSILON_KNOTS = 0.01
 /** 돛과 해류가 거의 정확히 상쇄된 상태. 이 아래는 정지로 본다. */
-const TRACK_EPSILON_KNOTS = 0.001;
+const TRACK_EPSILON_KNOTS = 0.001
 
 function span(value: number, center: number, half: number): number {
-  const distance = Math.abs(value - center);
-  return distance >= half ? 0 : Math.cos(((distance / half) * Math.PI) / 2);
+  const distance = Math.abs(value - center)
+  return distance >= half ? 0 : Math.cos(((distance / half) * Math.PI) / 2)
 }
 
 /** 경도는 순환한다. 중심 기준 최단 차이로 잰다. */
 function lonWeight(lon: number, stream: CurrentStream): number {
   // 지구를 한 바퀴 감는 해류(남극순환류)는 경도로 약해질 가장자리가 없다.
   if (stream.maxLon - stream.minLon >= FULL_TURN_DEG) {
-    return 1;
+    return 1
   }
-  const center = (stream.minLon + stream.maxLon) / 2;
-  const half = (stream.maxLon - stream.minLon) / 2;
-  const difference = Math.abs(angleDifference(lon, center));
+  const center = (stream.minLon + stream.maxLon) / 2
+  const half = (stream.maxLon - stream.minLon) / 2
+  const difference = Math.abs(angleDifference(lon, center))
   if (difference <= half) {
-    return 1;
+    return 1
   }
-  const beyond = difference - half;
-  return beyond >= LON_FEATHER_DEG ? 0 : 1 - beyond / LON_FEATHER_DEG;
+  const beyond = difference - half
+  return beyond >= LON_FEATHER_DEG ? 0 : 1 - beyond / LON_FEATHER_DEG
 }
 
 /**
@@ -45,30 +45,30 @@ function lonWeight(lon: number, stream: CurrentStream): number {
  * 꺾이면 시뮬이 거짓말처럼 보인다. 난수는 없다. 같은 지점은 항상 같은 해류다 (SPEC 8.1).
  */
 export function currentAt(position: LatLon): Current {
-  let east = 0;
-  let north = 0;
-  let strongest = 0;
-  let name = "무해류";
+  let east = 0
+  let north = 0
+  let strongest = 0
+  let name = '무해류'
 
   for (const stream of CURRENT_STREAMS) {
-    const weight = span(position.lat, stream.lat, stream.latSpan) * lonWeight(position.lon, stream);
+    const weight = span(position.lat, stream.lat, stream.latSpan) * lonWeight(position.lon, stream)
     if (weight <= 0) {
-      continue;
+      continue
     }
-    const speed = stream.speedKnots * weight;
-    east += speed * Math.sin(toRadians(stream.toDeg));
-    north += speed * Math.cos(toRadians(stream.toDeg));
+    const speed = stream.speedKnots * weight
+    east += speed * Math.sin(toRadians(stream.toDeg))
+    north += speed * Math.cos(toRadians(stream.toDeg))
     if (speed > strongest) {
-      strongest = speed;
-      name = stream.name;
+      strongest = speed
+      name = stream.name
     }
   }
 
-  const speedKnots = Math.hypot(east, north);
+  const speedKnots = Math.hypot(east, north)
   if (speedKnots < CURRENT_EPSILON_KNOTS) {
-    return { toDeg: 0, speedKnots: 0, name: "무해류" };
+    return { toDeg: 0, speedKnots: 0, name: '무해류' }
   }
-  return { toDeg: normalizeHeading(toDegrees(Math.atan2(east, north))), speedKnots, name };
+  return { toDeg: normalizeHeading(toDegrees(Math.atan2(east, north))), speedKnots, name }
 }
 
 /**
@@ -82,16 +82,16 @@ export function groundTrack(
 ): { headingDeg: number; speedKnots: number } {
   const east =
     sailKnots * Math.sin(toRadians(headingDeg)) +
-    current.speedKnots * Math.sin(toRadians(current.toDeg));
+    current.speedKnots * Math.sin(toRadians(current.toDeg))
   const north =
     sailKnots * Math.cos(toRadians(headingDeg)) +
-    current.speedKnots * Math.cos(toRadians(current.toDeg));
+    current.speedKnots * Math.cos(toRadians(current.toDeg))
 
-  const speedKnots = Math.hypot(east, north);
+  const speedKnots = Math.hypot(east, north)
   if (speedKnots < TRACK_EPSILON_KNOTS) {
-    return { headingDeg, speedKnots: 0 };
+    return { headingDeg, speedKnots: 0 }
   }
-  return { headingDeg: normalizeHeading(toDegrees(Math.atan2(east, north))), speedKnots };
+  return { headingDeg: normalizeHeading(toDegrees(Math.atan2(east, north))), speedKnots }
 }
 
 /**
@@ -99,6 +99,6 @@ export function groundTrack(
  * 해류는 "남향류"가 남으로 가는 것이다. 표기에서도 규약 차이를 드러낸다.
  */
 export function describeCurrentDirection(toDeg: number): string {
-  const points = ["북", "북동", "동", "남동", "남", "남서", "서", "북서"];
-  return `${points[compassIndex(toDeg)]}향`;
+  const points = ['북', '북동', '동', '남동', '남', '남서', '서', '북서']
+  return `${points[compassIndex(toDeg)]}향`
 }

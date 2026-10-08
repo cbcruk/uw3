@@ -1,4 +1,4 @@
-import type { HistoricalVoyage } from "../sim/voyage/logbook.types";
+import type { HistoricalVoyage } from '../sim/voyage/logbook.types'
 
 /**
  * 재현 대상 항해. 목표·경로·정답이 사료에서 나온다 (SPEC 2).
@@ -10,21 +10,21 @@ import type { HistoricalVoyage } from "../sim/voyage/logbook.types";
  */
 export const HISTORICAL_VOYAGES: readonly HistoricalVoyage[] = [
   {
-    id: "volta-do-mar",
-    name: "볼타 두 마르",
-    summary: "리스본에서 아조레스로. 편서풍을 정면으로 받는 서진이다.",
+    id: 'volta-do-mar',
+    name: '볼타 두 마르',
+    summary: '리스본에서 아조레스로. 편서풍을 정면으로 받는 서진이다.',
     lesson:
-      "직항은 편서풍을 거스른다. 포르투갈 항해사들은 남쪽 무역풍대로 내려가 서진한 뒤 북상했다.",
-    startPortId: "lisboa",
-    endPortId: "angra",
+      '직항은 편서풍을 거스른다. 포르투갈 항해사들은 남쪽 무역풍대로 내려가 서진한 뒤 북상했다.',
+    startPortId: 'lisboa',
+    endPortId: 'angra',
     departure: { year: 1502, month: 3, day: 14 },
     reference: {
       days: null,
-      source: "미확인. 15세기 리스본–아조레스 구간의 항해일지 소요 일수를 찾아야 한다.",
+      source: '미확인. 15세기 리스본–아조레스 구간의 항해일지 소요 일수를 찾아야 한다.',
     },
   },
-];
+]
 
 export function findVoyage(id: string): HistoricalVoyage | undefined {
-  return HISTORICAL_VOYAGES.find((voyage) => voyage.id === id);
+  return HISTORICAL_VOYAGES.find((voyage) => voyage.id === id)
 }

@@ -1,33 +1,36 @@
-import { defineConfig } from "vite-plus";
+import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
   test: {
-    include: ["src/**/*.test.ts"],
+    include: ['src/**/*.test.ts'],
   },
   run: {
     tasks: {
       // 자료 검증. 테스트와 갈라 놓은 이유는 실패했을 때 볼 곳이 다르기 때문이다 —
       // 이쪽이 빨개지면 `content/`를, `vp test`가 빨개지면 `sim/`을 고친다.
       validate: {
-        command: "node scripts/validate.mjs",
+        command: 'node scripts/validate.mjs',
         cache: false,
       },
       // 헤드리스 충실도 측정. 통과/실패가 없는 **측정**이므로 CI 게이트가 아니다 —
       // 시뮬을 고쳤을 때 무엇이 움직였는지 보려고 사람이 부른다.
       // `vp run harness -- --json`으로 기계가 읽을 형태를 낸다.
       harness: {
-        command: "node scripts/harness.mjs",
+        command: 'node scripts/harness.mjs',
         cache: false,
       },
     },
   },
   staged: {
-    "*": "vp check --fix",
+    '*': 'vp check --fix',
   },
-  fmt: {},
+  fmt: {
+    singleQuote: true,
+    semi: false,
+  },
   lint: {
-    jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
-    rules: { "vite-plus/prefer-vite-plus-imports": "error" },
+    jsPlugins: [{ name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' }],
+    rules: { 'vite-plus/prefer-vite-plus-imports': 'error' },
     options: { typeAware: true, typeCheck: true },
     overrides: [
       {
@@ -46,17 +49,17 @@ export default defineConfig({
         // `wind.utils.ts`를 `rng/noise.ts`와 `geo`로 갈라 옮겼다 — 값 잡음과 각도
         // 계산이 `wind/` 안에 있으면 그 상수가 풍계 튜닝 값으로 읽힌다.
         files: [
-          "src/sim/voyage/**",
-          "src/sim/ship/**",
-          "src/sim/wind/**",
-          "src/sim/current/**",
-          "src/sim/fog/**",
+          'src/sim/voyage/**',
+          'src/sim/ship/**',
+          'src/sim/wind/**',
+          'src/sim/current/**',
+          'src/sim/fog/**',
           // 게임 레이어도 같다. 표는 `content/game/`에 있다 (SPEC-roguelike §4).
-          "src/game/**",
+          'src/game/**',
         ],
         rules: {
-          "no-magic-numbers": [
-            "error",
+          'no-magic-numbers': [
+            'error',
             {
               // 0·1·2는 수치가 아니라 구조다 — clamp 경계, 인덱스, 반/두 배.
               // 표로 빼면 오히려 읽기 어려워진다.
@@ -70,9 +73,9 @@ export default defineConfig({
       {
         // 테스트는 기대값을 숫자로 적는 것이 일이다. 상수로 빼면 무엇을 검증하는지
         // 오히려 안 보인다.
-        files: ["**/*.test.ts"],
-        rules: { "no-magic-numbers": "off" },
+        files: ['**/*.test.ts'],
+        rules: { 'no-magic-numbers': 'off' },
       },
     ],
   },
-});
+})

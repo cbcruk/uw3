@@ -1,5 +1,5 @@
-import { tunedValues } from "../tuning/tuning";
-import type { Tuned } from "../tuning/tuning.types";
+import { tunedValues } from '../tuning/tuning'
+import type { Tuned } from '../tuning/tuning.types'
 
 /**
  * 탈것의 하루 행정 (해리/일). 지형별로 다르다.
@@ -10,29 +10,29 @@ import type { Tuned } from "../tuning/tuning.types";
 const MOUNT_SCALARS = {
   horseGrassland: {
     value: 25,
-    unit: "해리/일",
-    grade: "unverified",
-    source: "감으로 정함 (약 46km). 짐을 실은 말의 장거리 하루 행정 사료 필요",
+    unit: '해리/일',
+    grade: 'unverified',
+    source: '감으로 정함 (약 46km). 짐을 실은 말의 장거리 하루 행정 사료 필요',
   },
   horseDesert: {
     value: 10,
-    unit: "해리/일",
-    grade: "unverified",
-    source: "감으로 정함. 물이 말을 묶는다는 방향만 둔 값. 사막 횡단 기병 기록 필요",
+    unit: '해리/일',
+    grade: 'unverified',
+    source: '감으로 정함. 물이 말을 묶는다는 방향만 둔 값. 사막 횡단 기병 기록 필요',
   },
   camelGrassland: {
     value: 18,
-    unit: "해리/일",
-    grade: "unverified",
-    source: "감으로 정함. 낙타가 초지에서 말보다 느리다는 방향만 둔 값. 사료 필요",
+    unit: '해리/일',
+    grade: 'unverified',
+    source: '감으로 정함. 낙타가 초지에서 말보다 느리다는 방향만 둔 값. 사료 필요',
   },
   camelDesert: {
     value: 20,
-    unit: "해리/일",
-    grade: "unverified",
-    source: "감으로 정함 (약 37km). 사하라·아라비아 대상의 하루 행정 기록 필요",
+    unit: '해리/일',
+    grade: 'unverified',
+    source: '감으로 정함 (약 37km). 사하라·아라비아 대상의 하루 행정 기록 필요',
   },
-} as const satisfies Record<string, Tuned>;
+} as const satisfies Record<string, Tuned>
 
-export const MOUNT_TABLES = [MOUNT_SCALARS] as const;
-export const MOUNT = tunedValues(MOUNT_SCALARS);
+export const MOUNT_TABLES = [MOUNT_SCALARS] as const
+export const MOUNT = tunedValues(MOUNT_SCALARS)

@@ -1,7 +1,7 @@
 export interface GameDate {
-  year: number;
-  month: number;
-  day: number;
+  year: number
+  month: number
+  day: number
 }
 
-export type Season = "winter" | "spring" | "summer" | "autumn";
+export type Season = 'winter' | 'spring' | 'summer' | 'autumn'

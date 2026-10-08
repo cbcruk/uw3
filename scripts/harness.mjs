@@ -3,22 +3,22 @@
 //
 // `--json`을 주면 기계가 읽을 형태로 낸다. 커밋 간 diff를 뜨는 용도다 —
 // 시뮬을 고쳤을 때 어떤 수가 움직였는지가 이 diff에 남는다.
-import { createServer } from "vite";
+import { createServer } from 'vite'
 
-const asJson = process.argv.includes("--json");
+const asJson = process.argv.includes('--json')
 
 const server = await createServer({
   configFile: false,
-  logLevel: "error",
+  logLevel: 'error',
   server: { middlewareMode: true },
-  appType: "custom",
-});
+  appType: 'custom',
+})
 
 try {
-  const { runHarness } = await server.ssrLoadModule("/src/harness/harness.ts");
-  const { formatReport } = await server.ssrLoadModule("/src/harness/report.ts");
+  const { runHarness } = await server.ssrLoadModule('/src/harness/harness.ts')
+  const { formatReport } = await server.ssrLoadModule('/src/harness/report.ts')
 
-  const results = runHarness();
+  const results = runHarness()
 
   if (asJson) {
     // 시드별 원자료는 빼고 집계만 낸다. 원자료까지 넣으면 diff가 읽히지 않는다.
@@ -41,10 +41,10 @@ try {
         null,
         2,
       ),
-    );
+    )
   } else {
-    console.log(formatReport(results));
+    console.log(formatReport(results))
   }
 } finally {
-  await server.close();
+  await server.close()
 }

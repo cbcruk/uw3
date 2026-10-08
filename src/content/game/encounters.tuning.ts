@@ -1,6 +1,6 @@
-import { internal, tunedValues } from "../tuning/tuning";
-import type { Tuned } from "../tuning/tuning.types";
-import type { EncounterKindId } from "./game-content.types";
+import { internal, tunedValues } from '../tuning/tuning'
+import type { Tuned } from '../tuning/tuning.types'
+import type { EncounterKindId } from './game-content.types'
 
 /**
  * 조우 밀도 — 그 종류가 나올 수 있는 칸 천 개당 몇 무리인가.
@@ -12,12 +12,12 @@ import type { EncounterKindId } from "./game-content.types";
 const ENCOUNTER_SCALARS = {
   pirate: internal(
     1.25,
-    "무리/천 칸",
-    "게임 체감 값. 바다만 있는 영역에 약 3척. 지역별 밀도가 아니다",
+    '무리/천 칸',
+    '게임 체감 값. 바다만 있는 영역에 약 3척. 지역별 밀도가 아니다',
   ),
-  bandit: internal(0.8, "무리/천 칸", "게임 체감 값. 뭍만 있는 영역에 약 2무리"),
-  beast: internal(0.6, "무리/천 칸", "게임 체감 값. 초지만 있는 영역에 1~2무리"),
-} as const satisfies Record<EncounterKindId, Tuned>;
+  bandit: internal(0.8, '무리/천 칸', '게임 체감 값. 뭍만 있는 영역에 약 2무리'),
+  beast: internal(0.6, '무리/천 칸', '게임 체감 값. 초지만 있는 영역에 1~2무리'),
+} as const satisfies Record<EncounterKindId, Tuned>
 
-export const ENCOUNTER_TABLES = [ENCOUNTER_SCALARS] as const;
-export const ENCOUNTER_DENSITY = tunedValues(ENCOUNTER_SCALARS);
+export const ENCOUNTER_TABLES = [ENCOUNTER_SCALARS] as const
+export const ENCOUNTER_DENSITY = tunedValues(ENCOUNTER_SCALARS)

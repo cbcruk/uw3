@@ -1,7 +1,7 @@
-import { HOURS_PER_DAY, formatGameDate } from "../../sim/calendar/calendar";
-import { WIND_REGIME_LABELS, describeWindDirection, windAt } from "../../sim/wind/wind";
-import { currentAt, describeCurrentDirection } from "../../sim/current/current";
-import type { Direction } from "../../game/grid/direction.types";
+import { HOURS_PER_DAY, formatGameDate } from '../../sim/calendar/calendar'
+import { WIND_REGIME_LABELS, describeWindDirection, windAt } from '../../sim/wind/wind'
+import { currentAt, describeCurrentDirection } from '../../sim/current/current'
+import type { Direction } from '../../game/grid/direction.types'
 import {
   applyCommand,
   createRun,
@@ -9,24 +9,24 @@ import {
   dayNumberOf,
   passageFrom,
   replayRun,
-} from "../../game/run/run";
+} from '../../game/run/run'
 import {
   applyRunToMeta,
   dailyConfig,
   dailyKey,
   freeConfig,
   recordOf,
-} from "../../game/expedition/expedition";
-import type { WorldGrid } from "../../game/grid/world-grid.types";
-import { findPort } from "../../content/ports";
-import { bearingDeg, haversineNm } from "../../sim/geo/geo.utils";
-import { loadActive, loadMeta, saveActive, saveMeta } from "./game-storage";
-import { renderExpeditionPanel } from "./expedition-panel";
-import { drawRegion } from "./region-renderer";
-import { canEnter } from "../../game/travel/travel";
-import { daysOfSupply } from "../../game/supplies/supplies";
-import type { RunConfig, RunState } from "../../game/run/run.types";
-import type { LogLine } from "./game-view.types";
+} from '../../game/expedition/expedition'
+import type { WorldGrid } from '../../game/grid/world-grid.types'
+import { findPort } from '../../content/ports'
+import { bearingDeg, haversineNm } from '../../sim/geo/geo.utils'
+import { loadActive, loadMeta, saveActive, saveMeta } from './game-storage'
+import { renderExpeditionPanel } from './expedition-panel'
+import { drawRegion } from './region-renderer'
+import { canEnter } from '../../game/travel/travel'
+import { daysOfSupply } from '../../game/supplies/supplies'
+import type { RunConfig, RunState } from '../../game/run/run.types'
+import type { LogLine } from './game-view.types'
 import {
   CONVEYANCE_LABEL,
   DIRECTION_LABEL,
@@ -35,30 +35,30 @@ import {
   describeDrift,
   describeEvent,
   hoursPerCell,
-} from "./game-view.utils";
+} from './game-view.utils'
 
-const LOG_LIMIT = 14;
-const GAUGE_WARN = 0.5;
-const GAUGE_BAD = 0.25;
-const SEED_RANGE = 2 ** 32;
+const LOG_LIMIT = 14
+const GAUGE_WARN = 0.5
+const GAUGE_BAD = 0.25
+const SEED_RANGE = 2 ** 32
 
 interface Session {
-  run: RunState;
-  daily: string | null;
+  run: RunState
+  daily: string | null
 }
 
 /** 나침반 3×3 칸 배치. 가운데는 자기 자리다. */
 const COMPASS_LAYOUT: readonly (Direction | null)[] = [
-  "nw",
-  "n",
-  "ne",
-  "w",
+  'nw',
+  'n',
+  'ne',
+  'w',
   null,
-  "e",
-  "sw",
-  "s",
-  "se",
-];
+  'e',
+  'sw',
+  's',
+  'se',
+]
 
 /**
  * 로그라이크 화면. 영역 하나를 메르카토르 평면 타일로 그리고, 방향키 한 번에 한 칸 간다.
@@ -67,19 +67,19 @@ const COMPASS_LAYOUT: readonly (Direction | null)[] = [
  * 진행 중인 원정은 명령 로그로 저장하고, 다시 열면 재현으로 이어 간다.
  */
 export function mountGame(root: HTMLElement): void {
-  const grid = createWorld();
-  let meta = loadMeta();
-  const saved = loadActive();
+  const grid = createWorld()
+  let meta = loadMeta()
+  const saved = loadActive()
   let session: Session =
     saved === null
       ? startSession(grid, freeConfig(freshSeed(), meta), null)
-      : { run: replayRun(saved.config, saved.commands, grid), daily: saved.daily };
+      : { run: replayRun(saved.config, saved.commands, grid), daily: saved.daily }
   const log: LogLine[] = [
     {
-      text: saved === null ? "원정을 떠난다. 방향키로 한 칸씩 움직인다" : "원정을 이어 간다",
-      tone: "info",
+      text: saved === null ? '원정을 떠난다. 방향키로 한 칸씩 움직인다' : '원정을 이어 간다',
+      tone: 'info',
     },
-  ];
+  ]
 
   root.innerHTML = `
     <main class="layout">
@@ -94,13 +94,13 @@ export function mountGame(root: HTMLElement): void {
         <ul id="rl-log" class="rl-log"></ul>
       </aside>
     </main>
-  `;
+  `
 
-  const canvas = root.querySelector<HTMLCanvasElement>("#rl-canvas");
-  const expeditionRoot = root.querySelector<HTMLElement>("#rl-expedition");
-  const statusRoot = root.querySelector<HTMLElement>("#rl-status");
-  const compassRoot = root.querySelector<HTMLElement>("#rl-compass");
-  const logRoot = root.querySelector<HTMLElement>("#rl-log");
+  const canvas = root.querySelector<HTMLCanvasElement>('#rl-canvas')
+  const expeditionRoot = root.querySelector<HTMLElement>('#rl-expedition')
+  const statusRoot = root.querySelector<HTMLElement>('#rl-status')
+  const compassRoot = root.querySelector<HTMLElement>('#rl-compass')
+  const logRoot = root.querySelector<HTMLElement>('#rl-log')
   if (
     canvas === null ||
     expeditionRoot === null ||
@@ -108,106 +108,101 @@ export function mountGame(root: HTMLElement): void {
     compassRoot === null ||
     logRoot === null
   ) {
-    throw new Error("game view markup is incomplete");
+    throw new Error('game view markup is incomplete')
   }
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext('2d')
   if (ctx === null) {
-    throw new Error("2d context unavailable");
+    throw new Error('2d context unavailable')
   }
 
   const draw = (): void => {
-    const { run } = session;
-    drawRegion(ctx, canvas, run);
-    expeditionRoot.innerHTML = renderExpeditionPanel(
-      run,
-      session.daily,
-      meta,
-      dailyKey(new Date()),
-    );
-    statusRoot.innerHTML = renderStatus(run);
-    compassRoot.innerHTML = renderCompass(run);
+    const { run } = session
+    drawRegion(ctx, canvas, run)
+    expeditionRoot.innerHTML = renderExpeditionPanel(run, session.daily, meta, dailyKey(new Date()))
+    statusRoot.innerHTML = renderStatus(run)
+    compassRoot.innerHTML = renderCompass(run)
     logRoot.innerHTML = log
       .map((line) => `<li class="rl-log__item rl-log__item--${line.tone}">${line.text}</li>`)
-      .join("");
-  };
+      .join('')
+  }
 
   const pushLines = (lines: readonly (LogLine | null)[]): void => {
     for (const line of lines) {
       if (line !== null) {
-        log.unshift(line);
+        log.unshift(line)
       }
     }
-    log.length = Math.min(log.length, LOG_LIMIT);
-  };
+    log.length = Math.min(log.length, LOG_LIMIT)
+  }
 
-  expeditionRoot.addEventListener("click", (event) => {
-    const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-start]");
+  expeditionRoot.addEventListener('click', (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-start]')
     if (button === null) {
-      return;
+      return
     }
-    const today = dailyKey(new Date());
-    const daily = button.dataset["start"] === "daily" ? today : null;
-    const config = daily === null ? freeConfig(freshSeed(), meta) : dailyConfig(daily);
-    session = startSession(grid, config, daily);
-    log.length = 0;
-    pushLines([{ text: `${daily === null ? "자유 원정" : "오늘의 원정"}을 떠난다`, tone: "info" }]);
-    button.blur();
-    draw();
-  });
+    const today = dailyKey(new Date())
+    const daily = button.dataset['start'] === 'daily' ? today : null
+    const config = daily === null ? freeConfig(freshSeed(), meta) : dailyConfig(daily)
+    session = startSession(grid, config, daily)
+    log.length = 0
+    pushLines([{ text: `${daily === null ? '자유 원정' : '오늘의 원정'}을 떠난다`, tone: 'info' }])
+    button.blur()
+    draw()
+  })
 
-  window.addEventListener("keydown", (event: KeyboardEvent) => {
-    const command = commandForKey(event.key, event.code);
+  window.addEventListener('keydown', (event: KeyboardEvent) => {
+    const command = commandForKey(event.key, event.code)
     if (command === null || event.metaKey || event.ctrlKey) {
-      return;
+      return
     }
-    event.preventDefault();
-    const { run, daily } = session;
-    const wasRunning = run.ended === null;
-    const events = applyCommand(run, command);
-    pushLines([...events.map(describeEvent), describeDrift(events)]);
-    const record = wasRunning ? recordOf(run, daily) : null;
+    event.preventDefault()
+    const { run, daily } = session
+    const wasRunning = run.ended === null
+    const events = applyCommand(run, command)
+    pushLines([...events.map(describeEvent), describeDrift(events)])
+    const record = wasRunning ? recordOf(run, daily) : null
     if (record !== null) {
-      meta = applyRunToMeta(meta, run, record);
-      saveMeta(meta);
-      saveActive(null);
+      meta = applyRunToMeta(meta, run, record)
+      saveMeta(meta)
+      saveActive(null)
     } else if (run.ended === null) {
-      saveActive({ config: run.config, commands: run.commands, daily });
+      saveActive({ config: run.config, commands: run.commands, daily })
     }
-    draw();
-  });
-  window.addEventListener("resize", draw);
-  draw();
+    draw()
+  })
+  window.addEventListener('resize', draw)
+  draw()
 }
 
 /** 새 원정을 연다. 시작하자마자 저장해 두어 첫 명령 전에 닫아도 같은 계약으로 돌아온다. */
 function startSession(grid: WorldGrid, config: RunConfig, daily: string | null): Session {
-  const run = createRun(config, grid);
-  saveActive({ config, commands: [], daily });
-  return { run, daily };
+  const run = createRun(config, grid)
+  saveActive({ config, commands: [], daily })
+  return { run, daily }
 }
 
 /** 자유 원정의 시드. 고르는 순간만 비결정이다 — 고른 뒤의 원정은 시드로 재현된다. */
 function freshSeed(): number {
-  return Math.floor(Math.random() * SEED_RANGE);
+  return Math.floor(Math.random() * SEED_RANGE)
 }
 
 function renderStatus(run: RunState): string {
-  const position = run.grid.cellCenter(run.player.cell);
-  const wind = windAt(position, dayNumberOf(run));
-  const hour = Math.floor(run.elapsedHours % HOURS_PER_DAY);
-  const lat = `${Math.abs(position.lat).toFixed(2)}°${position.lat >= 0 ? "N" : "S"}`;
-  const lon = `${Math.abs(position.lon).toFixed(2)}°${position.lon >= 0 ? "E" : "W"}`;
-  const { supplies } = run;
+  const position = run.grid.cellCenter(run.player.cell)
+  const wind = windAt(position, dayNumberOf(run))
+  const hour = Math.floor(run.elapsedHours % HOURS_PER_DAY)
+  const lat = `${Math.abs(position.lat).toFixed(2)}°${position.lat >= 0 ? 'N' : 'S'}`
+  const lon = `${Math.abs(position.lon).toFixed(2)}°${position.lon >= 0 ? 'E' : 'W'}`
+  const { supplies } = run
   return `
     <header class="hud__header">
-      <h1>${formatGameDate(dayNumberOf(run))} ${String(hour).padStart(2, "0")}시</h1>
+      <h1>${formatGameDate(dayNumberOf(run))} ${String(hour).padStart(2, '0')}시</h1>
       <p>목표 ${describeGoal(run, position)}</p>
     </header>
     <div class="gauges">
-      ${renderGauge("선원", supplies.crew, run.shipClass.crewMax, `${supplies.crew}/${run.shipClass.crewMax}명`)}
-      ${renderGauge("선체", supplies.hull, supplies.hullMax, `${supplies.hull}/${supplies.hullMax}`)}
-      ${renderGauge("식량", supplies.food, supplies.capacity, supplies.food.toLocaleString())}
-      ${renderGauge("물", supplies.water, supplies.capacity, supplies.water.toLocaleString())}
+      ${renderGauge('선원', supplies.crew, run.shipClass.crewMax, `${supplies.crew}/${run.shipClass.crewMax}명`)}
+      ${renderGauge('선체', supplies.hull, supplies.hullMax, `${supplies.hull}/${supplies.hullMax}`)}
+      ${renderGauge('식량', supplies.food, supplies.capacity, supplies.food.toLocaleString())}
+      ${renderGauge('물', supplies.water, supplies.capacity, supplies.water.toLocaleString())}
     </div>
     <dl class="readout">
       <div class="readout__wide"><dt>보급</dt><dd>${daysOfSupply(supplies)}일분 · ${CONVEYANCE_LABEL[run.player.conveyance]}</dd></div>
@@ -219,65 +214,65 @@ function renderStatus(run: RunState): string {
       <div><dt>탐사</dt><dd>${run.explored.count().toLocaleString()}칸</dd></div>
       <div><dt>경과</dt><dd>${(run.elapsedHours / HOURS_PER_DAY).toFixed(1)}일</dd></div>
     </dl>
-  `;
+  `
 }
 
 /** 2편 상태창의 막대. 절반 아래면 노랗게, 4분의 1 아래면 붉게 칠한다. */
 function renderGauge(label: string, value: number, max: number, text: string): string {
-  const ratio = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
-  const tone = ratio > GAUGE_WARN ? "good" : ratio > GAUGE_BAD ? "warn" : "bad";
+  const ratio = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0
+  const tone = ratio > GAUGE_WARN ? 'good' : ratio > GAUGE_BAD ? 'warn' : 'bad'
   return `
     <div class="gauge">
       <span class="gauge__label">${label}</span>
       <span class="gauge__bar"><span class="gauge__fill gauge__fill--${tone}" style="width:${(ratio * 100).toFixed(1)}%"></span></span>
       <span class="gauge__text">${text}</span>
-    </div>`;
+    </div>`
 }
 
 /** 목표 항구까지의 직선 방위와 거리. 항로가 아니라 대권 거리다 — 길은 플레이어가 찾는다. */
 function describeGoal(run: RunState, position: { lat: number; lon: number }): string {
-  const goal = run.config.goalPortId === undefined ? undefined : findPort(run.config.goalPortId);
+  const goal = run.config.goalPortId === undefined ? undefined : findPort(run.config.goalPortId)
   if (goal === undefined) {
-    return "없음";
+    return '없음'
   }
-  const distance = haversineNm(position, goal.anchorage);
-  const toward = describeCurrentDirection(bearingDeg(position, goal.anchorage));
-  return `${goal.name} · ${toward} ${Math.round(distance).toLocaleString()}해리`;
+  const distance = haversineNm(position, goal.anchorage)
+  const toward = describeCurrentDirection(bearingDeg(position, goal.anchorage))
+  return `${goal.name} · ${toward} ${Math.round(distance).toLocaleString()}해리`
 }
 
 function describeCurrent(position: { lat: number; lon: number }): string {
-  const current = currentAt(position);
+  const current = currentAt(position)
   if (current.speedKnots <= 0) {
-    return "없음";
+    return '없음'
   }
-  return `${describeCurrentDirection(current.toDeg)} ${current.speedKnots.toFixed(1)}kn · ${current.name}`;
+  return `${describeCurrentDirection(current.toDeg)} ${current.speedKnots.toFixed(1)}kn · ${current.name}`
 }
 
 /** 방향마다 한 칸에 걸리는 시간. 바람이 막는 방향이 한눈에 보인다. */
 function renderCompass(run: RunState): string {
   const cells = COMPASS_LAYOUT.map((dir) => {
     if (dir === null) {
-      return `<div class="rl-compass__cell rl-compass__cell--self">@</div>`;
+      return `<div class="rl-compass__cell rl-compass__cell--self">@</div>`
     }
-    const next = run.grid.neighbor(run.player.cell, dir);
-    const terrain = next === null ? null : run.grid.terrainAt(next);
+    const next = run.grid.neighbor(run.player.cell, dir)
+    const terrain = next === null ? null : run.grid.terrainAt(next)
     if (terrain === null || !canEnter(run.player.conveyance, terrain)) {
-      const wall = terrain === "sea" ? "바다" : "뭍";
-      return `<div class="rl-compass__cell rl-compass__cell--wall"><span>${DIRECTION_LABEL[dir]}</span>${wall}</div>`;
+      const wall = terrain === 'sea' ? '바다' : '뭍'
+      return `<div class="rl-compass__cell rl-compass__cell--wall"><span>${DIRECTION_LABEL[dir]}</span>${wall}</div>`
     }
     const occupant = run.encounters.find(
       (encounter) => next !== null && encounter.cell.x === next.x && encounter.cell.y === next.y,
-    );
+    )
     if (occupant !== undefined) {
-      return `<div class="rl-compass__cell rl-compass__cell--blocked"><span>${DIRECTION_LABEL[dir]}</span>⚔ ${encounterName(occupant.kind)} ${occupant.crew}</div>`;
+      return `<div class="rl-compass__cell rl-compass__cell--blocked"><span>${DIRECTION_LABEL[dir]}</span>⚔ ${encounterName(occupant.kind)} ${occupant.crew}</div>`
     }
-    const passage = passageFrom(run, dir);
-    const hours = hoursPerCell(run.grid.stepNm(run.player.cell, dir), passage.rangeNm);
-    const tack = passage.tacking ? " ⤳" : "";
-    const blocked = passage.sailRangeNm <= 0 ? "무풍" : "역류";
-    const text = hours === null ? blocked : `${hours.toFixed(1)}h${tack}`;
-    const tone = hours === null ? "rl-compass__cell--blocked" : "";
-    return `<div class="rl-compass__cell ${tone}"><span>${DIRECTION_LABEL[dir]}</span>${text}</div>`;
-  });
-  return `<p class="rl-compass__title">한 칸에 걸리는 시간 · ⤳ 태킹</p><div class="rl-compass__grid">${cells.join("")}</div>`;
+    const passage = passageFrom(run, dir)
+    const hours = hoursPerCell(run.grid.stepNm(run.player.cell, dir), passage.rangeNm)
+    const tack = passage.tacking ? ' ⤳' : ''
+    const blocked = passage.sailRangeNm <= 0 ? '무풍' : '역류'
+    const text = hours === null ? blocked : `${hours.toFixed(1)}h${tack}`
+    const tone = hours === null ? 'rl-compass__cell--blocked' : ''
+    return `<div class="rl-compass__cell ${tone}"><span>${DIRECTION_LABEL[dir]}</span>${text}</div>`
+  })
+  return `<p class="rl-compass__title">한 칸에 걸리는 시간 · ⤳ 태킹</p><div class="rl-compass__grid">${cells.join('')}</div>`
 }

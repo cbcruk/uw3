@@ -1,6 +1,6 @@
-import type { Direction, GridDelta } from "./direction.types";
+import type { Direction, GridDelta } from './direction.types'
 
-export const DIRECTIONS: readonly Direction[] = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
+export const DIRECTIONS: readonly Direction[] = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw']
 
 export const DIRECTION_DELTA: Readonly<Record<Direction, GridDelta>> = {
   n: { dx: 0, dy: -1 },
@@ -11,10 +11,10 @@ export const DIRECTION_DELTA: Readonly<Record<Direction, GridDelta>> = {
   sw: { dx: -1, dy: 1 },
   w: { dx: -1, dy: 0 },
   nw: { dx: -1, dy: -1 },
-};
+}
 
 /** 8방위 사이 각도. 정의다 — 360° / 8. */
-const OCTANT_DEG = 45;
+const OCTANT_DEG = 45
 
 /**
  * 격자 방향의 진방위.
@@ -23,16 +23,16 @@ const OCTANT_DEG = 45;
  * 위경도 격자였다면 위도마다 달라졌을 값이다.
  */
 export function headingOf(dir: Direction): number {
-  return DIRECTIONS.indexOf(dir) * OCTANT_DEG;
+  return DIRECTIONS.indexOf(dir) * OCTANT_DEG
 }
 
 export function isDiagonal(dir: Direction): boolean {
-  const { dx, dy } = DIRECTION_DELTA[dir];
-  return dx !== 0 && dy !== 0;
+  const { dx, dy } = DIRECTION_DELTA[dir]
+  return dx !== 0 && dy !== 0
 }
 
 /** 반대 방향. 온 길을 되짚을 때 쓴다. */
 export function opposite(dir: Direction): Direction {
-  const index = DIRECTIONS.indexOf(dir);
-  return DIRECTIONS[(index + DIRECTIONS.length / 2) % DIRECTIONS.length] as Direction;
+  const index = DIRECTIONS.indexOf(dir)
+  return DIRECTIONS[(index + DIRECTIONS.length / 2) % DIRECTIONS.length] as Direction
 }

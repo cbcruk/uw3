@@ -8,7 +8,7 @@
  *   1/16° ( 6km) — 통항 성공, 2.0MB, 굽기 118ms  ← 채택
  *   1/20° ( 5km) — 통항 성공, 3.1MB
  */
-export const WORLD_LAND_CELLS_PER_DEGREE = 16;
+export const WORLD_LAND_CELLS_PER_DEGREE = 16
 
 /**
  * 항로 탐색(A*)용 격자. 충돌 판정보다 성기게 두어 탐색 폭을 줄이되,
@@ -16,4 +16,4 @@ export const WORLD_LAND_CELLS_PER_DEGREE = 16;
  * 1/8°는 적도 13km로 그 하한을 겨우 넘는다. A*는 희소 자료구조라 칸 수가 늘어도
  * 실제로 방문한 만큼만 메모리를 쓴다.
  */
-export const ROUTE_CELLS_PER_DEGREE = 8;
+export const ROUTE_CELLS_PER_DEGREE = 8

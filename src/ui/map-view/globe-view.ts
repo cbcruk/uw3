@@ -1,40 +1,40 @@
-import { LAND_POLYGONS } from "../../content/world-land";
-import type { LatLon } from "../../sim/geo/geo.types";
-import type { LandPolygon } from "../../sim/map/land-mask.types";
-import { currentAt } from "../../sim/current/current";
-import { windAt } from "../../sim/wind/wind";
-import type { Game } from "../../sim/world/world.types";
-import type { MapView, MapViewOptions } from "./map-view.types";
-import { createOrthographic } from "./orthographic";
-import type { Orthographic } from "./orthographic.types";
-import { MAP_PALETTE, drawArrow } from "./map-view.utils";
+import { LAND_POLYGONS } from '../../content/world-land'
+import type { LatLon } from '../../sim/geo/geo.types'
+import type { LandPolygon } from '../../sim/map/land-mask.types'
+import { currentAt } from '../../sim/current/current'
+import { windAt } from '../../sim/wind/wind'
+import type { Game } from '../../sim/world/world.types'
+import type { MapView, MapViewOptions } from './map-view.types'
+import { createOrthographic } from './orthographic'
+import type { Orthographic } from './orthographic.types'
+import { MAP_PALETTE, drawArrow } from './map-view.utils'
 
-const MIN_RADIUS_PX = 160;
-const MAX_RADIUS_PX = 6000;
-const COURSE_LINE_PX = 90;
+const MIN_RADIUS_PX = 160
+const MAX_RADIUS_PX = 6000
+const COURSE_LINE_PX = 90
 /** 이 픽셀 이상 끌면 클릭이 아니라 회전으로 본다. */
-const DRAG_SLOP_PX = 4;
+const DRAG_SLOP_PX = 4
 /** 화면 반지름당 회전 각도. 지구를 손으로 굴리는 감각에 맞춘 값. */
-const ROTATE_DEG_PER_RADIUS = 90;
+const ROTATE_DEG_PER_RADIUS = 90
 
 interface Surface {
-  ctx: CanvasRenderingContext2D;
-  view: Orthographic;
-  centerX: number;
-  centerY: number;
+  ctx: CanvasRenderingContext2D
+  view: Orthographic
+  centerX: number
+  centerY: number
 }
 
 function toScreen(surface: Surface, position: LatLon): { x: number; y: number; visible: boolean } {
-  const point = surface.view.project(position);
-  return { x: surface.centerX + point.x, y: surface.centerY + point.y, visible: point.visible };
+  const point = surface.view.project(position)
+  return { x: surface.centerX + point.x, y: surface.centerY + point.y, visible: point.visible }
 }
 
 function drawOcean(surface: Surface): void {
-  const { ctx, centerX, centerY, view } = surface;
-  ctx.fillStyle = MAP_PALETTE.sea;
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, view.radiusPx, 0, Math.PI * 2);
-  ctx.fill();
+  const { ctx, centerX, centerY, view } = surface
+  ctx.fillStyle = MAP_PALETTE.sea
+  ctx.beginPath()
+  ctx.arc(centerX, centerY, view.radiusPx, 0, Math.PI * 2)
+  ctx.fill()
 }
 
 /**
@@ -46,153 +46,153 @@ function drawOcean(surface: Surface): void {
  * 밀어내 링을 이어 둔다 — 대륙이 지평선을 따라 잘린 것처럼 보인다.
  */
 function drawLand(surface: Surface, polygons: readonly LandPolygon[]): void {
-  const { ctx, view, centerX, centerY } = surface;
-  ctx.fillStyle = MAP_PALETTE.land;
-  ctx.strokeStyle = MAP_PALETTE.coast;
-  ctx.lineWidth = 0.6;
+  const { ctx, view, centerX, centerY } = surface
+  ctx.fillStyle = MAP_PALETTE.land
+  ctx.strokeStyle = MAP_PALETTE.coast
+  ctx.lineWidth = 0.6
 
   for (const rings of polygons) {
     for (const ring of rings) {
-      let anyVisible = false;
-      ctx.beginPath();
+      let anyVisible = false
+      ctx.beginPath()
       ring.forEach(([lon, lat], index) => {
-        const raw = view.project({ lat, lon });
-        let { x, y } = raw;
+        const raw = view.project({ lat, lon })
+        let { x, y } = raw
         if (raw.visible) {
-          anyVisible = true;
+          anyVisible = true
         } else {
-          const length = Math.hypot(x, y) || 1;
-          x = (x / length) * view.radiusPx;
-          y = (y / length) * view.radiusPx;
+          const length = Math.hypot(x, y) || 1
+          x = (x / length) * view.radiusPx
+          y = (y / length) * view.radiusPx
         }
-        const screenX = centerX + x;
-        const screenY = centerY + y;
+        const screenX = centerX + x
+        const screenY = centerY + y
         if (index === 0) {
-          ctx.moveTo(screenX, screenY);
+          ctx.moveTo(screenX, screenY)
         } else {
-          ctx.lineTo(screenX, screenY);
+          ctx.lineTo(screenX, screenY)
         }
-      });
+      })
       if (!anyVisible) {
-        continue;
+        continue
       }
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
     }
   }
 }
 
 function drawGraticule(surface: Surface): void {
-  const { ctx } = surface;
-  ctx.strokeStyle = MAP_PALETTE.grid;
-  ctx.lineWidth = 1;
+  const { ctx } = surface
+  ctx.strokeStyle = MAP_PALETTE.grid
+  ctx.lineWidth = 1
 
   const stroke = (points: LatLon[]): void => {
-    ctx.beginPath();
-    let drawing = false;
+    ctx.beginPath()
+    let drawing = false
     for (const position of points) {
-      const point = toScreen(surface, position);
+      const point = toScreen(surface, position)
       if (!point.visible) {
-        drawing = false;
-        continue;
+        drawing = false
+        continue
       }
       if (drawing) {
-        ctx.lineTo(point.x, point.y);
+        ctx.lineTo(point.x, point.y)
       } else {
-        ctx.moveTo(point.x, point.y);
-        drawing = true;
+        ctx.moveTo(point.x, point.y)
+        drawing = true
       }
     }
-    ctx.stroke();
-  };
+    ctx.stroke()
+  }
 
   for (let lat = -60; lat <= 60; lat += 30) {
-    stroke(Array.from({ length: 121 }, (_, i) => ({ lat, lon: -180 + i * 3 })));
+    stroke(Array.from({ length: 121 }, (_, i) => ({ lat, lon: -180 + i * 3 })))
   }
   for (let lon = -180; lon < 180; lon += 30) {
-    stroke(Array.from({ length: 61 }, (_, i) => ({ lat: -90 + i * 3, lon })));
+    stroke(Array.from({ length: 61 }, (_, i) => ({ lat: -90 + i * 3, lon })))
   }
   // 적도는 한 단계 뚜렷하게 — 위도를 눈으로 잡는 기준선이다.
-  ctx.strokeStyle = MAP_PALETTE.equator;
-  stroke(Array.from({ length: 121 }, (_, i) => ({ lat: 0, lon: -180 + i * 3 })));
+  ctx.strokeStyle = MAP_PALETTE.equator
+  stroke(Array.from({ length: 121 }, (_, i) => ({ lat: 0, lon: -180 + i * 3 })))
 }
 
 function drawTrack(surface: Surface, track: readonly LatLon[]): void {
   if (track.length < 2) {
-    return;
+    return
   }
-  const { ctx } = surface;
-  ctx.strokeStyle = MAP_PALETTE.track;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  let drawing = false;
+  const { ctx } = surface
+  ctx.strokeStyle = MAP_PALETTE.track
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  let drawing = false
   for (const position of track) {
-    const point = toScreen(surface, position);
+    const point = toScreen(surface, position)
     if (!point.visible) {
-      drawing = false;
-      continue;
+      drawing = false
+      continue
     }
     if (drawing) {
-      ctx.lineTo(point.x, point.y);
+      ctx.lineTo(point.x, point.y)
     } else {
-      ctx.moveTo(point.x, point.y);
-      drawing = true;
+      ctx.moveTo(point.x, point.y)
+      drawing = true
     }
   }
-  ctx.stroke();
+  ctx.stroke()
 }
 
 function drawPorts(surface: Surface, game: Game): void {
-  const { ctx } = surface;
-  ctx.font = "11px ui-monospace, monospace";
-  ctx.textBaseline = "middle";
+  const { ctx } = surface
+  ctx.font = '11px ui-monospace, monospace'
+  ctx.textBaseline = 'middle'
 
   for (const port of game.ports) {
-    const point = toScreen(surface, { lat: port.lat, lon: port.lon });
+    const point = toScreen(surface, { lat: port.lat, lon: port.lon })
     if (!point.visible) {
-      continue;
+      continue
     }
-    ctx.fillStyle = MAP_PALETTE.port;
-    ctx.beginPath();
-    ctx.arc(point.x, point.y, port.isCapital ? 5 : 3.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillText(port.name, point.x + 8, point.y);
+    ctx.fillStyle = MAP_PALETTE.port
+    ctx.beginPath()
+    ctx.arc(point.x, point.y, port.isCapital ? 5 : 3.5, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillText(port.name, point.x + 8, point.y)
   }
 }
 
 function drawDestination(surface: Surface, game: Game): void {
-  const destination = game.voyage.destination;
+  const destination = game.voyage.destination
   if (destination === null) {
-    return;
+    return
   }
-  const { ctx } = surface;
-  const ship = toScreen(surface, game.voyage.position);
-  const mark = toScreen(surface, destination);
+  const { ctx } = surface
+  const ship = toScreen(surface, game.voyage.position)
+  const mark = toScreen(surface, destination)
   if (!mark.visible) {
-    return;
+    return
   }
 
-  ctx.strokeStyle = MAP_PALETTE.destination;
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = MAP_PALETTE.destination
+  ctx.lineWidth = 1
   if (ship.visible) {
-    ctx.setLineDash([2, 5]);
-    ctx.beginPath();
-    ctx.moveTo(ship.x, ship.y);
-    ctx.lineTo(mark.x, mark.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.setLineDash([2, 5])
+    ctx.beginPath()
+    ctx.moveTo(ship.x, ship.y)
+    ctx.lineTo(mark.x, mark.y)
+    ctx.stroke()
+    ctx.setLineDash([])
   }
 
-  ctx.beginPath();
-  ctx.arc(mark.x, mark.y, 6, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(mark.x - 9, mark.y);
-  ctx.lineTo(mark.x + 9, mark.y);
-  ctx.moveTo(mark.x, mark.y - 9);
-  ctx.lineTo(mark.x, mark.y + 9);
-  ctx.stroke();
+  ctx.beginPath()
+  ctx.arc(mark.x, mark.y, 6, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(mark.x - 9, mark.y)
+  ctx.lineTo(mark.x + 9, mark.y)
+  ctx.moveTo(mark.x, mark.y - 9)
+  ctx.lineTo(mark.x, mark.y + 9)
+  ctx.stroke()
 }
 
 /**
@@ -200,61 +200,61 @@ function drawDestination(surface: Surface, game: Game): void {
  * 벽지가 된다. 침로와 항적이 왜 어긋나는지 눈으로 잡히면 그걸로 충분하다.
  */
 function drawCurrents(surface: Surface, game: Game): void {
-  const { ctx } = surface;
-  const center = game.voyage.position;
-  const stepDeg = 4;
+  const { ctx } = surface
+  const center = game.voyage.position
+  const stepDeg = 4
 
   for (let dLat = -12; dLat <= 12; dLat += stepDeg) {
     for (let dLon = -12; dLon <= 12; dLon += stepDeg) {
-      const position = { lat: center.lat + dLat, lon: center.lon + dLon };
+      const position = { lat: center.lat + dLat, lon: center.lon + dLon }
       if (Math.abs(position.lat) > 89) {
-        continue;
+        continue
       }
-      const current = currentAt(position);
+      const current = currentAt(position)
       if (current.speedKnots < 0.15) {
-        continue;
+        continue
       }
-      const point = toScreen(surface, position);
+      const point = toScreen(surface, position)
       if (!point.visible) {
-        continue;
+        continue
       }
-      ctx.globalAlpha = Math.min(0.7, 0.2 + current.speedKnots * 0.25);
-      drawArrow(ctx, point.x, point.y, current.toDeg, 5, MAP_PALETTE.current);
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = Math.min(0.7, 0.2 + current.speedKnots * 0.25)
+      drawArrow(ctx, point.x, point.y, current.toDeg, 5, MAP_PALETTE.current)
+      ctx.globalAlpha = 1
     }
   }
 }
 
 function drawShip(surface: Surface, game: Game): void {
-  const { ctx } = surface;
-  const point = toScreen(surface, game.voyage.position);
+  const { ctx } = surface
+  const point = toScreen(surface, game.voyage.position)
   if (!point.visible) {
-    return;
+    return
   }
-  const wind = windAt(game.voyage.position, game.voyage.day);
-  const courseRad = ((game.voyage.headingDeg - 90) * Math.PI) / 180;
+  const wind = windAt(game.voyage.position, game.voyage.day)
+  const courseRad = ((game.voyage.headingDeg - 90) * Math.PI) / 180
 
-  ctx.strokeStyle = "#f5e6c855";
-  ctx.setLineDash([4, 4]);
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(point.x, point.y);
+  ctx.strokeStyle = '#f5e6c855'
+  ctx.setLineDash([4, 4])
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(point.x, point.y)
   ctx.lineTo(
     point.x + Math.cos(courseRad) * COURSE_LINE_PX,
     point.y + Math.sin(courseRad) * COURSE_LINE_PX,
-  );
-  ctx.stroke();
-  ctx.setLineDash([]);
+  )
+  ctx.stroke()
+  ctx.setLineDash([])
 
-  drawArrow(ctx, point.x, point.y, game.voyage.headingDeg, 7, MAP_PALETTE.ship);
-  drawArrow(ctx, point.x, point.y - 26, wind.fromDeg + 180, 8, MAP_PALETTE.wind);
+  drawArrow(ctx, point.x, point.y, game.voyage.headingDeg, 7, MAP_PALETTE.ship)
+  drawArrow(ctx, point.x, point.y - 26, wind.fromDeg + 180, 8, MAP_PALETTE.wind)
 }
 
 export function createMapView(options: MapViewOptions): MapView {
-  const { canvas, game, onChartPick } = options;
-  const ctx = canvas.getContext("2d");
+  const { canvas, game, onChartPick } = options
+  const ctx = canvas.getContext('2d')
   if (ctx === null) {
-    throw new Error("2d context unavailable");
+    throw new Error('2d context unavailable')
   }
 
   const view = createOrthographic({
@@ -263,85 +263,85 @@ export function createMapView(options: MapViewOptions): MapView {
     radiusPx: 320,
     minRadiusPx: MIN_RADIUS_PX,
     maxRadiusPx: MAX_RADIUS_PX,
-  });
+  })
 
-  let widthPx = 0;
-  let heightPx = 0;
-  let ratio = 1;
-  let redraw: () => void = () => {};
+  let widthPx = 0
+  let heightPx = 0
+  let ratio = 1
+  let redraw: () => void = () => {}
 
   const resize = (): void => {
-    const rect = canvas.getBoundingClientRect();
-    ratio = window.devicePixelRatio || 1;
-    widthPx = Math.max(1, Math.round(rect.width));
-    heightPx = Math.max(1, Math.round(rect.height));
-    canvas.width = Math.round(widthPx * ratio);
-    canvas.height = Math.round(heightPx * ratio);
-    redraw();
-  };
+    const rect = canvas.getBoundingClientRect()
+    ratio = window.devicePixelRatio || 1
+    widthPx = Math.max(1, Math.round(rect.width))
+    heightPx = Math.max(1, Math.round(rect.height))
+    canvas.width = Math.round(widthPx * ratio)
+    canvas.height = Math.round(heightPx * ratio)
+    redraw()
+  }
 
   // 끌면 회전, 놓으면 클릭. 지구본은 돌려봐야 하고 침로도 찍어야 한다.
-  let dragging = false;
-  let dragged = 0;
-  let lastX = 0;
-  let lastY = 0;
+  let dragging = false
+  let dragged = 0
+  let lastX = 0
+  let lastY = 0
 
-  canvas.addEventListener("pointerdown", (event: PointerEvent) => {
-    dragging = true;
-    dragged = 0;
-    lastX = event.clientX;
-    lastY = event.clientY;
-    canvas.setPointerCapture(event.pointerId);
-  });
+  canvas.addEventListener('pointerdown', (event: PointerEvent) => {
+    dragging = true
+    dragged = 0
+    lastX = event.clientX
+    lastY = event.clientY
+    canvas.setPointerCapture(event.pointerId)
+  })
 
-  canvas.addEventListener("pointermove", (event: PointerEvent) => {
+  canvas.addEventListener('pointermove', (event: PointerEvent) => {
     if (!dragging) {
-      return;
+      return
     }
-    const dx = event.clientX - lastX;
-    const dy = event.clientY - lastY;
-    lastX = event.clientX;
-    lastY = event.clientY;
-    dragged += Math.abs(dx) + Math.abs(dy);
+    const dx = event.clientX - lastX
+    const dy = event.clientY - lastY
+    lastX = event.clientX
+    lastY = event.clientY
+    dragged += Math.abs(dx) + Math.abs(dy)
 
-    const perPixel = ROTATE_DEG_PER_RADIUS / view.radiusPx;
-    view.rotateTo(view.centerLat + dy * perPixel, view.centerLon - dx * perPixel);
-    redraw();
-  });
+    const perPixel = ROTATE_DEG_PER_RADIUS / view.radiusPx
+    view.rotateTo(view.centerLat + dy * perPixel, view.centerLon - dx * perPixel)
+    redraw()
+  })
 
   const endDrag = (event: PointerEvent): void => {
     if (!dragging) {
-      return;
+      return
     }
-    dragging = false;
-    canvas.releasePointerCapture(event.pointerId);
+    dragging = false
+    canvas.releasePointerCapture(event.pointerId)
     if (dragged > DRAG_SLOP_PX) {
-      return;
+      return
     }
-    const rect = canvas.getBoundingClientRect();
+    const rect = canvas.getBoundingClientRect()
     const target = view.invert(
       event.clientX - rect.left - widthPx / 2,
       event.clientY - rect.top - heightPx / 2,
-    );
+    )
     if (target !== null) {
-      onChartPick(target);
+      onChartPick(target)
     }
-  };
+  }
 
-  canvas.addEventListener("pointerup", endDrag);
-  canvas.addEventListener("pointercancel", endDrag);
+  canvas.addEventListener('pointerup', endDrag)
+  canvas.addEventListener('pointercancel', endDrag)
 
   canvas.addEventListener(
-    "wheel",
+    'wheel',
     (event: WheelEvent) => {
-      event.preventDefault();
-      view.zoomTo(view.radiusPx * (event.deltaY < 0 ? 1.15 : 1 / 1.15));
-      redraw();
+      event.preventDefault()
+      view.zoomTo(view.radiusPx * (event.deltaY < 0 ? 1.15 : 1 / 1.15))
+      redraw()
     },
     { passive: false },
-  );
+  )
 
-  window.addEventListener("resize", resize);
+  window.addEventListener('resize', resize)
 
   return {
     render(track: readonly LatLon[]): void {
@@ -351,33 +351,33 @@ export function createMapView(options: MapViewOptions): MapView {
           view,
           centerX: widthPx / 2,
           centerY: heightPx / 2,
-        };
-        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-        ctx.clearRect(0, 0, widthPx, heightPx);
-        drawOcean(surface);
+        }
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
+        ctx.clearRect(0, 0, widthPx, heightPx)
+        drawOcean(surface)
         // 가장자리로 민 점들이 원 밖으로 삐져나오지 않도록 지구 원에 가둔다.
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(surface.centerX, surface.centerY, view.radiusPx, 0, Math.PI * 2);
-        ctx.clip();
-        drawLand(surface, LAND_POLYGONS);
-        ctx.restore();
-        drawGraticule(surface);
-        drawCurrents(surface, game);
-        drawTrack(surface, track);
-        drawDestination(surface, game);
-        drawPorts(surface, game);
-        drawShip(surface, game);
-      };
-      if (widthPx === 0) {
-        resize();
-        return;
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(surface.centerX, surface.centerY, view.radiusPx, 0, Math.PI * 2)
+        ctx.clip()
+        drawLand(surface, LAND_POLYGONS)
+        ctx.restore()
+        drawGraticule(surface)
+        drawCurrents(surface, game)
+        drawTrack(surface, track)
+        drawDestination(surface, game)
+        drawPorts(surface, game)
+        drawShip(surface, game)
       }
-      redraw();
+      if (widthPx === 0) {
+        resize()
+        return
+      }
+      redraw()
     },
     lookAt(position: LatLon): void {
-      view.rotateTo(position.lat, position.lon);
-      redraw();
+      view.rotateTo(position.lat, position.lon)
+      redraw()
     },
-  };
+  }
 }

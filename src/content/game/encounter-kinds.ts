@@ -1,4 +1,4 @@
-import type { EncounterKind } from "./game-content.types";
+import type { EncounterKind } from './game-content.types'
 
 /**
  * 조우 종류. 원본 로그라이크의 몬스터 표에 해당한다.
@@ -8,28 +8,28 @@ import type { EncounterKind } from "./game-content.types";
  */
 export const ENCOUNTER_KINDS: readonly EncounterKind[] = [
   {
-    id: "pirate",
-    name: "해적선",
-    terrains: ["sea"],
+    id: 'pirate',
+    name: '해적선',
+    terrains: ['sea'],
     crewMin: 20,
     crewMax: 60,
-    conveyances: ["ship"],
-    shipClassId: "caravela-latina",
+    conveyances: ['ship'],
+    shipClassId: 'caravela-latina',
   },
   {
-    id: "bandit",
-    name: "도적떼",
-    terrains: ["grassland", "desert"],
+    id: 'bandit',
+    name: '도적떼',
+    terrains: ['grassland', 'desert'],
     crewMin: 8,
     crewMax: 30,
-    conveyances: ["horse", "camel"],
+    conveyances: ['horse', 'camel'],
   },
   {
-    id: "beast",
-    name: "늑대 무리",
-    terrains: ["grassland"],
+    id: 'beast',
+    name: '늑대 무리',
+    terrains: ['grassland'],
     crewMin: 4,
     crewMax: 12,
-    conveyances: ["horse"],
+    conveyances: ['horse'],
   },
-];
+]

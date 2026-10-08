@@ -1,5 +1,5 @@
-import { internal, tunedValues } from "../tuning/tuning";
-import type { Tuned } from "../tuning/tuning.types";
+import { internal, tunedValues } from '../tuning/tuning'
+import type { Tuned } from '../tuning/tuning.types'
 
 /**
  * 시야 반경 (해리). 칸 수가 아니다 — 칸 크기가 위도마다 달라서다 (SPEC-roguelike R9).
@@ -11,15 +11,15 @@ import type { Tuned } from "../tuning/tuning.types";
 const SIGHT_SCALARS = {
   shipSightNm: internal(
     96,
-    "해리",
-    "게임 체감 값. 위도 38°에서 반경 약 8칸. 현실 망루 시정(약 9~36해리)보다 일부러 넓혀 사료 대조 대상이 아니다",
+    '해리',
+    '게임 체감 값. 위도 38°에서 반경 약 8칸. 현실 망루 시정(약 9~36해리)보다 일부러 넓혀 사료 대조 대상이 아니다',
   ),
   landSightNm: internal(
     60,
-    "해리",
-    "게임 체감 값. 위도 38°에서 반경 약 5칸. 배보다 좁게 두어 하선의 대가로 삼았다. 사료 대조 대상이 아니다",
+    '해리',
+    '게임 체감 값. 위도 38°에서 반경 약 5칸. 배보다 좁게 두어 하선의 대가로 삼았다. 사료 대조 대상이 아니다',
   ),
-} as const satisfies Record<string, Tuned>;
+} as const satisfies Record<string, Tuned>
 
-export const SIGHT_TABLES = [SIGHT_SCALARS] as const;
-export const SIGHT = tunedValues(SIGHT_SCALARS);
+export const SIGHT_TABLES = [SIGHT_SCALARS] as const
+export const SIGHT = tunedValues(SIGHT_SCALARS)

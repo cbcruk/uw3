@@ -1,14 +1,14 @@
 /** 배의 색. 선체·돛·돛의 문장. */
 export interface ShipColors {
-  hull: string;
-  sail: string;
-  emblem: string;
+  hull: string
+  sail: string
+  emblem: string
 }
 
-export const PLAYER_SHIP: ShipColors = { hull: "#8a5a2b", sail: "#f4ecd8", emblem: "#c83030" };
-export const PIRATE_SHIP: ShipColors = { hull: "#6a2a20", sail: "#26262a", emblem: "#e8e0d0" };
+export const PLAYER_SHIP: ShipColors = { hull: '#8a5a2b', sail: '#f4ecd8', emblem: '#c83030' }
+export const PIRATE_SHIP: ShipColors = { hull: '#6a2a20', sail: '#26262a', emblem: '#e8e0d0' }
 
-const OUTLINE = "#10161e";
+const OUTLINE = '#10161e'
 
 /** 위에서 본 선체. 칸 한 변을 1로 둔 좌표이고 뱃머리가 위(-y)다. */
 const HULL: readonly (readonly [number, number])[] = [
@@ -18,9 +18,9 @@ const HULL: readonly (readonly [number, number])[] = [
   [0, 0.42],
   [-0.16, 0.34],
   [-0.17, -0.16],
-];
-const MAIN_SAIL = { y: -0.04, half: 0.34, depth: 0.2 };
-const FORE_SAIL = { y: 0.26, half: 0.24, depth: 0.14 };
+]
+const MAIN_SAIL = { y: -0.04, half: 0.34, depth: 0.2 }
+const FORE_SAIL = { y: 0.26, half: 0.24, depth: 0.14 }
 
 /**
  * 위에서 본 배를 그린다. 뱃머리가 진행 방향이다.
@@ -37,36 +37,36 @@ export function drawShip(
   headingDeg: number,
   colors: ShipColors,
 ): void {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate((headingDeg * Math.PI) / 180);
-  ctx.scale(tile, tile);
-  ctx.lineWidth = 1 / tile;
-  ctx.strokeStyle = OUTLINE;
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate((headingDeg * Math.PI) / 180)
+  ctx.scale(tile, tile)
+  ctx.lineWidth = 1 / tile
+  ctx.strokeStyle = OUTLINE
 
-  ctx.beginPath();
-  HULL.forEach(([px, py], index) => (index === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)));
-  ctx.closePath();
-  ctx.fillStyle = colors.hull;
-  ctx.fill();
-  ctx.stroke();
+  ctx.beginPath()
+  HULL.forEach(([px, py], index) => (index === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)))
+  ctx.closePath()
+  ctx.fillStyle = colors.hull
+  ctx.fill()
+  ctx.stroke()
 
   for (const sail of [FORE_SAIL, MAIN_SAIL]) {
-    ctx.beginPath();
-    ctx.moveTo(-sail.half, sail.y);
-    ctx.quadraticCurveTo(0, sail.y - sail.depth, sail.half, sail.y);
-    ctx.lineTo(sail.half, sail.y + sail.depth);
-    ctx.quadraticCurveTo(0, sail.y, -sail.half, sail.y + sail.depth);
-    ctx.closePath();
-    ctx.fillStyle = colors.sail;
-    ctx.fill();
-    ctx.stroke();
+    ctx.beginPath()
+    ctx.moveTo(-sail.half, sail.y)
+    ctx.quadraticCurveTo(0, sail.y - sail.depth, sail.half, sail.y)
+    ctx.lineTo(sail.half, sail.y + sail.depth)
+    ctx.quadraticCurveTo(0, sail.y, -sail.half, sail.y + sail.depth)
+    ctx.closePath()
+    ctx.fillStyle = colors.sail
+    ctx.fill()
+    ctx.stroke()
   }
 
-  const cross = MAIN_SAIL.depth * 0.45;
-  const middle = MAIN_SAIL.y + cross * 0.4;
-  ctx.fillStyle = colors.emblem;
-  ctx.fillRect(-cross / 3, middle - cross, (cross * 2) / 3, cross * 2);
-  ctx.fillRect(-cross, middle - cross / 3, cross * 2, (cross * 2) / 3);
-  ctx.restore();
+  const cross = MAIN_SAIL.depth * 0.45
+  const middle = MAIN_SAIL.y + cross * 0.4
+  ctx.fillStyle = colors.emblem
+  ctx.fillRect(-cross / 3, middle - cross, (cross * 2) / 3, cross * 2)
+  ctx.fillRect(-cross, middle - cross / 3, cross * 2, (cross * 2) / 3)
+  ctx.restore()
 }

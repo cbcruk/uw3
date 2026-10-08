@@ -1,24 +1,24 @@
-import type { LatLon } from "../geo/geo.types";
+import type { LatLon } from '../geo/geo.types'
 import {
   FULL_TURN_DEG,
   bearingDeg,
   haversineNm,
   normalizeHeading,
   relativeWindAngle,
-} from "../geo/geo.utils";
-import { findSeaRoute } from "../map/sea-route";
-import type { TileMap } from "../map/tile-map.types";
-import { currentAt, groundTrack } from "../current/current";
-import { computeSpeedKnots } from "../ship/sail";
-import { windAt } from "../wind/wind";
-import { projectCourse } from "./course";
-import type { NavigatorPlan } from "./navigator.types";
-import { sailingCondition } from "./voyage";
-import type { VoyageContext, VoyageState } from "./voyage.types";
+} from '../geo/geo.utils'
+import { findSeaRoute } from '../map/sea-route'
+import type { TileMap } from '../map/tile-map.types'
+import { currentAt, groundTrack } from '../current/current'
+import { computeSpeedKnots } from '../ship/sail'
+import { windAt } from '../wind/wind'
+import { projectCourse } from './course'
+import type { NavigatorPlan } from './navigator.types'
+import { sailingCondition } from './voyage'
+import type { VoyageContext, VoyageState } from './voyage.types'
 
 /** 침로 후보 간격. 5°면 태킹 각을 놓치지 않으면서 하루치 계산이 수십 회에 그친다. */
-const CANDIDATE_STEP_DEG = 5;
-const HOURS_PER_DAY = 24;
+const CANDIDATE_STEP_DEG = 5
+const HOURS_PER_DAY = 24
 
 /**
  * 경로에서 지금 위치에서 곧장 갈 수 있는 가장 먼 지점을 고른다.
@@ -26,14 +26,14 @@ const HOURS_PER_DAY = 24;
  */
 function aimPoint(from: LatLon, route: readonly LatLon[], tileMap: TileMap): LatLon {
   for (let i = route.length - 1; i > 0; i -= 1) {
-    const candidate = route[i] as LatLon;
-    const rangeNm = haversineNm(from, candidate);
-    const sight = projectCourse(from, bearingDeg(from, candidate), rangeNm, tileMap);
+    const candidate = route[i] as LatLon
+    const rangeNm = haversineNm(from, candidate)
+    const sight = projectCourse(from, bearingDeg(from, candidate), rangeNm, tileMap)
     if (!sight.blocked) {
-      return candidate;
+      return candidate
     }
   }
-  return (route[route.length - 1] ?? from) as LatLon;
+  return (route[route.length - 1] ?? from) as LatLon
 }
 
 /**
@@ -49,21 +49,21 @@ export function planHeading(
   context: VoyageContext,
   destination: LatLon,
 ): NavigatorPlan | null {
-  const route = findSeaRoute(context.routeMap, state.position, destination);
+  const route = findSeaRoute(context.routeMap, state.position, destination)
   if (route === null) {
-    return null;
+    return null
   }
-  const aim = aimPoint(state.position, route, context.tileMap);
+  const aim = aimPoint(state.position, route, context.tileMap)
 
-  const wind = windAt(state.position, state.day);
-  const current = currentAt(state.position);
-  const condition = sailingCondition(state, context.shipClass.crewMin);
-  const startRangeNm = haversineNm(state.position, aim);
+  const wind = windAt(state.position, state.day)
+  const current = currentAt(state.position)
+  const condition = sailingCondition(state, context.shipClass.crewMin)
+  const startRangeNm = haversineNm(state.position, aim)
 
-  let best: NavigatorPlan | null = null;
+  let best: NavigatorPlan | null = null
 
   for (let offset = 0; offset < FULL_TURN_DEG; offset += CANDIDATE_STEP_DEG) {
-    const headingDeg = normalizeHeading(offset);
+    const headingDeg = normalizeHeading(offset)
     const speedKnots = computeSpeedKnots({
       shipClass: context.shipClass,
       rig: state.rig,
@@ -71,12 +71,12 @@ export function planHeading(
       relAngleDeg: relativeWindAngle(headingDeg, wind.fromDeg),
       windSpeedKnots: wind.speedKnots,
       condition,
-    });
+    })
     // 침로가 아니라 해류를 더한 대지 항적으로 평가한다. 그러지 않으면
     // 항해사가 고른 침로와 배가 실제로 가는 방향이 매일 어긋난다.
-    const track = groundTrack(headingDeg, speedKnots, current);
+    const track = groundTrack(headingDeg, speedKnots, current)
     if (track.speedKnots <= 0) {
-      continue;
+      continue
     }
 
     const projection = projectCourse(
@@ -84,18 +84,18 @@ export function planHeading(
       track.headingDeg,
       track.speedKnots * HOURS_PER_DAY,
       context.tileMap,
-    );
+    )
     if (projection.travelledNm <= 0) {
-      continue;
+      continue
     }
 
-    const gainNm = startRangeNm - haversineNm(projection.end, aim);
+    const gainNm = startRangeNm - haversineNm(projection.end, aim)
     if (best === null || gainNm > best.gainNm) {
-      best = { headingDeg, gainNm, speedKnots: track.speedKnots, blocked: projection.blocked };
+      best = { headingDeg, gainNm, speedKnots: track.speedKnots, blocked: projection.blocked }
     }
   }
 
   // 이득이 없는 침로도 돌려준다. 바람이 막힌 해안에서는 하루이틀 바다 쪽으로
   // 여유를 벌어야 다음 태킹이 열린다. 언제 포기할지는 구간 항해가 판단한다.
-  return best;
+  return best
 }

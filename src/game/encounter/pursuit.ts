@@ -1,25 +1,25 @@
-import { ENCOUNTER_KINDS } from "../../content/game/encounter-kinds";
-import type { EncounterKind } from "../../content/game/game-content.types";
-import { findShipClass } from "../../content/ships";
-import { HOURS_PER_DAY } from "../../sim/calendar/calendar";
-import { COMBAT } from "../../content/game/combat.tuning";
-import { isWithinNm, sightRadiusNm } from "../fog/fog";
-import { DIRECTIONS } from "../grid/direction";
-import type { Direction } from "../grid/direction.types";
-import type { ShipClass } from "../../sim/ship/ship.types";
-import type { Cell, WorldGrid } from "../grid/world-grid.types";
-import { passageToward } from "../travel/travel";
-import type { Conveyance } from "../travel/travel.types";
-import { fits, nearPort } from "./encounter";
-import type { Encounter } from "./encounter.types";
-import type { PursuitContext, PursuitEvent } from "./pursuit.types";
+import { ENCOUNTER_KINDS } from '../../content/game/encounter-kinds'
+import type { EncounterKind } from '../../content/game/game-content.types'
+import { findShipClass } from '../../content/ships'
+import { HOURS_PER_DAY } from '../../sim/calendar/calendar'
+import { COMBAT } from '../../content/game/combat.tuning'
+import { isWithinNm, sightRadiusNm } from '../fog/fog'
+import { DIRECTIONS } from '../grid/direction'
+import type { Direction } from '../grid/direction.types'
+import type { ShipClass } from '../../sim/ship/ship.types'
+import type { Cell, WorldGrid } from '../grid/world-grid.types'
+import { passageToward } from '../travel/travel'
+import type { Conveyance } from '../travel/travel.types'
+import { fits, nearPort } from './encounter'
+import type { Encounter } from './encounter.types'
+import type { PursuitContext, PursuitEvent } from './pursuit.types'
 
 interface Step {
-  dir: Direction;
-  to: Cell;
-  conveyance: Conveyance;
-  hours: number;
-  distance: number;
+  dir: Direction
+  to: Cell
+  conveyance: Conveyance
+  hours: number
+  distance: number
 }
 
 /**
@@ -33,69 +33,69 @@ interface Step {
  * 한 칸 안에서의 동시 움직임은 없다 — 로그라이크의 차례 문법이다.
  */
 export function actEncounters(context: PursuitContext, encounters: Encounter[]): PursuitEvent[] {
-  const events: PursuitEvent[] = [];
+  const events: PursuitEvent[] = []
   for (const encounter of encounters) {
     if (!encounter.chasing) {
-      encounter.nextActHours = Math.max(encounter.nextActHours, context.startHours);
+      encounter.nextActHours = Math.max(encounter.nextActHours, context.startHours)
     }
   }
 
   for (;;) {
-    const actor = nextActor(context, encounters);
+    const actor = nextActor(context, encounters)
     if (actor === null) {
-      break;
+      break
     }
     if (!actor.chasing) {
-      actor.chasing = true;
-      events.push({ type: "chase", encounterId: actor.id, kind: actor.kind });
+      actor.chasing = true
+      events.push({ type: 'chase', encounterId: actor.id, kind: actor.kind })
     }
     if (context.engage !== undefined && canStrike(context.grid, actor, context.target.cell)) {
-      const round = context.engage(actor);
+      const round = context.engage(actor)
       if (round === null) {
-        break;
+        break
       }
-      events.push(...round.events);
-      actor.nextActHours += round.hours;
-      continue;
+      events.push(...round.events)
+      actor.nextActHours += round.hours
+      continue
     }
-    const step = bestStep(context, encounters, actor);
+    const step = bestStep(context, encounters, actor)
     if (step === null) {
       // 다가설 길이 없다(무풍·역류·지형). 바람이 바뀌는 다음 날까지 기다린다.
-      actor.nextActHours = (Math.floor(actor.nextActHours / HOURS_PER_DAY) + 1) * HOURS_PER_DAY;
-      continue;
+      actor.nextActHours = (Math.floor(actor.nextActHours / HOURS_PER_DAY) + 1) * HOURS_PER_DAY
+      continue
     }
     events.push({
-      type: "encounter-move",
+      type: 'encounter-move',
       encounterId: actor.id,
       from: actor.cell,
       to: step.to,
       hours: step.hours,
-    });
-    actor.cell = step.to;
-    actor.conveyance = step.conveyance;
-    actor.nextActHours += step.hours;
+    })
+    actor.cell = step.to
+    actor.conveyance = step.conveyance
+    actor.nextActHours += step.hours
     if (adjacent(context.grid, actor.cell, context.target.cell)) {
-      events.push({ type: "engaged", encounterId: actor.id, kind: actor.kind });
+      events.push({ type: 'engaged', encounterId: actor.id, kind: actor.kind })
     }
   }
 
   for (const encounter of encounters) {
     if (encounter.chasing && encounter.crew > 0 && !sees(context, encounter)) {
-      encounter.chasing = false;
-      events.push({ type: "evaded", encounterId: encounter.id, kind: encounter.kind });
+      encounter.chasing = false
+      events.push({ type: 'evaded', encounterId: encounter.id, kind: encounter.kind })
     }
   }
-  return events;
+  return events
 }
 
 /** 칸 거리. 대각선도 한 걸음이다(체비쇼프). 경도는 순환한다. */
 export function cellDistance(grid: WorldGrid, a: Cell, b: Cell): number {
-  const rawDx = Math.abs(a.x - b.x);
-  return Math.max(Math.min(rawDx, grid.width - rawDx), Math.abs(a.y - b.y));
+  const rawDx = Math.abs(a.x - b.x)
+  return Math.max(Math.min(rawDx, grid.width - rawDx), Math.abs(a.y - b.y))
 }
 
 export function adjacent(grid: WorldGrid, a: Cell, b: Cell): boolean {
-  return cellDistance(grid, a, b) <= 1;
+  return cellDistance(grid, a, b) <= 1
 }
 
 /**
@@ -107,15 +107,15 @@ export function canStrike(grid: WorldGrid, encounter: Encounter, target: Cell): 
     encounter.crew > 0 &&
     adjacent(grid, encounter.cell, target) &&
     fits(kindOf(encounter), grid.terrainAt(target))
-  );
+  )
 }
 
 export function kindOf(encounter: Encounter): EncounterKind {
-  const kind = ENCOUNTER_KINDS.find((entry) => entry.id === encounter.kind);
+  const kind = ENCOUNTER_KINDS.find((entry) => entry.id === encounter.kind)
   if (kind === undefined) {
-    throw new Error(`unknown encounter kind: ${encounter.kind}`);
+    throw new Error(`unknown encounter kind: ${encounter.kind}`)
   }
-  return kind;
+  return kind
 }
 
 /**
@@ -123,9 +123,9 @@ export function kindOf(encounter: Encounter): EncounterKind {
  * 그래서 먼저 본 쪽이 피할 수 있고, 붙잡힌 뒤에는 시야 밖으로 벗어나야 따돌린다.
  */
 function sees(context: PursuitContext, encounter: Encounter): boolean {
-  const sightNm = sightRadiusNm(encounter.conveyance);
-  const radiusNm = encounter.chasing ? sightNm : sightNm * COMBAT.noticeRatio;
-  return isWithinNm(context.grid, encounter.cell, context.target.cell, radiusNm);
+  const sightNm = sightRadiusNm(encounter.conveyance)
+  const radiusNm = encounter.chasing ? sightNm : sightNm * COMBAT.noticeRatio
+  return isWithinNm(context.grid, encounter.cell, context.target.cell, radiusNm)
 }
 
 /**
@@ -133,7 +133,7 @@ function sees(context: PursuitContext, encounter: Encounter): boolean {
  * 붙은 조우는 싸울 수 있을 때(`engage`)만 차례를 받는다. 쓰러진 조우는 받지 않는다.
  */
 function nextActor(context: PursuitContext, encounters: readonly Encounter[]): Encounter | null {
-  let best: Encounter | null = null;
+  let best: Encounter | null = null
   for (const encounter of encounters) {
     if (
       encounter.crew <= 0 ||
@@ -143,17 +143,17 @@ function nextActor(context: PursuitContext, encounters: readonly Encounter[]): E
           !canStrike(context.grid, encounter, context.target.cell))) ||
       !sees(context, encounter)
     ) {
-      continue;
+      continue
     }
     if (
       best === null ||
       encounter.nextActHours < best.nextActHours ||
       (encounter.nextActHours === best.nextActHours && encounter.id < best.id)
     ) {
-      best = encounter;
+      best = encounter
     }
   }
-  return best;
+  return best
 }
 
 /**
@@ -165,52 +165,45 @@ function bestStep(
   encounters: readonly Encounter[],
   actor: Encounter,
 ): Step | null {
-  const { grid, target } = context;
-  const kind = kindOf(actor);
+  const { grid, target } = context
+  const kind = kindOf(actor)
   const shipClass =
     (kind.shipClassId === undefined ? undefined : findShipClass(kind.shipClassId)) ??
-    context.fallbackShip;
-  const here = cellDistance(grid, actor.cell, target.cell);
-  const hereEuclid = euclid(grid, actor.cell, target.cell);
-  let best: Step | null = null;
+    context.fallbackShip
+  const here = cellDistance(grid, actor.cell, target.cell)
+  const hereEuclid = euclid(grid, actor.cell, target.cell)
+  let best: Step | null = null
 
   for (const dir of DIRECTIONS) {
-    const to = grid.neighbor(actor.cell, dir);
+    const to = grid.neighbor(actor.cell, dir)
     if (to === null || !fits(kind, grid.terrainAt(to)) || nearPort(grid, to)) {
-      continue;
+      continue
     }
     if (
       sameCell(to, target.cell) ||
       encounters.some((other) => other.crew > 0 && sameCell(other.cell, to))
     ) {
-      continue;
+      continue
     }
-    const distance = cellDistance(grid, to, target.cell);
+    const distance = cellDistance(grid, to, target.cell)
     if (distance > here || euclid(grid, to, target.cell) >= hereEuclid) {
-      continue;
+      continue
     }
-    const fastest = fastestConveyance(
-      context,
-      kind,
-      actor.cell,
-      dir,
-      shipClass,
-      actor.nextActHours,
-    );
+    const fastest = fastestConveyance(context, kind, actor.cell, dir, shipClass, actor.nextActHours)
     if (fastest === null) {
-      continue;
+      continue
     }
-    const hours = (grid.stepNm(actor.cell, dir) / fastest.rangeNm) * HOURS_PER_DAY;
-    const step: Step = { dir, to, conveyance: fastest.conveyance, hours, distance };
+    const hours = (grid.stepNm(actor.cell, dir) / fastest.rangeNm) * HOURS_PER_DAY
+    const step: Step = { dir, to, conveyance: fastest.conveyance, hours, distance }
     if (
       best === null ||
       step.distance < best.distance ||
       (step.distance === best.distance && step.hours < best.hours)
     ) {
-      best = step;
+      best = step
     }
   }
-  return best;
+  return best
 }
 
 function fastestConveyance(
@@ -221,12 +214,12 @@ function fastestConveyance(
   shipClass: ShipClass,
   atHours: number,
 ): { conveyance: Conveyance; rangeNm: number } | null {
-  const { grid } = context;
-  const terrain = grid.terrainAt(from);
+  const { grid } = context
+  const terrain = grid.terrainAt(from)
   if (terrain === null) {
-    return null;
+    return null
   }
-  let best: { conveyance: Conveyance; rangeNm: number } | null = null;
+  let best: { conveyance: Conveyance; rangeNm: number } | null = null
   for (const conveyance of kind.conveyances) {
     const { rangeNm } = passageToward({
       conveyance,
@@ -235,19 +228,19 @@ function fastestConveyance(
       dayNumber: context.dayNumberAt(atHours),
       dir,
       shipClass,
-    });
+    })
     if (rangeNm > 0 && (best === null || rangeNm > best.rangeNm)) {
-      best = { conveyance, rangeNm };
+      best = { conveyance, rangeNm }
     }
   }
-  return best;
+  return best
 }
 
 function euclid(grid: WorldGrid, a: Cell, b: Cell): number {
-  const rawDx = Math.abs(a.x - b.x);
-  return Math.hypot(Math.min(rawDx, grid.width - rawDx), a.y - b.y);
+  const rawDx = Math.abs(a.x - b.x)
+  return Math.hypot(Math.min(rawDx, grid.width - rawDx), a.y - b.y)
 }
 
 function sameCell(a: Cell, b: Cell): boolean {
-  return a.x === b.x && a.y === b.y;
+  return a.x === b.x && a.y === b.y
 }
