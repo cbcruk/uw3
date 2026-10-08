@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { commandForKey } from "./game-view.utils";
+import { commandForKey, withParticle } from "./game-view.utils";
 
 describe("키 → 명령", () => {
   it("방향키 하나가 한 칸 이동이다", () => {
@@ -22,5 +22,13 @@ describe("키 → 명령", () => {
 
   it("스페이스바는 이동이 아니다", () => {
     expect(commandForKey(" ", "Space")).toBeNull();
+  });
+});
+
+describe("조사 — 받침에 따라 이/가, 을/를", () => {
+  it("받침이 있으면 앞의 것, 없으면 뒤의 것", () => {
+    expect(withParticle("해적선", "이", "가")).toBe("해적선이");
+    expect(withParticle("도적떼", "이", "가")).toBe("도적떼가");
+    expect(withParticle("늑대 무리", "을", "를")).toBe("늑대 무리를");
   });
 });

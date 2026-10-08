@@ -7,12 +7,15 @@ import type { Direction } from "../../game/grid/direction.types";
 import { applyCommand, createRun, dayNumberOf, passageFrom } from "../../game/run/run";
 import { isInSight } from "../../game/fog/fog";
 import { canEnter } from "../../game/travel/travel";
+import { daysOfSupply } from "../../game/supplies/supplies";
 import type { RunConfig, RunState } from "../../game/run/run.types";
 import type { LogLine } from "./game-view.types";
 import {
   CONVEYANCE_COLOR,
   CONVEYANCE_LABEL,
   DIRECTION_LABEL,
+  ENCOUNTER_STYLE,
+  encounterName,
   TERRAIN_STYLE,
   commandForKey,
   describeDrift,
@@ -164,6 +167,19 @@ function drawRegion(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, ru
     }
   }
 
+  // 조우는 지금 보이는 것만 그린다. 탐사한 칸이어도 안개 속이면 거기 있는지 모른다.
+  for (const encounter of run.encounters) {
+    const { cell } = encounter;
+    const inRegion = cell.x >= x0 && cell.x < x0 + cols && cell.y >= y0 && cell.y < y0 + rows;
+    if (inRegion && isInSight(grid, player.cell, player.conveyance, cell)) {
+      const terrain = grid.terrainAt(cell);
+      const style = ENCOUNTER_STYLE[encounter.kind];
+      ctx.fillStyle = terrain === null ? FOG_DIM : TERRAIN_STYLE[terrain].fill;
+      ctx.fillRect(offsetX + (cell.x - x0) * tile, offsetY + (cell.y - y0) * tile, tile, tile);
+      glyph(cell.x - x0, cell.y - y0, style.glyph, style.color);
+    }
+  }
+
   if (berth !== null && berth.cell.x >= x0 && berth.cell.y >= y0) {
     glyph(berth.cell.x - x0, berth.cell.y - y0, "⛵", "#f2c45a");
   }
@@ -218,6 +234,8 @@ function renderStatus(run: RunState): string {
       <div><dt>위치</dt><dd>${lat} ${lon}</dd></div>
       <div><dt>해류</dt><dd>${describeCurrent(position)}</dd></div>
       <div><dt>탈것</dt><dd>${CONVEYANCE_LABEL[run.player.conveyance]}</dd></div>
+      <div><dt>선원</dt><dd>${run.supplies.crew}명 · 선체 ${run.supplies.hull}/${run.supplies.hullMax}</dd></div>
+      <div><dt>보급</dt><dd>식량 ${run.supplies.food} · 물 ${run.supplies.water} · ${daysOfSupply(run.supplies)}일분</dd></div>
       <div><dt>바람</dt><dd>${describeWindDirection(wind.fromDeg)} ${wind.speedKnots.toFixed(1)}kn · ${WIND_REGIME_LABELS[wind.regime]}</dd></div>
       <div><dt>해역</dt><dd>(${run.region.rx}, ${run.region.ry}) · 들른 곳 ${run.visitedRegions.size}</dd></div>
       <div><dt>탐사</dt><dd>${run.explored.count().toLocaleString()}칸</dd></div>
@@ -245,6 +263,12 @@ function renderCompass(run: RunState): string {
     if (terrain === null || !canEnter(run.player.conveyance, terrain)) {
       const wall = terrain === "sea" ? "바다" : "뭍";
       return `<div class="rl-compass__cell rl-compass__cell--wall"><span>${DIRECTION_LABEL[dir]}</span>${wall}</div>`;
+    }
+    const occupant = run.encounters.find(
+      (encounter) => next !== null && encounter.cell.x === next.x && encounter.cell.y === next.y,
+    );
+    if (occupant !== undefined) {
+      return `<div class="rl-compass__cell rl-compass__cell--blocked"><span>${DIRECTION_LABEL[dir]}</span>⚔ ${encounterName(occupant.kind)} ${occupant.crew}</div>`;
     }
     const passage = passageFrom(run, dir);
     const hours = hoursPerCell(run.grid.stepNm(run.player.cell, dir), passage.rangeNm);

@@ -1,8 +1,11 @@
+import { ENCOUNTER_KINDS } from "../../content/game/encounter-kinds";
+import type { EncounterKindId } from "../../content/game/game-content.types";
 import { findPort } from "../../content/ports";
 import { HOURS_PER_DAY } from "../../sim/calendar/calendar";
 import type { Direction } from "../../game/grid/direction.types";
 import type { Terrain } from "../../game/grid/world-grid.types";
 import type { Command, RunEvent } from "../../game/run/run.types";
+import type { ExpeditionEnd } from "../../game/supplies/supplies.types";
 import type { Conveyance } from "../../game/travel/travel.types";
 import type { LogLine, TileStyle } from "./game-view.types";
 
@@ -81,6 +84,44 @@ export const DIRECTION_LABEL: Readonly<Record<Direction, string>> = {
   nw: "북서",
 };
 
+/** 조우의 글자와 색. 원본 로그라이크처럼 글자 하나로 그린다. */
+export const ENCOUNTER_STYLE: Readonly<Record<EncounterKindId, { glyph: string; color: string }>> =
+  {
+    pirate: { glyph: "P", color: "#e0604c" },
+    bandit: { glyph: "B", color: "#e08a4c" },
+    beast: { glyph: "w", color: "#c9b48a" },
+  };
+
+export function encounterName(kind: EncounterKindId): string {
+  return ENCOUNTER_KINDS.find((entry) => entry.id === kind)?.name ?? kind;
+}
+
+const HANGUL_FIRST = 0xac00;
+const HANGUL_LAST = 0xd7a3;
+const HANGUL_FINALS = 28;
+
+/**
+ * 받침에 맞는 조사를 붙인다. "해적선이", "도적떼가".
+ *
+ * @param withFinal 받침이 있을 때의 조사 ("이", "을").
+ * @param withoutFinal 받침이 없을 때의 조사 ("가", "를").
+ */
+export function withParticle(word: string, withFinal: string, withoutFinal: string): string {
+  const code = word.charCodeAt(word.length - 1);
+  const hasFinal =
+    code >= HANGUL_FIRST && code <= HANGUL_LAST && (code - HANGUL_FIRST) % HANGUL_FINALS !== 0;
+  return `${word}${hasFinal ? withFinal : withoutFinal}`;
+}
+
+function subject(kind: EncounterKindId): string {
+  return withParticle(encounterName(kind), "이", "가");
+}
+
+const END_LABEL: Readonly<Record<ExpeditionEnd, string>> = {
+  "crew-lost": "선원을 모두 잃었다",
+  "hull-lost": "배가 가라앉았다",
+};
+
 function portName(portId: string): string {
   return findPort(portId)?.name ?? portId;
 }
@@ -114,10 +155,51 @@ export function describeEvent(event: RunEvent): LogLine | null {
       return { text: event.reason, tone: "warn" };
     case "day-start":
       return { text: `${event.day + 1}일째`, tone: "info" };
+    case "ration":
+      return { text: describeRation(event), tone: "bad" };
+    case "resupply":
+      return { text: "식량과 물을 가득 채웠다", tone: "info" };
+    case "ended":
+      return { text: `원정이 끝났다 — ${END_LABEL[event.reason]}`, tone: "bad" };
+    case "sighted":
+      return { text: `${subject(event.kind)} 보인다 (약 ${event.crew}명)`, tone: "warn" };
+    case "chase":
+      return { text: `${subject(event.kind)} 이쪽으로 향한다`, tone: "warn" };
+    case "engaged":
+      return { text: `${subject(event.kind)} 바로 옆까지 붙었다`, tone: "bad" };
+    case "evaded":
+      return {
+        text: `${withParticle(encounterName(event.kind), "을", "를")} 따돌렸다`,
+        tone: "good",
+      };
+    case "combat":
+      return { text: describeCombat(event), tone: event.crewLost > event.foeLost ? "bad" : "warn" };
+    case "defeated":
+      return {
+        text: `${withParticle(encounterName(event.kind), "을", "를")} 물리쳤다`,
+        tone: "good",
+      };
     case "move":
     case "drift":
+    case "encounter-move":
       return null;
   }
+}
+
+function describeCombat(event: Extract<RunEvent, { type: "combat" }>): string {
+  const name = encounterName(event.kind);
+  const opening = event.initiated
+    ? `${withParticle(name, "을", "를")} 덮쳤다`
+    : `${withParticle(name, "이", "가")} 덮쳐 왔다`;
+  const hull = event.hullLost > 0 ? ` · 선체 -${event.hullLost}` : "";
+  return `${opening} — 우리 -${event.crewLost}명${hull} · 적 -${event.foeLost}명 (남은 적 ${event.foeLeft})`;
+}
+
+function describeRation(event: Extract<RunEvent, { type: "ration" }>): string {
+  const lacking = [event.starving ? "식량" : null, event.thirsty ? "물" : null]
+    .filter((item) => item !== null)
+    .join("과 ");
+  return `${lacking}이 떨어졌다. 선원 ${event.lost}명을 잃었다`;
 }
 
 /** 한 명령 동안 해류에 밀린 칸 수를 한 줄로. 칸마다 남기면 로그가 해류로 뒤덮인다. */

@@ -1,0 +1,36 @@
+import { internal, tunedValues } from "../tuning/tuning";
+import type { Tuned } from "../tuning/tuning.types";
+
+const guess = (value: number, unit: string, note: string): Tuned => ({
+  value,
+  unit,
+  grade: "unverified",
+  source: `감으로 정함. ${note}`,
+});
+
+/**
+ * 맞붙은 한 합(合)의 값. 승원 백병전이 기본이고, 해적만 선체를 깎는다 (SPEC-roguelike §14).
+ *
+ * 살상률은 "한 사람이 한 합에 상대를 몇 명 쓰러뜨리는가"다. 사료와 대조할 대상은 이 값이 아니라
+ * 이 값이 만드는 **교전 한 번의 사상자 비율**이다 — 당대 해적 습격 기록의 사상자 수.
+ */
+const COMBAT_SCALARS = {
+  playerLethality: guess(0.1, "명/명·합", "무장한 상선 선원. 해적보다 조금 약하다는 방향만 둔 값"),
+  pirateLethality: guess(0.12, "명/명·합", "싸움이 일인 무리라 선원보다 조금 세다는 방향만 둔 값"),
+  banditLethality: guess(0.1, "명/명·합", "기마 약탈대. 선원과 비슷하다는 방향만 둔 값"),
+  beastLethality: guess(0.06, "명/명·합", "늑대는 사람을 잘 죽이지 못한다는 방향만 둔 값"),
+  pirateHullDamage: guess(
+    0.1,
+    "점/명·합",
+    "해적 한 명이 한 합에 깎는 선체. 포격·충각·갈고리를 뭉뚱그린 값",
+  ),
+  roundHours: internal(
+    2,
+    "시간",
+    "한 합에 흐르는 시간. 게임 속도 값 — 기다리기 한 번이 하루를 다 쓰지 않게 한다",
+  ),
+  rollSpread: internal(0.5, "배", "한 합의 운. 기댓값 둘레 ±이 비율로 흔든다. 모델 내부 분산"),
+} as const satisfies Record<string, Tuned>;
+
+export const COMBAT_TABLES = [COMBAT_SCALARS] as const;
+export const COMBAT = tunedValues(COMBAT_SCALARS);

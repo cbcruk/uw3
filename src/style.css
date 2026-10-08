@@ -381,3 +381,7 @@ button.primary {
 .rl-log__item--good {
   color: var(--good);
 }
+
+.rl-log__item--bad {
+  color: var(--bad);
+}

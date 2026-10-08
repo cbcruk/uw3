@@ -5,10 +5,16 @@ import { LAND_POLYGONS } from "../../content/world-land";
 import { HOURS_PER_DAY, toDayNumber } from "../../sim/calendar/calendar";
 import { WORLD_LAND_CELLS_PER_DEGREE } from "../../sim/map/land-mask.const";
 import { createTileMap } from "../../sim/map/tile-map";
-import { cellsInSight, createExploredMap, sightRadiusNm } from "../fog/fog";
+import { spawnEncounters } from "../encounter/encounter";
+import { actEncounters, canStrike } from "../encounter/pursuit";
+import { fightRound } from "../combat/combat";
+import { COMBAT } from "../../content/game/combat.tuning";
+import { cellsInSight, createExploredMap, isInSight, sightRadiusNm } from "../fog/fog";
 import { DIRECTIONS } from "../grid/direction";
 import { createWorldGrid } from "../grid/world-grid";
 import type { Cell, WorldGrid } from "../grid/world-grid.types";
+import type { Encounter } from "../encounter/encounter.types";
+import type { CombatEvent } from "../combat/combat.types";
 import { regionKey, regionOf, sameRegion } from "../region/region";
 import { canEnter, passageToward } from "../travel/travel";
 import {
@@ -20,6 +26,7 @@ import {
   resolveDrift,
 } from "../travel/drift";
 import type { EastNorth } from "../travel/drift.types";
+import { consumeDay, createSupplies, expeditionEndOf, resupply } from "../supplies/supplies";
 import type { Mount, Passage } from "../travel/travel.types";
 import type { Direction } from "../grid/direction.types";
 import type { Command, RunConfig, RunEvent, RunState } from "./run.types";
@@ -65,13 +72,17 @@ export function createRun(config: RunConfig, grid: WorldGrid = createWorld()): R
       facing: INITIAL_FACING,
       driftNm: NO_DRIFT,
     },
+    supplies: createSupplies(shipClass),
+    ended: null,
     berth: null,
     region,
     explored: createExploredMap(grid),
+    encounters: spawnEncounters(grid, config.seed, region),
+    sighted: new Set(),
     visitedRegions: new Set([regionKey(region)]),
     commands: [],
   };
-  lookAround(run);
+  lookAround(run, []);
   return run;
 }
 
@@ -83,18 +94,91 @@ export function createRun(config: RunConfig, grid: WorldGrid = createWorld()): R
  */
 export function applyCommand(run: RunState, command: Command): RunEvent[] {
   const events: RunEvent[] = [];
+  if (run.ended !== null) {
+    events.push({ type: "rejected", command: command.type, reason: "원정이 끝났다" });
+    return events;
+  }
   const dayBefore = currentDay(run);
+  const startHours = run.elapsedHours;
   const accepted = resolveCommand(run, command, events);
   if (!accepted) {
     return events;
   }
   run.commands.push(command);
-  lookAround(run);
+  events.push(
+    ...actEncounters(
+      {
+        grid: run.grid,
+        target: run.player,
+        startHours,
+        nowHours: run.elapsedHours,
+        dayNumberAt: (hours) =>
+          toDayNumber(run.config.startDate) + Math.floor(hours / HOURS_PER_DAY),
+        fallbackShip: run.shipClass,
+        engage: (foe) =>
+          expeditionEndOf(run.supplies) === null
+            ? { hours: COMBAT.roundHours, events: fight(run, foe, false) }
+            : null,
+      },
+      run.encounters,
+    ),
+  );
+  run.encounters = run.encounters.filter((encounter) => encounter.crew > 0);
+  concludeIfEnded(run, events);
+  lookAround(run, events);
   const dayAfter = currentDay(run);
-  if (dayAfter > dayBefore) {
-    events.push({ type: "day-start", day: dayAfter });
+  for (let day = dayBefore + 1; day <= dayAfter && run.ended === null; day += 1) {
+    passDay(run, day, events);
   }
   return events;
+}
+
+/**
+ * 날이 바뀐다. 하루치를 먹고, 정박 중이면 다시 채운다.
+ *
+ * 소모는 칸마다가 아니라 날마다다 — 시뮬의 하루 단위(T1)와 같은 경계에서 일어난다.
+ * 한 명령이 며칠을 건너면 그 날 수만큼 돈다.
+ */
+function passDay(run: RunState, day: number, events: RunEvent[]): void {
+  events.push({ type: "day-start", day });
+  const ration = consumeDay(run.supplies);
+  if (ration.starving || ration.thirsty) {
+    events.push({ type: "ration", ...ration });
+  }
+  if (dockedPortId(run) !== null) {
+    resupply(run.supplies);
+  }
+  concludeIfEnded(run, events);
+}
+
+/** 선원이나 선체가 바닥났으면 원정을 끝낸다. 이미 끝났으면 아무것도 하지 않는다. */
+function concludeIfEnded(run: RunState, events: RunEvent[]): void {
+  const end = run.ended === null ? expeditionEndOf(run.supplies) : null;
+  if (end !== null) {
+    run.ended = end;
+    events.push({ type: "ended", reason: end });
+  }
+}
+
+/** 조우 하나와 한 합을 치른다. */
+function fight(run: RunState, foe: Encounter, initiated: boolean): CombatEvent[] {
+  return fightRound({
+    seed: run.config.seed,
+    supplies: run.supplies,
+    conveyance: run.player.conveyance,
+    foe,
+    initiated,
+  });
+}
+
+/** 플레이어에게 바로 덤빌 수 있는 조우가 옆에 있는가. */
+function engaged(run: RunState): boolean {
+  return run.encounters.some((encounter) => canStrike(run.grid, encounter, run.player.cell));
+}
+
+/** 배에 탄 채 항구 칸에 있으면 그 항구. */
+function dockedPortId(run: RunState): string | null {
+  return run.player.conveyance === "ship" ? run.grid.portAt(run.player.cell) : null;
 }
 
 /** `seed + 명령 로그`에서 런을 다시 만든다 (R8). */
@@ -139,10 +223,27 @@ export function rangeTowardNm(run: RunState, dir: Direction): number {
   return passageFrom(run, dir).rangeNm;
 }
 
-/** 지금 자리에서 보이는 칸을 탐사 기록에 더한다. 하선하면 시야가 좁아진다. */
-function lookAround(run: RunState): void {
+/**
+ * 지금 자리에서 보이는 칸을 탐사 기록에 더하고, 처음 보이는 조우를 알린다.
+ * 하선하면 시야가 좁아진다.
+ */
+function lookAround(run: RunState, events: RunEvent[]): void {
   const { grid, player } = run;
   run.explored.reveal(cellsInSight(grid, player.cell, sightRadiusNm(player.conveyance)));
+  for (const encounter of run.encounters) {
+    if (run.sighted.has(encounter.id)) {
+      continue;
+    }
+    if (isInSight(grid, player.cell, player.conveyance, encounter.cell)) {
+      run.sighted.add(encounter.id);
+      events.push({
+        type: "sighted",
+        encounterId: encounter.id,
+        kind: encounter.kind,
+        crew: encounter.crew,
+      });
+    }
+  }
 }
 
 function resolveCommand(run: RunState, command: Command, events: RunEvent[]): boolean {
@@ -151,7 +252,10 @@ function resolveCommand(run: RunState, command: Command, events: RunEvent[]): bo
       return move(run, command.dir, events);
     case "wait": {
       // 다음 날 첫 시각까지 쉰다. 바람은 날마다 바뀌므로 하루를 넘겨야 기다린 의미가 있다.
-      const hours = (currentDay(run) + 1) * HOURS_PER_DAY - run.elapsedHours;
+      // 적이 붙어 있으면 한 합만큼만 — 키 한 번에 하루치 싸움을 다 치르지 않게 한다 (R35).
+      const hours = engaged(run)
+        ? COMBAT.roundHours
+        : (currentDay(run) + 1) * HOURS_PER_DAY - run.elapsedHours;
       run.elapsedHours += hours;
       if (isAdrift(run)) {
         const current = currentKnots(run.grid.cellCenter(run.player.cell));
@@ -177,6 +281,15 @@ function move(run: RunState, dir: Direction, events: RunEvent[]): boolean {
   if (!canEnter(player.conveyance, terrain)) {
     events.push({ type: "blocked", actorId: player.id, at: player.cell, reason: "terrain" });
     return false;
+  }
+  const foe = run.encounters.find((encounter) => sameCell(next, encounter.cell));
+  if (foe !== undefined) {
+    // 들이받기. 원본 로그라이크의 근접 공격이다 — 조우가 선 칸으로 가려는 것이 곧 공격이다.
+    run.elapsedHours += COMBAT.roundHours;
+    player.facing = dir;
+    events.push(...fight(run, foe, true));
+    run.encounters = run.encounters.filter((encounter) => encounter.crew > 0);
+    return true;
   }
   const passage = passageFrom(run, dir);
   if (passage.rangeNm <= 0) {
@@ -226,13 +339,18 @@ function enterCell(run: RunState, next: Cell, events: RunEvent[]): void {
   const region = regionOf(next);
   if (!sameRegion(region, run.region)) {
     run.region = region;
-    run.visitedRegions.add(regionKey(region));
+    const key = regionKey(region);
+    if (!run.visitedRegions.has(key)) {
+      run.visitedRegions.add(key);
+      run.encounters.push(...spawnEncounters(grid, run.config.seed, region));
+    }
     events.push({ type: "region", region });
   }
   const portId = player.conveyance === "ship" ? grid.portAt(next) : null;
   if (portId !== null) {
     player.driftNm = NO_DRIFT;
-    events.push({ type: "dock", portId });
+    resupply(run.supplies);
+    events.push({ type: "dock", portId }, { type: "resupply", portId });
   }
 }
 

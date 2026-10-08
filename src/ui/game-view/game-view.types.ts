@@ -11,5 +11,5 @@ export interface TileStyle {
 
 export interface LogLine {
   text: string;
-  tone: "info" | "warn" | "good";
+  tone: "info" | "warn" | "good" | "bad";
 }

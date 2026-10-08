@@ -1,9 +1,12 @@
 import type { GameDate } from "../../sim/calendar/calendar.types";
 import type { ShipClass } from "../../sim/ship/ship.types";
+import type { Encounter } from "../encounter/encounter.types";
+import type { PursuitEvent } from "../encounter/pursuit.types";
 import type { ExploredMap } from "../fog/fog.types";
 import type { Direction } from "../grid/direction.types";
 import type { Cell, WorldGrid } from "../grid/world-grid.types";
 import type { RegionId } from "../region/region.types";
+import type { ExpeditionEnd, Supplies } from "../supplies/supplies.types";
 import type { EastNorth } from "../travel/drift.types";
 import type { Conveyance, Mount } from "../travel/travel.types";
 
@@ -46,7 +49,7 @@ export type Command =
 /**
  * 막힌 이유. 막힌 걸음은 시간을 쓰지 않는다 — 원본에서 벽에 부딪힌 것과 같다.
  * `wind`는 무풍일 때뿐이다. 맞바람은 태킹으로 느리게 갈 뿐 막지 않는다.
- * `current`는 역류가 돛의 전진보다 셀 때다.
+ * `current`는 역류가 돛의 전진보다 셀 때다. 조우가 선 칸은 막힘이 아니라 들이받기다 (P3d).
  */
 export type BlockReason = "terrain" | "edge" | "wind" | "current";
 
@@ -60,7 +63,12 @@ export type RunEvent =
   | { type: "disembark"; mount: Mount; portId: string }
   | { type: "embark"; portId: string }
   | { type: "rejected"; command: Command["type"]; reason: string }
-  | { type: "day-start"; day: number };
+  | { type: "day-start"; day: number }
+  | { type: "ration"; lost: number; starving: boolean; thirsty: boolean }
+  | { type: "resupply"; portId: string }
+  | { type: "ended"; reason: ExpeditionEnd }
+  | { type: "sighted"; encounterId: string; kind: Encounter["kind"]; crew: number }
+  | PursuitEvent;
 
 /** 하선 중 항구에 남겨 둔 배. */
 export interface Berth {
@@ -75,10 +83,21 @@ export interface RunState {
   /** 출발 후 흐른 시간. 날짜는 여기서 파생한다 — 바람은 날마다 바뀐다. */
   elapsedHours: number;
   player: Traveler;
+  /** 이 원정이 잃을 수 있는 것. 죽으면 사라지고 메타로 넘어가지 않는다 (§0 로그라이트). */
+  supplies: Supplies;
+  /** 원정이 끝났으면 그 이유. 끝난 런은 더 이상 명령을 받지 않는다. */
+  ended: ExpeditionEnd | null;
   berth: Berth | null;
   region: RegionId;
   /** 한 번이라도 본 칸. 명령 로그에서 파생되므로 재현하면 같아진다 (R8). */
   explored: ExploredMap;
+  /**
+   * 격자 위의 조우. 영역에 처음 들어갈 때 그 영역 몫이 더해진다 (R4).
+   * 안개 밖에 있어도 여기 있다 — 보이느냐는 그릴 때 시야로 가른다.
+   */
+  encounters: Encounter[];
+  /** 한 번이라도 시야에 들어온 조우. 처음 보일 때만 알린다. */
+  sighted: Set<string>;
   /** 들어가 본 영역. 던전에서 내려가 본 층에 해당한다. */
   visitedRegions: Set<string>;
   /** `seed + 명령 로그 = 완전 재현` (R8). */

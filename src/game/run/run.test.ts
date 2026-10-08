@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vite-plus/test";
+import { COMBAT } from "../../content/game/combat.tuning";
 import { MOUNT } from "../../content/game/mounts.tuning";
 import { findShipClass } from "../../content/ships";
 import { toDayNumber } from "../../sim/calendar/calendar";
 import type { ShipClass } from "../../sim/ship/ship.types";
-import { regionKey } from "../region/region";
+import { regionKey, regionOf } from "../region/region";
 import { DIRECTIONS } from "../grid/direction";
 import { dailyRangeNm, passageToward } from "../travel/travel";
 import { applyCommand, createRun, createWorld, currentDay, rangeTowardNm, replayRun } from "./run";
+import type { Cell } from "../grid/world-grid.types";
 import type { Command, RunConfig, RunEvent } from "./run.types";
 
 const grid = createWorld();
@@ -232,5 +234,191 @@ describe("런 — 방향키 한 번이 한 칸", () => {
     expect(again.player).toEqual(run.player);
     expect(again.elapsedHours).toBe(run.elapsedHours);
     expect(again.visitedRegions).toEqual(run.visitedRegions);
+  });
+});
+
+describe("원정의 보급 — 날이 바뀔 때 먹고, 항구에서 채운다", () => {
+  /** 리스본에서 항구가 아닌 바다 칸에 닿을 때까지 나간다. */
+  function runAtSea() {
+    const run = createRun(CONFIG, grid);
+    for (const dir of DIRECTIONS) {
+      applyCommand(run, { type: "move", dir });
+      if (grid.portAt(run.player.cell) === null) {
+        return run;
+      }
+    }
+    throw new Error("리스본에서 나갈 바다가 없다");
+  }
+
+  it("바다에서 하루를 넘기면 선원 수만큼 줄어든다", () => {
+    const run = runAtSea();
+    const { crew, food, water } = run.supplies;
+    const events = applyCommand(run, { type: "wait" });
+    expect(eventsOf(events, "day-start")).toHaveLength(1);
+    expect(run.supplies.food).toBe(food - crew);
+    expect(run.supplies.water).toBe(water - crew);
+  });
+
+  it("항구에서 기다리면 먹은 만큼 다시 채운다", () => {
+    const run = createRun(CONFIG, grid);
+    applyCommand(run, { type: "wait" });
+    expect(run.supplies.food).toBe(run.supplies.capacity);
+  });
+
+  it("보급이 바닥난 채 선원을 다 잃으면 런이 끝나고 더 이상 명령을 받지 않는다", () => {
+    const run = runAtSea();
+    Object.assign(run.supplies, { crew: 1, food: 0, water: 0 });
+    const events = applyCommand(run, { type: "wait" });
+    expect(eventsOf(events, "ration")).toEqual([
+      { type: "ration", lost: 1, starving: true, thirsty: true },
+    ]);
+    expect(eventsOf(events, "ended")).toEqual([{ type: "ended", reason: "crew-lost" }]);
+    expect(run.ended).toBe("crew-lost");
+
+    const commandsBefore = run.commands.length;
+    const after = applyCommand(run, { type: "wait" });
+    expect(eventsOf(after, "rejected")).toHaveLength(1);
+    expect(run.commands).toHaveLength(commandsBefore);
+  });
+});
+
+describe("런의 조우 — 처음 들어간 영역에만 생기고, 처음 보일 때 알린다", () => {
+  it("출발 영역의 조우는 런을 만들 때 놓인다", () => {
+    const run = createRun(CONFIG, grid);
+    expect(run.encounters.every((e) => regionKey(regionOf(e.cell)) === regionKey(run.region))).toBe(
+      true,
+    );
+  });
+
+  it("다시 들어간 영역에는 조우를 더 놓지 않는다", () => {
+    const run = createRun(CONFIG, grid);
+    const start = run.region;
+    for (let i = 0; i < 200 && run.visitedRegions.size < 2; i += 1) {
+      applyCommand(run, { type: "move", dir: "s" });
+    }
+    expect(run.visitedRegions.size).toBe(2);
+    const total = run.encounters.length;
+    for (let i = 0; i < 200 && regionKey(run.region) !== regionKey(start); i += 1) {
+      applyCommand(run, { type: "move", dir: "n" });
+    }
+    expect(regionKey(run.region)).toBe(regionKey(start));
+    expect(run.encounters).toHaveLength(total);
+  });
+
+  it("조우는 보일 때 한 번만 알리고, 재현하면 같은 조우를 같은 순서로 본다", () => {
+    const run = createRun(CONFIG, grid);
+    const sighted: string[] = [];
+    for (let i = 0; i < 60; i += 1) {
+      const events = applyCommand(run, { type: "move", dir: i % 2 === 0 ? "s" : "sw" });
+      sighted.push(...eventsOf(events, "sighted").map((e) => e.encounterId));
+    }
+    expect(sighted.length).toBeGreaterThan(0);
+    expect(new Set(sighted).size).toBe(sighted.length);
+    expect([...run.sighted]).toEqual(expect.arrayContaining(sighted));
+
+    const replayed = replayRun(CONFIG, run.commands, grid);
+    expect(replayed.encounters).toEqual(run.encounters);
+    expect(replayed.sighted).toEqual(run.sighted);
+  });
+});
+
+describe("런의 추격 — 플레이어의 명령이 흘린 시간만큼 조우가 움직인다", () => {
+  /** 대양 한복판에 놓은 배와, 같은 줄 `dx`칸 옆의 해적 하나. */
+  function seaRunWithPirate(dx: number) {
+    const run = createRun(CONFIG, grid);
+    run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell;
+    run.encounters = [
+      {
+        id: "pirate-test",
+        kind: "pirate",
+        cell: { x: run.player.cell.x + dx, y: run.player.cell.y },
+        crew: 30,
+        conveyance: "ship",
+        nextActHours: 0,
+        rounds: 0,
+        chasing: false,
+      },
+    ];
+    return run;
+  }
+
+  it("조우가 선 칸으로 가려 하면 들이받는다 — 한 합을 치르고 그만큼 시간이 흐른다", () => {
+    const run = seaRunWithPirate(1);
+    const hours = run.elapsedHours;
+    const crew = run.supplies.crew;
+    const events = applyCommand(run, { type: "move", dir: "e" });
+    const [round] = eventsOf(events, "combat");
+    expect(round).toMatchObject({ encounterId: "pirate-test", initiated: true });
+    expect(run.elapsedHours).toBe(hours + COMBAT.roundHours);
+    expect(run.supplies.crew).toBeLessThanOrEqual(crew);
+    expect(run.player.cell).not.toEqual(run.encounters[0]?.cell);
+  });
+
+  it("기다리는 동안 보이는 해적이 따라와 붙는다", () => {
+    const run = seaRunWithPirate(-4);
+    const events = applyCommand(run, { type: "wait" });
+    expect(eventsOf(events, "chase")).toHaveLength(1);
+    expect(eventsOf(events, "engaged")).toHaveLength(1);
+  });
+});
+
+describe("전투 — 붙으면 양쪽이 머릿수를 잃는다", () => {
+  function seaRunNextTo(crew: number) {
+    const run = createRun(CONFIG, grid);
+    run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell;
+    run.encounters = [
+      {
+        id: "pirate-test",
+        kind: "pirate",
+        cell: { x: run.player.cell.x + 1, y: run.player.cell.y },
+        crew,
+        conveyance: "ship",
+        nextActHours: 0,
+        rounds: 0,
+        chasing: false,
+      },
+    ];
+    return run;
+  }
+
+  it("적이 붙어 있으면 기다리기는 하루가 아니라 한 합이다", () => {
+    const run = seaRunNextTo(30);
+    const before = run.elapsedHours;
+    const events = applyCommand(run, { type: "wait" });
+    expect(run.elapsedHours - before).toBe(COMBAT.roundHours);
+    expect(eventsOf(events, "combat").length).toBeGreaterThan(0);
+    expect(eventsOf(events, "combat").every((e) => !e.initiated)).toBe(true);
+  });
+
+  it("작은 무리는 들이받아 물리치고, 물리친 조우는 격자에서 사라진다", () => {
+    const run = seaRunNextTo(2);
+    let defeated = false;
+    for (let i = 0; i < 10 && !defeated; i += 1) {
+      defeated = eventsOf(applyCommand(run, { type: "move", dir: "e" }), "defeated").length > 0;
+    }
+    expect(defeated).toBe(true);
+    expect(run.encounters).toHaveLength(0);
+  });
+
+  it("큰 해적에게 선원이나 선체를 다 잃으면 원정이 끝난다", () => {
+    const run = seaRunNextTo(400);
+    let ended = false;
+    for (let i = 0; i < 100 && !ended; i += 1) {
+      ended = eventsOf(applyCommand(run, { type: "wait" }), "ended").length > 0;
+    }
+    expect(ended).toBe(true);
+    expect(run.ended === "crew-lost" || run.ended === "hull-lost").toBe(true);
+    expect(eventsOf(applyCommand(run, { type: "wait" }), "rejected")).toHaveLength(1);
+  });
+
+  it("같은 시드·같은 명령이면 같은 전투 결과다", () => {
+    const play = () => {
+      const run = seaRunNextTo(30);
+      for (let i = 0; i < 5; i += 1) {
+        applyCommand(run, { type: "move", dir: "e" });
+      }
+      return { supplies: run.supplies, encounters: run.encounters };
+    };
+    expect(play()).toEqual(play());
   });
 });
