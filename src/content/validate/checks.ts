@@ -1,6 +1,6 @@
 import { CURRENT_STREAMS } from '../currents'
 import { PORTS, PORT_ANCHORAGES } from '../ports'
-import { SHIP_CLASSES } from '../ships'
+import { SHIP_CLASSES, findShipClass } from '../ships'
 import { HISTORICAL_VOYAGES } from '../voyages'
 import { LAND_POLYGONS } from '../world-land'
 import { DEBT_BASELINE } from '../tuning/debt-baseline'
@@ -18,6 +18,7 @@ import { SIGHT_TABLES } from '../game/sight.tuning'
 import { TRADE_TABLES } from '../game/trade.tuning'
 import { FAME_TABLES } from '../game/fame.tuning'
 import { findGoodByName } from '../game/goods'
+import { DEFAULT_EXPEDITION_SHIP, EXPEDITION_SHIPS } from '../game/expedition-ships'
 import { TERRAIN_ZONES } from '../game/terrain-zones'
 import { gradeTally, tuningEntries } from '../tuning/tuning'
 import type { SourceGrade, Tuned } from '../tuning/tuning.types'
@@ -433,6 +434,20 @@ const gameLayer: Check = {
           findings.push(error('game', `${port.id}의 품목이 교역 표에 없다: ${name}`))
         }
       }
+    }
+    // 원정 선형은 id로 배 표를 가리킨다. 없는 id는 출항할 때 예외가 된다.
+    for (const { shipClassId } of EXPEDITION_SHIPS) {
+      if (findShipClass(shipClassId) === undefined) {
+        findings.push(error('game', `원정 선형이 배 표에 없다: ${shipClassId}`))
+      }
+    }
+    const defaultShip = EXPEDITION_SHIPS.find(
+      (ship) => ship.shipClassId === DEFAULT_EXPEDITION_SHIP,
+    )
+    if (defaultShip?.minFame !== 0) {
+      findings.push(
+        error('game', `기본 원정 선형은 명성 없이 고를 수 있어야 한다: ${DEFAULT_EXPEDITION_SHIP}`),
+      )
     }
     return findings
   },

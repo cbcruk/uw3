@@ -27,6 +27,11 @@ const FAME_SCALARS = {
     '두카트',
     '후원금 상한. 게임 속도 값 — 오래 한 사람의 출항 금화가 끝없이 불지 않게 한다',
   ),
+  nauFame: internal(
+    300,
+    '점',
+    `${FAME_IS_GAME}. 자유 원정에서 나우를 고를 수 있게 되는 명성. 나우는 해적 50명도 이긴다(§21)`,
+  ),
   languageDocksToLearn: internal(
     3,
     '회',
