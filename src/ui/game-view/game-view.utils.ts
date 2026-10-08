@@ -117,7 +117,8 @@ function subject(kind: EncounterKindId): string {
   return withParticle(encounterName(kind), "이", "가");
 }
 
-const END_LABEL: Readonly<Record<ExpeditionEnd, string>> = {
+export const END_LABEL: Readonly<Record<ExpeditionEnd, string>> = {
+  arrived: "목표 항구에 닿았다",
   "crew-lost": "선원을 모두 잃었다",
   "hull-lost": "배가 가라앉았다",
 };
@@ -160,7 +161,10 @@ export function describeEvent(event: RunEvent): LogLine | null {
     case "resupply":
       return { text: "식량과 물을 가득 채웠다", tone: "info" };
     case "ended":
-      return { text: `원정이 끝났다 — ${END_LABEL[event.reason]}`, tone: "bad" };
+      return {
+        text: `원정이 끝났다 — ${END_LABEL[event.reason]}`,
+        tone: event.reason === "arrived" ? "good" : "bad",
+      };
     case "sighted":
       return { text: `${subject(event.kind)} 보인다 (약 ${event.crew}명)`, tone: "warn" };
     case "chase":

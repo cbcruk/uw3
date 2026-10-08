@@ -30,3 +30,9 @@ export function isDiagonal(dir: Direction): boolean {
   const { dx, dy } = DIRECTION_DELTA[dir];
   return dx !== 0 && dy !== 0;
 }
+
+/** 반대 방향. 온 길을 되짚을 때 쓴다. */
+export function opposite(dir: Direction): Direction {
+  const index = DIRECTIONS.indexOf(dir);
+  return DIRECTIONS[(index + DIRECTIONS.length / 2) % DIRECTIONS.length] as Direction;
+}

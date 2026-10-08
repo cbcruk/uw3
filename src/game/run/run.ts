@@ -60,6 +60,7 @@ export function createRun(config: RunConfig, grid: WorldGrid = createWorld()): R
     throw new Error(`unknown port: ${config.startPortId}`);
   }
   const region = regionOf(cell);
+  const supplies = createSupplies(shipClass);
   const run: RunState = {
     config,
     grid,
@@ -72,8 +73,11 @@ export function createRun(config: RunConfig, grid: WorldGrid = createWorld()): R
       facing: INITIAL_FACING,
       driftNm: NO_DRIFT,
     },
-    supplies: createSupplies(shipClass),
+    supplies,
     ended: null,
+    crewAtStart: supplies.crew,
+    defeated: 0,
+    dockedPorts: new Set([config.startPortId]),
     berth: null,
     region,
     explored: createExploredMap(grid),
@@ -82,6 +86,12 @@ export function createRun(config: RunConfig, grid: WorldGrid = createWorld()): R
     visitedRegions: new Set([regionKey(region)]),
     commands: [],
   };
+  for (const portId of config.knownPortIds ?? []) {
+    const portCell = grid.cellOfPort(portId);
+    if (portCell !== null) {
+      run.explored.reveal(cellsInSight(grid, portCell, sightRadiusNm("ship")));
+    }
+  }
   lookAround(run, []);
   return run;
 }
@@ -162,13 +172,15 @@ function concludeIfEnded(run: RunState, events: RunEvent[]): void {
 
 /** 조우 하나와 한 합을 치른다. */
 function fight(run: RunState, foe: Encounter, initiated: boolean): CombatEvent[] {
-  return fightRound({
+  const events = fightRound({
     seed: run.config.seed,
     supplies: run.supplies,
     conveyance: run.player.conveyance,
     foe,
     initiated,
   });
+  run.defeated += events.filter((event) => event.type === "defeated").length;
+  return events;
 }
 
 /** 플레이어에게 바로 덤빌 수 있는 조우가 옆에 있는가. */
@@ -350,7 +362,12 @@ function enterCell(run: RunState, next: Cell, events: RunEvent[]): void {
   if (portId !== null) {
     player.driftNm = NO_DRIFT;
     resupply(run.supplies);
+    run.dockedPorts.add(portId);
     events.push({ type: "dock", portId }, { type: "resupply", portId });
+    if (portId === run.config.goalPortId && run.ended === null) {
+      run.ended = "arrived";
+      events.push({ type: "ended", reason: "arrived" });
+    }
   }
 }
 

@@ -15,6 +15,13 @@ export interface RunConfig {
   startDate: GameDate;
   startPortId: string;
   shipClassId: string;
+  /** 계약한 목표 항구. 배로 입항하면 원정이 성공으로 끝난다. 없으면 끝없는 항해다. */
+  goalPortId?: string;
+  /**
+   * 메타에서 넘어온 아는 항구. 그 둘레가 처음부터 탐사된 채 시작한다.
+   * 메타가 런을 바꾸는 유일한 통로다 — 데일리에서는 비운다 (§0 경계).
+   */
+  knownPortIds?: readonly string[];
 }
 
 /** 격자 위를 움직이는 것. 원본의 `Actor`에서 전투 상태를 뺀 것이다 (전투는 P3). */
@@ -87,6 +94,12 @@ export interface RunState {
   supplies: Supplies;
   /** 원정이 끝났으면 그 이유. 끝난 런은 더 이상 명령을 받지 않는다. */
   ended: ExpeditionEnd | null;
+  /** 출항 때의 선원. 기록에 "몇 명 중 몇 명이 돌아왔나"로 남긴다. */
+  crewAtStart: number;
+  /** 물리친 조우 수. */
+  defeated: number;
+  /** 배로 들어가 본 항구. 메타의 "아는 항구"로 넘어간다. */
+  dockedPorts: Set<string>;
   berth: Berth | null;
   region: RegionId;
   /** 한 번이라도 본 칸. 명령 로그에서 파생되므로 재현하면 같아진다 (R8). */

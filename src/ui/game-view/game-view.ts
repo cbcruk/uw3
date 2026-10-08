@@ -4,7 +4,26 @@ import { WIND_REGIME_LABELS, describeWindDirection, windAt } from "../../sim/win
 import { currentAt, describeCurrentDirection } from "../../sim/current/current";
 import { headingOf } from "../../game/grid/direction";
 import type { Direction } from "../../game/grid/direction.types";
-import { applyCommand, createRun, dayNumberOf, passageFrom } from "../../game/run/run";
+import {
+  applyCommand,
+  createRun,
+  createWorld,
+  dayNumberOf,
+  passageFrom,
+  replayRun,
+} from "../../game/run/run";
+import {
+  applyRunToMeta,
+  dailyConfig,
+  dailyKey,
+  freeConfig,
+  recordOf,
+} from "../../game/expedition/expedition";
+import type { WorldGrid } from "../../game/grid/world-grid.types";
+import { findPort } from "../../content/ports";
+import { bearingDeg, haversineNm } from "../../sim/geo/geo.utils";
+import { loadActive, loadMeta, saveActive, saveMeta } from "./game-storage";
+import { renderExpeditionPanel } from "./expedition-panel";
 import { isInSight } from "../../game/fog/fog";
 import { canEnter } from "../../game/travel/travel";
 import { daysOfSupply } from "../../game/supplies/supplies";
@@ -23,14 +42,13 @@ import {
   hoursPerCell,
 } from "./game-view.utils";
 
-const CONFIG: RunConfig = {
-  seed: 0x5ea1e55,
-  startDate: { year: 1502, month: 3, day: 14 },
-  startPortId: "lisboa",
-  shipClassId: "caravela-redonda",
-};
-
 const LOG_LIMIT = 14;
+const SEED_RANGE = 2 ** 32;
+
+interface Session {
+  run: RunState;
+  daily: string | null;
+}
 
 /** 뱃머리 삼각형의 크기. 칸 한 변에 대한 비다. */
 const BOW_TIP_RATIO = 0.45;
@@ -58,18 +76,31 @@ const COMPASS_LAYOUT: readonly (Direction | null)[] = [
  * 로그라이크 화면. 영역 하나를 메르카토르 평면 타일로 그리고, 방향키 한 번에 한 칸 간다.
  *
  * 영역 경계를 넘으면 화면이 통째로 다음 영역으로 바뀐다 — 던전에서 층을 내려가는 것과 같다.
+ * 진행 중인 원정은 명령 로그로 저장하고, 다시 열면 재현으로 이어 간다.
  */
 export function mountGame(root: HTMLElement): void {
-  const run = createRun(CONFIG);
-  const log: LogLine[] = [{ text: "리스본 정박 중. 방향키로 한 칸씩 움직인다", tone: "info" }];
+  const grid = createWorld();
+  let meta = loadMeta();
+  const saved = loadActive();
+  let session: Session =
+    saved === null
+      ? startSession(grid, freeConfig(freshSeed(), meta), null)
+      : { run: replayRun(saved.config, saved.commands, grid), daily: saved.daily };
+  const log: LogLine[] = [
+    {
+      text: saved === null ? "원정을 떠난다. 방향키로 한 칸씩 움직인다" : "원정을 이어 간다",
+      tone: "info",
+    },
+  ];
 
   root.innerHTML = `
     <main class="layout">
       <section class="chart">
         <canvas id="rl-canvas" class="rl-canvas"></canvas>
-        <p class="chart__hint">방향키 이동 · y u b n 대각선 · . 기다림(다음 날) · h 말 하선 · c 낙타 하선 · e 승선 · <a href="#sim">시뮬레이터 →</a></p>
+        <p class="chart__hint">방향키 이동 · y u b n 대각선 · . 기다림(다음 날) · h 말 하선 · c 낙타 하선 · e 승선 · 적에게 가면 공격 · <a href="#sim">시뮬레이터 →</a></p>
       </section>
       <aside class="panel">
+        <div id="rl-expedition" class="rl-expedition"></div>
         <div id="rl-status" class="hud"></div>
         <div id="rl-compass" class="rl-compass"></div>
         <ul id="rl-log" class="rl-log"></ul>
@@ -78,10 +109,17 @@ export function mountGame(root: HTMLElement): void {
   `;
 
   const canvas = root.querySelector<HTMLCanvasElement>("#rl-canvas");
+  const expeditionRoot = root.querySelector<HTMLElement>("#rl-expedition");
   const statusRoot = root.querySelector<HTMLElement>("#rl-status");
   const compassRoot = root.querySelector<HTMLElement>("#rl-compass");
   const logRoot = root.querySelector<HTMLElement>("#rl-log");
-  if (canvas === null || statusRoot === null || compassRoot === null || logRoot === null) {
+  if (
+    canvas === null ||
+    expeditionRoot === null ||
+    statusRoot === null ||
+    compassRoot === null ||
+    logRoot === null
+  ) {
     throw new Error("game view markup is incomplete");
   }
   const ctx = canvas.getContext("2d");
@@ -90,7 +128,14 @@ export function mountGame(root: HTMLElement): void {
   }
 
   const draw = (): void => {
+    const { run } = session;
     drawRegion(ctx, canvas, run);
+    expeditionRoot.innerHTML = renderExpeditionPanel(
+      run,
+      session.daily,
+      meta,
+      dailyKey(new Date()),
+    );
     statusRoot.innerHTML = renderStatus(run);
     compassRoot.innerHTML = renderCompass(run);
     logRoot.innerHTML = log
@@ -98,24 +143,64 @@ export function mountGame(root: HTMLElement): void {
       .join("");
   };
 
-  window.addEventListener("keydown", (event: KeyboardEvent) => {
-    const command = commandForKey(event.key, event.code);
-    if (command === null || event.metaKey || event.ctrlKey) {
-      return;
-    }
-    event.preventDefault();
-    const events = applyCommand(run, command);
-    const lines = [...events.map(describeEvent), describeDrift(events)];
+  const pushLines = (lines: readonly (LogLine | null)[]): void => {
     for (const line of lines) {
       if (line !== null) {
         log.unshift(line);
       }
     }
     log.length = Math.min(log.length, LOG_LIMIT);
+  };
+
+  expeditionRoot.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-start]");
+    if (button === null) {
+      return;
+    }
+    const today = dailyKey(new Date());
+    const daily = button.dataset["start"] === "daily" ? today : null;
+    const config = daily === null ? freeConfig(freshSeed(), meta) : dailyConfig(daily);
+    session = startSession(grid, config, daily);
+    log.length = 0;
+    pushLines([{ text: `${daily === null ? "자유 원정" : "오늘의 원정"}을 떠난다`, tone: "info" }]);
+    button.blur();
+    draw();
+  });
+
+  window.addEventListener("keydown", (event: KeyboardEvent) => {
+    const command = commandForKey(event.key, event.code);
+    if (command === null || event.metaKey || event.ctrlKey) {
+      return;
+    }
+    event.preventDefault();
+    const { run, daily } = session;
+    const wasRunning = run.ended === null;
+    const events = applyCommand(run, command);
+    pushLines([...events.map(describeEvent), describeDrift(events)]);
+    const record = wasRunning ? recordOf(run, daily) : null;
+    if (record !== null) {
+      meta = applyRunToMeta(meta, run, record);
+      saveMeta(meta);
+      saveActive(null);
+    } else if (run.ended === null) {
+      saveActive({ config: run.config, commands: run.commands, daily });
+    }
     draw();
   });
   window.addEventListener("resize", draw);
   draw();
+}
+
+/** 새 원정을 연다. 시작하자마자 저장해 두어 첫 명령 전에 닫아도 같은 계약으로 돌아온다. */
+function startSession(grid: WorldGrid, config: RunConfig, daily: string | null): Session {
+  const run = createRun(config, grid);
+  saveActive({ config, commands: [], daily });
+  return { run, daily };
+}
+
+/** 자유 원정의 시드. 고르는 순간만 비결정이다 — 고른 뒤의 원정은 시드로 재현된다. */
+function freshSeed(): number {
+  return Math.floor(Math.random() * SEED_RANGE);
 }
 
 function drawRegion(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, run: RunState): void {
@@ -231,6 +316,7 @@ function renderStatus(run: RunState): string {
   return `
     <h1>${formatGameDate(dayNumberOf(run))} ${String(hour).padStart(2, "0")}시</h1>
     <dl class="hud__grid">
+      <div><dt>목표</dt><dd>${describeGoal(run, position)}</dd></div>
       <div><dt>위치</dt><dd>${lat} ${lon}</dd></div>
       <div><dt>해류</dt><dd>${describeCurrent(position)}</dd></div>
       <div><dt>탈것</dt><dd>${CONVEYANCE_LABEL[run.player.conveyance]}</dd></div>
@@ -242,6 +328,17 @@ function renderStatus(run: RunState): string {
       <div><dt>경과</dt><dd>${(run.elapsedHours / HOURS_PER_DAY).toFixed(1)}일</dd></div>
     </dl>
   `;
+}
+
+/** 목표 항구까지의 직선 방위와 거리. 항로가 아니라 대권 거리다 — 길은 플레이어가 찾는다. */
+function describeGoal(run: RunState, position: { lat: number; lon: number }): string {
+  const goal = run.config.goalPortId === undefined ? undefined : findPort(run.config.goalPortId);
+  if (goal === undefined) {
+    return "없음";
+  }
+  const distance = haversineNm(position, goal.anchorage);
+  const toward = describeCurrentDirection(bearingDeg(position, goal.anchorage));
+  return `${goal.name} · ${toward} ${Math.round(distance).toLocaleString()}해리`;
 }
 
 function describeCurrent(position: { lat: number; lon: number }): string {

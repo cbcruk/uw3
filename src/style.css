@@ -385,3 +385,61 @@ button.primary {
 .rl-log__item--bad {
   color: var(--bad);
 }
+
+.rl-expedition {
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.rl-expedition__contract {
+  margin: 0 0 8px;
+  color: var(--ink);
+}
+
+.rl-expedition__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.rl-expedition__actions button {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.rl-expedition__actions button:disabled {
+  color: var(--ink-dim);
+  cursor: default;
+}
+
+.rl-expedition__meta {
+  margin: 0;
+  color: var(--ink-dim);
+}
+
+.rl-board {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.rl-board__item {
+  padding: 2px 0;
+}
+
+.rl-board__item--good {
+  color: var(--good);
+}
+
+.rl-board__item--bad {
+  color: var(--ink-dim);
+}
+
+.rl-board__tag {
+  color: var(--accent);
+}

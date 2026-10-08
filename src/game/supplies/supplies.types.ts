@@ -13,8 +13,8 @@ export interface Supplies {
   capacity: number;
 }
 
-/** 원정이 끝난 이유. 귀항(성공)은 P4의 목표 항구와 함께 들어온다. */
-export type ExpeditionEnd = "crew-lost" | "hull-lost";
+/** 원정이 끝난 이유. `arrived`만 성공이다 — 계약한 목표 항구에 배로 들어왔다. */
+export type ExpeditionEnd = "arrived" | "crew-lost" | "hull-lost";
 
 /** 하루치 소모의 결과. 화면 로그가 쓴다. */
 export interface RationReport {
