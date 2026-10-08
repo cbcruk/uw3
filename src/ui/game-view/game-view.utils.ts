@@ -3,11 +3,10 @@ import type { EncounterKindId } from "../../content/game/game-content.types";
 import { findPort } from "../../content/ports";
 import { HOURS_PER_DAY } from "../../sim/calendar/calendar";
 import type { Direction } from "../../game/grid/direction.types";
-import type { Terrain } from "../../game/grid/world-grid.types";
 import type { Command, RunEvent } from "../../game/run/run.types";
 import type { ExpeditionEnd } from "../../game/supplies/supplies.types";
 import type { Conveyance } from "../../game/travel/travel.types";
-import type { LogLine, TileStyle } from "./game-view.types";
+import type { LogLine } from "./game-view.types";
 
 const ARROW_KEYS: Readonly<Record<string, Direction>> = {
   ArrowUp: "n",
@@ -59,22 +58,10 @@ export function commandForKey(key: string, code: string): Command | null {
   }
 }
 
-export const TERRAIN_STYLE: Readonly<Record<Terrain, TileStyle>> = {
-  sea: { fill: "#0c1d2e", glyph: "~", glyphColor: "#1c3a56" },
-  grassland: { fill: "#1f2e1c", glyph: '"', glyphColor: "#46663a" },
-  desert: { fill: "#3d3120", glyph: ":", glyphColor: "#8a7448" },
-};
-
 export const CONVEYANCE_LABEL: Readonly<Record<Conveyance, string>> = {
   ship: "배",
   horse: "말",
   camel: "낙타",
-};
-
-export const CONVEYANCE_COLOR: Readonly<Record<Conveyance, string>> = {
-  ship: "#f2c45a",
-  horse: "#f5ead2",
-  camel: "#e89b4c",
 };
 
 export const DIRECTION_LABEL: Readonly<Record<Direction, string>> = {
@@ -87,14 +74,6 @@ export const DIRECTION_LABEL: Readonly<Record<Direction, string>> = {
   w: "서",
   nw: "북서",
 };
-
-/** 조우의 글자와 색. 원본 로그라이크처럼 글자 하나로 그린다. */
-export const ENCOUNTER_STYLE: Readonly<Record<EncounterKindId, { glyph: string; color: string }>> =
-  {
-    pirate: { glyph: "P", color: "#e0604c" },
-    bandit: { glyph: "B", color: "#e08a4c" },
-    beast: { glyph: "w", color: "#c9b48a" },
-  };
 
 export function encounterName(kind: EncounterKindId): string {
   return ENCOUNTER_KINDS.find((entry) => entry.id === kind)?.name ?? kind;

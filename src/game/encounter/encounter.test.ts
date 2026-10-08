@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { ENCOUNTER_KINDS } from "../../content/game/encounter-kinds";
 import { ENCOUNTER_DENSITY } from "../../content/game/encounters.tuning";
-import { DIRECTIONS } from "../grid/direction";
+import { isWithinNm, sightRadiusNm } from "../fog/fog";
 import type { Cell } from "../grid/world-grid.types";
 import { regionOf } from "../region/region";
 import { createWorld } from "../run/run";
@@ -41,14 +41,11 @@ describe("조우 생성 — 시드 × 영역만으로 정해진다", () => {
     }
   });
 
-  it("항구와 그 이웃 칸에는 놓지 않는다", () => {
+  it("항구에서 배의 시야 안에는 놓지 않는다 — 출항한 배가 먼저 보인다", () => {
+    const lisboa = grid.cellOfPort("lisboa") as Cell;
     for (let seed = 0; seed < 20; seed += 1) {
-      for (const { cell } of spawnEncounters(grid, seed, IBERIA)) {
-        expect(grid.portAt(cell)).toBeNull();
-        for (const dir of DIRECTIONS) {
-          const next = grid.neighbor(cell, dir);
-          expect(next === null ? null : grid.portAt(next)).toBeNull();
-        }
+      for (const { cell } of spawnEncounters(grid, seed, regionOf(lisboa))) {
+        expect(isWithinNm(grid, lisboa, cell, sightRadiusNm("ship"))).toBe(false);
       }
     }
   });

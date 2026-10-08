@@ -2,6 +2,8 @@ import { ENCOUNTER_KINDS } from "../../content/game/encounter-kinds";
 import { ENCOUNTER_DENSITY } from "../../content/game/encounters.tuning";
 import type { EncounterKind } from "../../content/game/game-content.types";
 import { GRID } from "../../content/game/grid.tuning";
+import { PORTS } from "../../content/ports";
+import { isWithinNm, sightRadiusNm } from "../fog/fog";
 import { createRng, hashString, mixSeed } from "../../sim/rng/rng";
 import type { Rng } from "../../sim/rng/rng.types";
 import { DIRECTIONS } from "../grid/direction";
@@ -17,12 +19,16 @@ const CELLS_PER_DENSITY_UNIT = 1000;
  *
  * 난수는 `시드 × 영역`에서만 나온다. 어느 길로 들어왔든, 몇 번째로 들어왔든 같은 영역에는
  * 같은 조우가 놓인다 — 데일리 시드에서 모두가 같은 바다를 만나야 하기 때문이다 (R23).
- * 항구 칸과 그 이웃에는 놓지 않는다.
+ * 항구에서 배의 시야 안에는 놓지 않는다 (R51) — 출항하자마자 이미 쫓기고 있는 판을 막는다.
  */
 export function spawnEncounters(grid: WorldGrid, seed: number, region: RegionId): Encounter[] {
   const key = regionKey(region);
   const rng = createRng(mixSeed(seed, hashString(key)));
-  const cells = regionCells(grid, region).filter((cell) => !nearPort(grid, cell));
+  const harbors = PORTS.map((port) => grid.cellOfPort(port.id)).filter((cell) => cell !== null);
+  const harborNm = sightRadiusNm("ship");
+  const cells = regionCells(grid, region).filter(
+    (cell) => !harbors.some((harbor) => isWithinNm(grid, harbor, cell, harborNm)),
+  );
   const taken = new Set<number>();
   const encounters: Encounter[] = [];
   for (const kind of ENCOUNTER_KINDS) {

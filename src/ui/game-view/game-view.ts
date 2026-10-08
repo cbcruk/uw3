@@ -1,8 +1,6 @@
-import { GRID } from "../../content/game/grid.tuning";
 import { HOURS_PER_DAY, formatGameDate } from "../../sim/calendar/calendar";
 import { WIND_REGIME_LABELS, describeWindDirection, windAt } from "../../sim/wind/wind";
 import { currentAt, describeCurrentDirection } from "../../sim/current/current";
-import { headingOf } from "../../game/grid/direction";
 import type { Direction } from "../../game/grid/direction.types";
 import {
   applyCommand,
@@ -24,18 +22,15 @@ import { findPort } from "../../content/ports";
 import { bearingDeg, haversineNm } from "../../sim/geo/geo.utils";
 import { loadActive, loadMeta, saveActive, saveMeta } from "./game-storage";
 import { renderExpeditionPanel } from "./expedition-panel";
-import { isInSight } from "../../game/fog/fog";
+import { drawRegion } from "./region-renderer";
 import { canEnter } from "../../game/travel/travel";
 import { daysOfSupply } from "../../game/supplies/supplies";
 import type { RunConfig, RunState } from "../../game/run/run.types";
 import type { LogLine } from "./game-view.types";
 import {
-  CONVEYANCE_COLOR,
   CONVEYANCE_LABEL,
   DIRECTION_LABEL,
-  ENCOUNTER_STYLE,
   encounterName,
-  TERRAIN_STYLE,
   commandForKey,
   describeDrift,
   describeEvent,
@@ -43,21 +38,14 @@ import {
 } from "./game-view.utils";
 
 const LOG_LIMIT = 14;
+const GAUGE_WARN = 0.5;
+const GAUGE_BAD = 0.25;
 const SEED_RANGE = 2 ** 32;
 
 interface Session {
   run: RunState;
   daily: string | null;
 }
-
-/** 뱃머리 삼각형의 크기. 칸 한 변에 대한 비다. */
-const BOW_TIP_RATIO = 0.45;
-const BOW_BASE_RATIO = 0.3;
-const BOW_TAIL_RATIO = 0.7;
-const BOW_OUTLINE = "#05090f";
-
-/** 본 적은 있지만 지금은 안 보이는 칸에 덮는 색. 원본의 "기억한 타일"이다. */
-const FOG_DIM = "rgba(5, 9, 15, 0.62)";
 
 /** 나침반 3×3 칸 배치. 가운데는 자기 자리다. */
 const COMPASS_LAYOUT: readonly (Direction | null)[] = [
@@ -203,131 +191,47 @@ function freshSeed(): number {
   return Math.floor(Math.random() * SEED_RANGE);
 }
 
-function drawRegion(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, run: RunState): void {
-  const { grid, region, player, berth } = run;
-  const x0 = region.rx * GRID.regionCols;
-  const y0 = region.ry * GRID.regionRows;
-  const rows = Math.min(GRID.regionRows, grid.height - y0);
-  const cols = GRID.regionCols;
-
-  const ratio = window.devicePixelRatio || 1;
-  const box = canvas.getBoundingClientRect();
-  const tile = Math.max(4, Math.floor(Math.min(box.width / cols, box.height / rows)));
-  canvas.width = Math.round(box.width * ratio);
-  canvas.height = Math.round(box.height * ratio);
-  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  ctx.fillStyle = "#05090f";
-  ctx.fillRect(0, 0, box.width, box.height);
-
-  const offsetX = Math.floor((box.width - tile * cols) / 2);
-  const offsetY = Math.floor((box.height - tile * rows) / 2);
-  ctx.font = `${Math.floor(tile * 0.8)}px ui-monospace, Menlo, monospace`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  const glyph = (cx: number, cy: number, text: string, color: string): void => {
-    ctx.fillStyle = color;
-    ctx.fillText(text, offsetX + (cx + 0.5) * tile, offsetY + (cy + 0.55) * tile);
-  };
-
-  for (let y = 0; y < rows; y += 1) {
-    for (let x = 0; x < cols; x += 1) {
-      const cell = { x: x0 + x, y: y0 + y };
-      const terrain = grid.terrainAt(cell);
-      if (terrain === null || !run.explored.has(cell)) {
-        continue;
-      }
-      const style = TERRAIN_STYLE[terrain];
-      ctx.fillStyle = style.fill;
-      ctx.fillRect(offsetX + x * tile, offsetY + y * tile, tile, tile);
-      if (grid.portAt(cell) !== null) {
-        glyph(x, y, "⚓", "#e0a83c");
-      } else {
-        glyph(x, y, style.glyph, style.glyphColor);
-      }
-      if (!isInSight(grid, player.cell, player.conveyance, cell)) {
-        ctx.fillStyle = FOG_DIM;
-        ctx.fillRect(offsetX + x * tile, offsetY + y * tile, tile, tile);
-      }
-    }
-  }
-
-  // 조우는 지금 보이는 것만 그린다. 탐사한 칸이어도 안개 속이면 거기 있는지 모른다.
-  for (const encounter of run.encounters) {
-    const { cell } = encounter;
-    const inRegion = cell.x >= x0 && cell.x < x0 + cols && cell.y >= y0 && cell.y < y0 + rows;
-    if (inRegion && isInSight(grid, player.cell, player.conveyance, cell)) {
-      const terrain = grid.terrainAt(cell);
-      const style = ENCOUNTER_STYLE[encounter.kind];
-      ctx.fillStyle = terrain === null ? FOG_DIM : TERRAIN_STYLE[terrain].fill;
-      ctx.fillRect(offsetX + (cell.x - x0) * tile, offsetY + (cell.y - y0) * tile, tile, tile);
-      glyph(cell.x - x0, cell.y - y0, style.glyph, style.color);
-    }
-  }
-
-  if (berth !== null && berth.cell.x >= x0 && berth.cell.y >= y0) {
-    glyph(berth.cell.x - x0, berth.cell.y - y0, "⛵", "#f2c45a");
-  }
-  // 칸 안 위치(해류가 쌓은 편류)만큼 어긋나게 그린다. 칸 경계를 넘기 전에 밀리는 것이 보인다.
-  const side = grid.stepNm(player.cell, "e");
-  const cx = player.cell.x - x0 + 0.5 + player.driftNm.east / side;
-  const cy = player.cell.y - y0 + 0.5 - player.driftNm.north / side;
-  drawBow(ctx, offsetX + cx * tile, offsetY + cy * tile, tile, headingOf(player.facing));
-  ctx.fillStyle = CONVEYANCE_COLOR[player.conveyance];
-  ctx.fill();
-  ctx.strokeStyle = BOW_OUTLINE;
-  ctx.lineWidth = 1;
-  ctx.stroke();
-}
-
-/**
- * 뱃머리 삼각형의 경로를 만든다. 꼭짓점이 진행 방향이다.
- *
- * 메르카토르라 화면의 위가 진북이고, 격자 방향이 곧 진방위다 (R1). 캔버스 회전은
- * 시계 방향이 양수라 방위각을 그대로 넣으면 된다.
- */
-function drawBow(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  tile: number,
-  headingDeg: number,
-): void {
-  const tip = tile * BOW_TIP_RATIO;
-  const base = tile * BOW_BASE_RATIO;
-  const angle = (headingDeg * Math.PI) / 180;
-  const point = (dx: number, dy: number): [number, number] => [
-    x + dx * Math.cos(angle) - dy * Math.sin(angle),
-    y + dx * Math.sin(angle) + dy * Math.cos(angle),
-  ];
-  ctx.beginPath();
-  ctx.moveTo(...point(0, -tip));
-  ctx.lineTo(...point(base, tip * BOW_TAIL_RATIO));
-  ctx.lineTo(...point(-base, tip * BOW_TAIL_RATIO));
-  ctx.closePath();
-}
-
 function renderStatus(run: RunState): string {
   const position = run.grid.cellCenter(run.player.cell);
   const wind = windAt(position, dayNumberOf(run));
   const hour = Math.floor(run.elapsedHours % HOURS_PER_DAY);
   const lat = `${Math.abs(position.lat).toFixed(2)}°${position.lat >= 0 ? "N" : "S"}`;
   const lon = `${Math.abs(position.lon).toFixed(2)}°${position.lon >= 0 ? "E" : "W"}`;
+  const { supplies } = run;
   return `
-    <h1>${formatGameDate(dayNumberOf(run))} ${String(hour).padStart(2, "0")}시</h1>
-    <dl class="hud__grid">
-      <div><dt>목표</dt><dd>${describeGoal(run, position)}</dd></div>
-      <div><dt>위치</dt><dd>${lat} ${lon}</dd></div>
-      <div><dt>해류</dt><dd>${describeCurrent(position)}</dd></div>
-      <div><dt>탈것</dt><dd>${CONVEYANCE_LABEL[run.player.conveyance]}</dd></div>
-      <div><dt>선원</dt><dd>${run.supplies.crew}명 · 선체 ${run.supplies.hull}/${run.supplies.hullMax}</dd></div>
-      <div><dt>보급</dt><dd>식량 ${run.supplies.food} · 물 ${run.supplies.water} · ${daysOfSupply(run.supplies)}일분</dd></div>
-      <div><dt>바람</dt><dd>${describeWindDirection(wind.fromDeg)} ${wind.speedKnots.toFixed(1)}kn · ${WIND_REGIME_LABELS[wind.regime]}</dd></div>
-      <div><dt>해역</dt><dd>(${run.region.rx}, ${run.region.ry}) · 들른 곳 ${run.visitedRegions.size}</dd></div>
+    <header class="hud__header">
+      <h1>${formatGameDate(dayNumberOf(run))} ${String(hour).padStart(2, "0")}시</h1>
+      <p>목표 ${describeGoal(run, position)}</p>
+    </header>
+    <div class="gauges">
+      ${renderGauge("선원", supplies.crew, run.shipClass.crewMax, `${supplies.crew}/${run.shipClass.crewMax}명`)}
+      ${renderGauge("선체", supplies.hull, supplies.hullMax, `${supplies.hull}/${supplies.hullMax}`)}
+      ${renderGauge("식량", supplies.food, supplies.capacity, supplies.food.toLocaleString())}
+      ${renderGauge("물", supplies.water, supplies.capacity, supplies.water.toLocaleString())}
+    </div>
+    <dl class="readout">
+      <div class="readout__wide"><dt>보급</dt><dd>${daysOfSupply(supplies)}일분 · ${CONVEYANCE_LABEL[run.player.conveyance]}</dd></div>
+      <div class="readout__wide"><dt>바람</dt><dd>${describeWindDirection(wind.fromDeg)} ${wind.speedKnots.toFixed(1)}kn · ${WIND_REGIME_LABELS[wind.regime]}</dd></div>
+      <div class="readout__wide"><dt>해류</dt><dd>${describeCurrent(position)}</dd></div>
+      <div class="readout__wide"><dt>위치</dt><dd>${lat} ${lon}</dd></div>
+      <div><dt>해역</dt><dd>(${run.region.rx}, ${run.region.ry})</dd></div>
+      <div><dt>들른 곳</dt><dd>${run.visitedRegions.size}</dd></div>
       <div><dt>탐사</dt><dd>${run.explored.count().toLocaleString()}칸</dd></div>
       <div><dt>경과</dt><dd>${(run.elapsedHours / HOURS_PER_DAY).toFixed(1)}일</dd></div>
     </dl>
   `;
+}
+
+/** 2편 상태창의 막대. 절반 아래면 노랗게, 4분의 1 아래면 붉게 칠한다. */
+function renderGauge(label: string, value: number, max: number, text: string): string {
+  const ratio = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
+  const tone = ratio > GAUGE_WARN ? "good" : ratio > GAUGE_BAD ? "warn" : "bad";
+  return `
+    <div class="gauge">
+      <span class="gauge__label">${label}</span>
+      <span class="gauge__bar"><span class="gauge__fill gauge__fill--${tone}" style="width:${(ratio * 100).toFixed(1)}%"></span></span>
+      <span class="gauge__text">${text}</span>
+    </div>`;
 }
 
 /** 목표 항구까지의 직선 방위와 거리. 항로가 아니라 대권 거리다 — 길은 플레이어가 찾는다. */
