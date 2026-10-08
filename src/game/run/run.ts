@@ -284,6 +284,8 @@ function resolveCommand(run: RunState, command: Command, events: RunEvent[]): bo
       return embark(run, events);
     case "hire":
       return hire(run, events);
+    case "tribute":
+      return tribute(run, events);
   }
 }
 
@@ -427,6 +429,51 @@ function hire(run: RunState, events: RunEvent[]): boolean {
   run.supplies.crew += hired;
   run.elapsedHours += PROVISION.hireHours;
   events.push({ type: "hire", portId, hired });
+  return true;
+}
+
+/**
+ * 붙은 조우 모두에게 식량·물을 내주고 놓여난다. 한 합만큼의 시간이 든다.
+ *
+ * 몫은 상대 머릿수 × `tributeDays`다. 짐승은 식량만 가져간다. 모두에게 줄 만큼이 없으면 거절한다 —
+ * 일부만 달래고 나머지와 싸우는 길은 열지 않는다. 내준 조우는 격자에서 빠지지만 물리친 수에는 세지 않는다 (R48).
+ */
+function tribute(run: RunState, events: RunEvent[]): boolean {
+  const foes = run.encounters.filter((encounter) =>
+    canStrike(run.grid, encounter, run.player.cell),
+  );
+  if (foes.length === 0) {
+    events.push({ type: "rejected", command: "tribute", reason: "내줄 상대가 붙어 있지 않다" });
+    return false;
+  }
+  const demands = foes.map((foe) => {
+    const share = Math.ceil(foe.crew * COMBAT.tributeDays);
+    return { foe, food: share, water: foe.kind === "beast" ? 0 : share };
+  });
+  const food = demands.reduce((sum, demand) => sum + demand.food, 0);
+  const water = demands.reduce((sum, demand) => sum + demand.water, 0);
+  if (food > run.supplies.food || water > run.supplies.water) {
+    events.push({
+      type: "rejected",
+      command: "tribute",
+      reason: `내줄 것이 모자라다 (식량 ${food} · 물 ${water} 필요)`,
+    });
+    return false;
+  }
+  run.supplies.food -= food;
+  run.supplies.water -= water;
+  run.elapsedHours += COMBAT.roundHours;
+  for (const { foe, food: paidFood, water: paidWater } of demands) {
+    foe.crew = 0;
+    events.push({
+      type: "tribute",
+      encounterId: foe.id,
+      kind: foe.kind,
+      food: paidFood,
+      water: paidWater,
+    });
+  }
+  run.encounters = run.encounters.filter((encounter) => encounter.crew > 0);
   return true;
 }
 

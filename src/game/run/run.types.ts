@@ -52,7 +52,8 @@ export type Command =
   | { type: "wait" }
   | { type: "disembark"; mount: Mount }
   | { type: "embark" }
-  | { type: "hire" };
+  | { type: "hire" }
+  | { type: "tribute" };
 
 /**
  * 막힌 이유. 막힌 걸음은 시간을 쓰지 않는다 — 원본에서 벽에 부딪힌 것과 같다.
@@ -75,6 +76,13 @@ export type RunEvent =
   | { type: "ration"; lost: number; starving: boolean; thirsty: boolean }
   | { type: "resupply"; portId: string }
   | { type: "hire"; portId: string; hired: number }
+  | {
+      type: "tribute";
+      encounterId: string;
+      kind: Encounter["kind"];
+      food: number;
+      water: number;
+    }
   | { type: "ended"; reason: ExpeditionEnd }
   | { type: "sighted"; encounterId: string; kind: Encounter["kind"]; crew: number }
   | PursuitEvent;

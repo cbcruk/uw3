@@ -18,6 +18,7 @@ describe("키 → 명령", () => {
     expect(commandForKey("c", "KeyC")).toEqual({ type: "disembark", mount: "camel" });
     expect(commandForKey("e", "KeyE")).toEqual({ type: "embark" });
     expect(commandForKey("r", "KeyR")).toEqual({ type: "hire" });
+    expect(commandForKey("t", "KeyT")).toEqual({ type: "tribute" });
     expect(commandForKey(".", "Period")).toEqual({ type: "wait" });
   });
 

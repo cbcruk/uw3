@@ -52,6 +52,8 @@ export function commandForKey(key: string, code: string): Command | null {
       return { type: "embark" };
     case "r":
       return { type: "hire" };
+    case "t":
+      return { type: "tribute" };
     default:
       return code === "Numpad5" ? { type: "wait" } : null;
   }
@@ -187,6 +189,11 @@ export function describeEvent(event: RunEvent): LogLine | null {
       };
     case "hire":
       return { text: `${portName(event.portId)}에서 선원 ${event.hired}명을 모았다`, tone: "info" };
+    case "tribute":
+      return {
+        text: `${withParticle(encounterName(event.kind), "이", "가")} ${describeTribute(event)} 받고 떠났다`,
+        tone: "warn",
+      };
     case "defeated":
       return {
         text: `${withParticle(encounterName(event.kind), "을", "를")} 물리쳤다`,
@@ -206,6 +213,10 @@ function describeCombat(event: Extract<RunEvent, { type: "combat" }>): string {
     : `${withParticle(name, "이", "가")} 덮쳐 왔다`;
   const hull = event.hullLost > 0 ? ` · 선체 -${event.hullLost}` : "";
   return `${opening} — 우리 -${event.crewLost}명${hull} · 적 -${event.foeLost}명 (남은 적 ${event.foeLeft})`;
+}
+
+function describeTribute(event: Extract<RunEvent, { type: "tribute" }>): string {
+  return event.water > 0 ? `식량 ${event.food} · 물 ${event.water}을` : `식량 ${event.food}을`;
 }
 
 function describeRation(event: Extract<RunEvent, { type: "ration" }>): string {

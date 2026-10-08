@@ -443,3 +443,56 @@ describe("선원 고용 — 항구에서 정원까지 채운다", () => {
     expect(eventsOf(applyCommand(run, { type: "hire" }), "rejected")).toHaveLength(1);
   });
 });
+
+describe("내주기 — 식량·물을 주고 붙은 조우에게서 놓여난다", () => {
+  function seaRunNextTo(crew: number) {
+    const run = createRun(CONFIG, grid);
+    run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell;
+    run.encounters = [
+      {
+        id: "pirate-test",
+        kind: "pirate",
+        cell: { x: run.player.cell.x + 1, y: run.player.cell.y },
+        crew,
+        crewAtStart: crew,
+        conveyance: "ship",
+        nextActHours: 0,
+        rounds: 0,
+        chasing: true,
+      },
+    ];
+    return run;
+  }
+
+  it("머릿수만큼 식량과 물을 잃고, 해적은 사라지되 물리친 수에는 들지 않는다", () => {
+    const run = seaRunNextTo(40);
+    const { food, water, crew } = run.supplies;
+    const hours = run.elapsedHours;
+    const events = applyCommand(run, { type: "tribute" });
+    const share = Math.ceil(40 * COMBAT.tributeDays);
+    expect(eventsOf(events, "tribute")).toEqual([
+      { type: "tribute", encounterId: "pirate-test", kind: "pirate", food: share, water: share },
+    ]);
+    expect(run.supplies).toMatchObject({ food: food - share, water: water - share, crew });
+    expect(run.elapsedHours).toBe(hours + COMBAT.roundHours);
+    expect(run.encounters).toHaveLength(0);
+    expect(run.defeated).toBe(0);
+    expect(eventsOf(events, "combat")).toHaveLength(0);
+  });
+
+  it("줄 만큼이 없으면 거절하고 시간도 흐르지 않는다", () => {
+    const run = seaRunNextTo(400);
+    const hours = run.elapsedHours;
+    const events = applyCommand(run, { type: "tribute" });
+    expect(eventsOf(events, "rejected")).toHaveLength(1);
+    expect(run.elapsedHours).toBe(hours);
+    expect(run.encounters).toHaveLength(1);
+  });
+
+  it("붙은 상대가 없으면 거절한다", () => {
+    const run = createRun(CONFIG, grid);
+    run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell;
+    run.encounters = [];
+    expect(eventsOf(applyCommand(run, { type: "tribute" }), "rejected")).toHaveLength(1);
+  });
+});
