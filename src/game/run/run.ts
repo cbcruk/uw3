@@ -11,11 +11,23 @@ import { createWorldGrid } from "../grid/world-grid";
 import type { Cell, WorldGrid } from "../grid/world-grid.types";
 import { regionKey, regionOf, sameRegion } from "../region/region";
 import { canEnter, passageToward } from "../travel/travel";
+import {
+  NO_DRIFT,
+  addDrift,
+  crossDriftNm,
+  currentKnots,
+  idleDriftNm,
+  resolveDrift,
+} from "../travel/drift";
+import type { EastNorth } from "../travel/drift.types";
 import type { Mount, Passage } from "../travel/travel.types";
 import type { Direction } from "../grid/direction.types";
 import type { Command, RunConfig, RunEvent, RunState } from "./run.types";
 
 const PLAYER_ID = "player";
+
+/** 출발할 때의 뱃머리. 리스본 정박지는 대서양을 향해 열려 있다. */
+const INITIAL_FACING: Direction = "w";
 
 /** 시뮬 해안선에서 게임 격자를 만든다. 무겁지 않지만 런마다 새로 만들 이유도 없다. */
 export function createWorld(): WorldGrid {
@@ -46,7 +58,13 @@ export function createRun(config: RunConfig, grid: WorldGrid = createWorld()): R
     grid,
     shipClass,
     elapsedHours: 0,
-    player: { id: PLAYER_ID, cell, conveyance: "ship" },
+    player: {
+      id: PLAYER_ID,
+      cell,
+      conveyance: "ship",
+      facing: INITIAL_FACING,
+      driftNm: NO_DRIFT,
+    },
     berth: null,
     region,
     explored: createExploredMap(grid),
@@ -105,7 +123,7 @@ export function dayNumberOf(run: RunState): number {
 export function passageFrom(run: RunState, dir: Direction): Passage {
   const terrain = run.grid.terrainAt(run.player.cell);
   if (terrain === null) {
-    return { rangeNm: 0, tacking: false };
+    return { rangeNm: 0, sailRangeNm: 0, tacking: false };
   }
   return passageToward({
     conveyance: run.player.conveyance,
@@ -131,10 +149,16 @@ function resolveCommand(run: RunState, command: Command, events: RunEvent[]): bo
   switch (command.type) {
     case "move":
       return move(run, command.dir, events);
-    case "wait":
+    case "wait": {
       // 다음 날 첫 시각까지 쉰다. 바람은 날마다 바뀌므로 하루를 넘겨야 기다린 의미가 있다.
-      run.elapsedHours = (currentDay(run) + 1) * HOURS_PER_DAY;
+      const hours = (currentDay(run) + 1) * HOURS_PER_DAY - run.elapsedHours;
+      run.elapsedHours += hours;
+      if (isAdrift(run)) {
+        const current = currentKnots(run.grid.cellCenter(run.player.cell));
+        drift(run, idleDriftNm(current, hours), events);
+      }
       return true;
+    }
     case "disembark":
       return disembark(run, command.mount, events);
     case "embark":
@@ -154,18 +178,51 @@ function move(run: RunState, dir: Direction, events: RunEvent[]): boolean {
     events.push({ type: "blocked", actorId: player.id, at: player.cell, reason: "terrain" });
     return false;
   }
-  const range = rangeTowardNm(run, dir);
-  if (range <= 0) {
-    events.push({ type: "blocked", actorId: player.id, at: player.cell, reason: "wind" });
+  const passage = passageFrom(run, dir);
+  if (passage.rangeNm <= 0) {
+    const reason = passage.sailRangeNm <= 0 ? "wind" : "current";
+    events.push({ type: "blocked", actorId: player.id, at: player.cell, reason });
     return false;
   }
 
-  const hours = (grid.stepNm(player.cell, dir) / range) * HOURS_PER_DAY;
+  const hours = (grid.stepNm(player.cell, dir) / passage.rangeNm) * HOURS_PER_DAY;
+  const current = player.conveyance === "ship" ? currentKnots(grid.cellCenter(player.cell)) : null;
   const from = player.cell;
-  player.cell = next;
   run.elapsedHours += hours;
+  player.facing = dir;
   events.push({ type: "move", actorId: player.id, from, to: next, hours });
+  enterCell(run, next, events);
+  if (current !== null && isAdrift(run)) {
+    drift(run, crossDriftNm(current, dir, hours), events);
+  }
+  return true;
+}
 
+/**
+ * 배가 해류에 밀리는 상태인가. 정박 중에는 밀리지 않는다 — 시뮬과 같은 규칙이다 (SPEC 6.2).
+ */
+function isAdrift(run: RunState): boolean {
+  return run.player.conveyance === "ship" && run.grid.portAt(run.player.cell) === null;
+}
+
+/** 칸 안 위치에 편류를 더하고, 경계를 넘으면 옆 칸으로 민다 (R15). */
+function drift(run: RunState, offsetNm: EastNorth, events: RunEvent[]): void {
+  const { player, grid } = run;
+  const result = resolveDrift(grid, player.cell, addDrift(player.driftNm, offsetNm));
+  player.driftNm = result.offsetNm;
+  for (const cell of result.pushedThrough) {
+    events.push({ type: "drift", actorId: player.id, from: player.cell, to: cell });
+    enterCell(run, cell, events);
+    if (!isAdrift(run)) {
+      break;
+    }
+  }
+}
+
+/** 칸에 들어선다. 영역이 바뀌면 새 층이고, 배가 항구 칸에 닿으면 정박한다. */
+function enterCell(run: RunState, next: Cell, events: RunEvent[]): void {
+  const { grid, player } = run;
+  player.cell = next;
   const region = regionOf(next);
   if (!sameRegion(region, run.region)) {
     run.region = region;
@@ -174,9 +231,9 @@ function move(run: RunState, dir: Direction, events: RunEvent[]): boolean {
   }
   const portId = player.conveyance === "ship" ? grid.portAt(next) : null;
   if (portId !== null) {
+    player.driftNm = NO_DRIFT;
     events.push({ type: "dock", portId });
   }
-  return true;
 }
 
 function disembark(run: RunState, mount: Mount, events: RunEvent[]): boolean {
@@ -200,6 +257,7 @@ function disembark(run: RunState, mount: Mount, events: RunEvent[]): boolean {
     return false;
   }
   run.berth = { portId, cell: player.cell };
+  player.driftNm = NO_DRIFT;
   player.cell = landing;
   player.conveyance = mount;
   events.push({ type: "disembark", mount, portId });
@@ -226,6 +284,7 @@ function embark(run: RunState, events: RunEvent[]): boolean {
   }
   player.cell = berth.cell;
   player.conveyance = "ship";
+  player.driftNm = NO_DRIFT;
   run.berth = null;
   events.push({ type: "embark", portId: berth.portId });
   return true;

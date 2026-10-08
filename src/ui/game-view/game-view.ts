@@ -1,6 +1,8 @@
 import { GRID } from "../../content/game/grid.tuning";
 import { HOURS_PER_DAY, formatGameDate } from "../../sim/calendar/calendar";
 import { WIND_REGIME_LABELS, describeWindDirection, windAt } from "../../sim/wind/wind";
+import { currentAt, describeCurrentDirection } from "../../sim/current/current";
+import { headingOf } from "../../game/grid/direction";
 import type { Direction } from "../../game/grid/direction.types";
 import { applyCommand, createRun, dayNumberOf, passageFrom } from "../../game/run/run";
 import { isInSight } from "../../game/fog/fog";
@@ -13,6 +15,7 @@ import {
   DIRECTION_LABEL,
   TERRAIN_STYLE,
   commandForKey,
+  describeDrift,
   describeEvent,
   hoursPerCell,
 } from "./game-view.utils";
@@ -25,6 +28,12 @@ const CONFIG: RunConfig = {
 };
 
 const LOG_LIMIT = 14;
+
+/** 뱃머리 삼각형의 크기. 칸 한 변에 대한 비다. */
+const BOW_TIP_RATIO = 0.45;
+const BOW_BASE_RATIO = 0.3;
+const BOW_TAIL_RATIO = 0.7;
+const BOW_OUTLINE = "#05090f";
 
 /** 본 적은 있지만 지금은 안 보이는 칸에 덮는 색. 원본의 "기억한 타일"이다. */
 const FOG_DIM = "rgba(5, 9, 15, 0.62)";
@@ -92,8 +101,9 @@ export function mountGame(root: HTMLElement): void {
       return;
     }
     event.preventDefault();
-    for (const runEvent of applyCommand(run, command)) {
-      const line = describeEvent(runEvent);
+    const events = applyCommand(run, command);
+    const lines = [...events.map(describeEvent), describeDrift(events)];
+    for (const line of lines) {
       if (line !== null) {
         log.unshift(line);
       }
@@ -157,12 +167,43 @@ function drawRegion(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, ru
   if (berth !== null && berth.cell.x >= x0 && berth.cell.y >= y0) {
     glyph(berth.cell.x - x0, berth.cell.y - y0, "⛵", "#f2c45a");
   }
-  const px = player.cell.x - x0;
-  const py = player.cell.y - y0;
-  ctx.strokeStyle = CONVEYANCE_COLOR[player.conveyance];
+  // 칸 안 위치(해류가 쌓은 편류)만큼 어긋나게 그린다. 칸 경계를 넘기 전에 밀리는 것이 보인다.
+  const side = grid.stepNm(player.cell, "e");
+  const cx = player.cell.x - x0 + 0.5 + player.driftNm.east / side;
+  const cy = player.cell.y - y0 + 0.5 - player.driftNm.north / side;
+  drawBow(ctx, offsetX + cx * tile, offsetY + cy * tile, tile, headingOf(player.facing));
+  ctx.fillStyle = CONVEYANCE_COLOR[player.conveyance];
+  ctx.fill();
+  ctx.strokeStyle = BOW_OUTLINE;
   ctx.lineWidth = 1;
-  ctx.strokeRect(offsetX + px * tile + 0.5, offsetY + py * tile + 0.5, tile - 1, tile - 1);
-  glyph(px, py, "@", CONVEYANCE_COLOR[player.conveyance]);
+  ctx.stroke();
+}
+
+/**
+ * 뱃머리 삼각형의 경로를 만든다. 꼭짓점이 진행 방향이다.
+ *
+ * 메르카토르라 화면의 위가 진북이고, 격자 방향이 곧 진방위다 (R1). 캔버스 회전은
+ * 시계 방향이 양수라 방위각을 그대로 넣으면 된다.
+ */
+function drawBow(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  tile: number,
+  headingDeg: number,
+): void {
+  const tip = tile * BOW_TIP_RATIO;
+  const base = tile * BOW_BASE_RATIO;
+  const angle = (headingDeg * Math.PI) / 180;
+  const point = (dx: number, dy: number): [number, number] => [
+    x + dx * Math.cos(angle) - dy * Math.sin(angle),
+    y + dx * Math.sin(angle) + dy * Math.cos(angle),
+  ];
+  ctx.beginPath();
+  ctx.moveTo(...point(0, -tip));
+  ctx.lineTo(...point(base, tip * BOW_TAIL_RATIO));
+  ctx.lineTo(...point(-base, tip * BOW_TAIL_RATIO));
+  ctx.closePath();
 }
 
 function renderStatus(run: RunState): string {
@@ -175,6 +216,7 @@ function renderStatus(run: RunState): string {
     <h1>${formatGameDate(dayNumberOf(run))} ${String(hour).padStart(2, "0")}시</h1>
     <dl class="hud__grid">
       <div><dt>위치</dt><dd>${lat} ${lon}</dd></div>
+      <div><dt>해류</dt><dd>${describeCurrent(position)}</dd></div>
       <div><dt>탈것</dt><dd>${CONVEYANCE_LABEL[run.player.conveyance]}</dd></div>
       <div><dt>바람</dt><dd>${describeWindDirection(wind.fromDeg)} ${wind.speedKnots.toFixed(1)}kn · ${WIND_REGIME_LABELS[wind.regime]}</dd></div>
       <div><dt>해역</dt><dd>(${run.region.rx}, ${run.region.ry}) · 들른 곳 ${run.visitedRegions.size}</dd></div>
@@ -182,6 +224,14 @@ function renderStatus(run: RunState): string {
       <div><dt>경과</dt><dd>${(run.elapsedHours / HOURS_PER_DAY).toFixed(1)}일</dd></div>
     </dl>
   `;
+}
+
+function describeCurrent(position: { lat: number; lon: number }): string {
+  const current = currentAt(position);
+  if (current.speedKnots <= 0) {
+    return "없음";
+  }
+  return `${describeCurrentDirection(current.toDeg)} ${current.speedKnots.toFixed(1)}kn · ${current.name}`;
 }
 
 /** 방향마다 한 칸에 걸리는 시간. 바람이 막는 방향이 한눈에 보인다. */
@@ -199,7 +249,8 @@ function renderCompass(run: RunState): string {
     const passage = passageFrom(run, dir);
     const hours = hoursPerCell(run.grid.stepNm(run.player.cell, dir), passage.rangeNm);
     const tack = passage.tacking ? " ⤳" : "";
-    const text = hours === null ? "무풍" : `${hours.toFixed(1)}h${tack}`;
+    const blocked = passage.sailRangeNm <= 0 ? "무풍" : "역류";
+    const text = hours === null ? blocked : `${hours.toFixed(1)}h${tack}`;
     const tone = hours === null ? "rl-compass__cell--blocked" : "";
     return `<div class="rl-compass__cell ${tone}"><span>${DIRECTION_LABEL[dir]}</span>${text}</div>`;
   });

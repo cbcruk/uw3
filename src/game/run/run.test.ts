@@ -107,6 +107,18 @@ describe("런 — 방향키 한 번이 한 칸", () => {
     expect(moves[0]?.hours).toBeCloseTo(expected, 9);
   });
 
+  it("뱃머리는 움직인 방향을 향하고, 막히거나 기다려도 그대로다", () => {
+    const run = createRun(CONFIG, grid);
+    expect(eventsOf(applyCommand(run, { type: "move", dir: "ne" }), "blocked")).toHaveLength(1);
+    expect(run.player.facing).toBe("w");
+    applyCommand(run, { type: "move", dir: "s" });
+    expect(run.player.facing).toBe("s");
+    applyCommand(run, { type: "wait" });
+    expect(run.player.facing).toBe("s");
+    applyCommand(run, { type: "move", dir: "sw" });
+    expect(run.player.facing).toBe("sw");
+  });
+
   it("배로 뭍을 향하면 막히고 시간이 흐르지 않는다", () => {
     const run = createRun(CONFIG, grid);
     const start = run.player.cell;

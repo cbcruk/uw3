@@ -14,6 +14,7 @@ import { windAt } from "../../sim/wind/wind";
 import { headingOf } from "../grid/direction";
 import type { Direction } from "../grid/direction.types";
 import type { LandTerrain, Terrain } from "../grid/world-grid.types";
+import { currentAlongKnots, currentKnots } from "./drift";
 import type { Conveyance, Mount, Passage } from "./travel.types";
 
 /**
@@ -45,8 +46,9 @@ export function canEnter(conveyance: Conveyance, terrain: Terrain): boolean {
  * 친다. 칸 한 변(위도 38°에서 약 12해리)이 카라벨의 한 번 꺾는 거리보다 넓어서, 폭 1칸
  * 수로에서도 역풍을 거슬러 갈 수 있다 (SPEC-roguelike §8).
  *
- * 압류를 넣는다. 클로스홀드에서 풍하로 밀려 태킹 손실이 커진다 (시뮬 P9). 바람·돛·압류
- * 모두 시뮬의 값을 그대로 쓰고 배율을 곱하지 않는다 (R7).
+ * 압류를 넣는다. 클로스홀드에서 풍하로 밀려 태킹 손실이 커진다 (시뮬 P9). 해류는 그 방향과
+ * 나란한 몫만 더한다 — 수직인 몫은 옆으로 미는 편류로 따로 쌓인다 (`drift.ts`).
+ * 바람·돛·압류·해류 모두 시뮬의 값을 그대로 쓰고 배율을 곱하지 않는다 (R7).
  */
 export function passageToward(options: {
   conveyance: Conveyance;
@@ -58,10 +60,11 @@ export function passageToward(options: {
 }): Passage {
   const { conveyance, terrain, position, dayNumber, dir, shipClass } = options;
   if (!canEnter(conveyance, terrain)) {
-    return { rangeNm: 0, tacking: false };
+    return { rangeNm: 0, sailRangeNm: 0, tacking: false };
   }
   if (conveyance !== "ship") {
-    return { rangeNm: MOUNT_RANGE_NM[conveyance][terrain as LandTerrain], tacking: false };
+    const rangeNm = MOUNT_RANGE_NM[conveyance][terrain as LandTerrain];
+    return { rangeNm, sailRangeNm: rangeNm, tacking: false };
   }
   const wind = windAt(position, dayNumber);
   const target = headingOf(dir);
@@ -82,7 +85,12 @@ export function passageToward(options: {
     const made = knots * Math.cos(toRadians(angleDifference(track, target)));
     bestKnots = Math.max(bestKnots, made);
   }
-  return { rangeNm: bestKnots * HOURS_PER_DAY, tacking: bestKnots > 0 && sailKnots(target) <= 0 };
+  const along = currentAlongKnots(currentKnots(position), dir);
+  return {
+    rangeNm: Math.max(0, bestKnots + along) * HOURS_PER_DAY,
+    sailRangeNm: bestKnots * HOURS_PER_DAY,
+    tacking: bestKnots > 0 && sailKnots(target) <= 0,
+  };
 }
 
 /** {@linkcode passageToward}의 하루 행정만. */

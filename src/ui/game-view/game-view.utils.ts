@@ -92,6 +92,9 @@ export function describeEvent(event: RunEvent): LogLine | null {
       if (event.reason === "wind") {
         return { text: "바람이 없어 나아갈 수 없다. 기다려야 한다", tone: "warn" };
       }
+      if (event.reason === "current") {
+        return { text: "역류가 돛보다 세다. 그쪽으로는 나아가지 못한다", tone: "warn" };
+      }
       return {
         text: event.reason === "edge" ? "지도의 끝이다" : "그쪽으로는 갈 수 없다",
         tone: "warn",
@@ -112,8 +115,15 @@ export function describeEvent(event: RunEvent): LogLine | null {
     case "day-start":
       return { text: `${event.day + 1}일째`, tone: "info" };
     case "move":
+    case "drift":
       return null;
   }
+}
+
+/** 한 명령 동안 해류에 밀린 칸 수를 한 줄로. 칸마다 남기면 로그가 해류로 뒤덮인다. */
+export function describeDrift(events: readonly RunEvent[]): LogLine | null {
+  const count = events.filter((e) => e.type === "drift").length;
+  return count > 0 ? { text: `해류에 밀려 ${count}칸 떠내려갔다`, tone: "warn" } : null;
 }
 
 /** 한 칸에 걸리는 시간. 갈 수 없으면 `null`. */

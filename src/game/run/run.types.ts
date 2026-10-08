@@ -4,6 +4,7 @@ import type { ExploredMap } from "../fog/fog.types";
 import type { Direction } from "../grid/direction.types";
 import type { Cell, WorldGrid } from "../grid/world-grid.types";
 import type { RegionId } from "../region/region.types";
+import type { EastNorth } from "../travel/drift.types";
 import type { Conveyance, Mount } from "../travel/travel.types";
 
 export interface RunConfig {
@@ -18,6 +19,16 @@ export interface Traveler {
   id: string;
   cell: Cell;
   conveyance: Conveyance;
+  /**
+   * 마지막으로 움직인 방향. 화면의 뱃머리다 (R18). 막히거나 기다리거나 해류에 밀려도
+   * 바뀌지 않는다 — 정박한 배는 마지막에 향하던 쪽을 보고 있다.
+   */
+  facing: Direction;
+  /**
+   * 칸 중심에서 벗어난 거리(해리). 해류의 옆 성분이 여기 쌓이고, 칸 한 변의 절반을 넘으면
+   * 옆 칸으로 밀린다 (R15). 정박·하선하면 0이다.
+   */
+  driftNm: EastNorth;
 }
 
 /**
@@ -35,13 +46,15 @@ export type Command =
 /**
  * 막힌 이유. 막힌 걸음은 시간을 쓰지 않는다 — 원본에서 벽에 부딪힌 것과 같다.
  * `wind`는 무풍일 때뿐이다. 맞바람은 태킹으로 느리게 갈 뿐 막지 않는다.
+ * `current`는 역류가 돛의 전진보다 셀 때다.
  */
-export type BlockReason = "terrain" | "edge" | "wind";
+export type BlockReason = "terrain" | "edge" | "wind" | "current";
 
 /** 코어가 내는 렌더·로그용 이벤트. 렌더러는 이 배열만 소비한다 (원본 `GridEvent`). */
 export type RunEvent =
   | { type: "move"; actorId: string; from: Cell; to: Cell; hours: number }
   | { type: "blocked"; actorId: string; at: Cell; reason: BlockReason }
+  | { type: "drift"; actorId: string; from: Cell; to: Cell }
   | { type: "region"; region: RegionId }
   | { type: "dock"; portId: string }
   | { type: "disembark"; mount: Mount; portId: string }
