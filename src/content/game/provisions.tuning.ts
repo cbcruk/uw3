@@ -20,6 +20,19 @@ const PROVISION_SCALARS = {
     grade: 'unverified',
     source: '감으로 정함. 물 없이는 며칠을 못 버틴다는 방향만 둔 값. 표류 생존 기록 필요',
   },
+  provisionPrice: {
+    value: 0.4,
+    unit: '두카트/인·일',
+    grade: 'unverified',
+    source:
+      '감으로 정함. 시뮬(`world.ts`)의 보급 단가와 같은 값이고 그쪽도 근거가 없다. 항구의 비스킷·물통 값 기록 필요',
+  },
+  hireWage: {
+    value: 10,
+    unit: '두카트/명',
+    grade: 'unverified',
+    source: '감으로 정함. 선원 한 명을 들이는 선금. 포르투갈 왕실 항해의 선원 급료 기록 필요',
+  },
   hireHours: internal(
     12,
     '시간',

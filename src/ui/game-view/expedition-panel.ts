@@ -16,8 +16,9 @@ function recordLine(record: RunRecord): string {
     record.outcome === 'arrived'
       ? `${record.days}일 · 선원 ${record.crewLeft}/${record.crewAtStart}`
       : `${END_LABEL[record.outcome]} · ${record.days}일째`
+  const gold = record.gold === undefined ? '' : ` · ${record.gold.toLocaleString()}두카트`
   const tag = record.daily === null ? '' : `<span class="rl-board__tag">${record.daily}</span> `
-  return `<li class="rl-board__item rl-board__item--${record.outcome === 'arrived' ? 'good' : 'bad'}">${tag}${route} · ${result}</li>`
+  return `<li class="rl-board__item rl-board__item--${record.outcome === 'arrived' ? 'good' : 'bad'}">${tag}${route} · ${result}${gold}</li>`
 }
 
 /**

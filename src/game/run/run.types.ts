@@ -1,3 +1,4 @@
+import type { GoodId } from '../../content/game/game-content.types'
 import type { GameDate } from '../../sim/calendar/calendar.types'
 import type { ShipClass } from '../../sim/ship/ship.types'
 import type { Encounter } from '../encounter/encounter.types'
@@ -54,6 +55,8 @@ export type Command =
   | { type: 'embark' }
   | { type: 'hire' }
   | { type: 'tribute' }
+  | { type: 'buy'; goodId: GoodId; tons: number }
+  | { type: 'sell'; goodId: GoodId; tons: number }
 
 /**
  * 막힌 이유. 막힌 걸음은 시간을 쓰지 않는다 — 원본에서 벽에 부딪힌 것과 같다.
@@ -74,8 +77,25 @@ export type RunEvent =
   | { type: 'rejected'; command: Command['type']; reason: string }
   | { type: 'day-start'; day: number }
   | { type: 'ration'; lost: number; starving: boolean; thirsty: boolean }
-  | { type: 'resupply'; portId: string }
-  | { type: 'hire'; portId: string; hired: number }
+  | {
+      type: 'resupply'
+      portId: string
+      /** 바뀐 양. 화물에 밀려 되팔았으면 음수다. */
+      food: number
+      water: number
+      /** 바뀐 금화. 샀으면 음수, 되팔았으면 양수. */
+      gold: number
+      short: boolean
+    }
+  | { type: 'hire'; portId: string; hired: number; wage: number }
+  | {
+      type: 'trade'
+      portId: string
+      side: 'buy' | 'sell'
+      goodId: GoodId
+      tons: number
+      gold: number
+    }
   | {
       type: 'tribute'
       encounterId: string

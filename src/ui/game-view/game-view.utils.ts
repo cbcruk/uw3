@@ -1,9 +1,11 @@
 import { ENCOUNTER_KINDS } from '../../content/game/encounter-kinds'
-import type { EncounterKindId } from '../../content/game/game-content.types'
+import { GOODS } from '../../content/game/goods'
+import type { EncounterKindId, GoodId } from '../../content/game/game-content.types'
 import { findPort } from '../../content/ports'
 import { HOURS_PER_DAY } from '../../sim/calendar/calendar'
 import type { Direction } from '../../game/grid/direction.types'
-import type { Command, RunEvent } from '../../game/run/run.types'
+import type { Command, RunEvent, RunState } from '../../game/run/run.types'
+import { cargoGoods, marketAt } from '../../game/trade/trade'
 import type { ExpeditionEnd } from '../../game/supplies/supplies.types'
 import type { Conveyance } from '../../game/travel/travel.types'
 import type { LogLine } from './game-view.types'
@@ -56,6 +58,40 @@ export function commandForKey(key: string, code: string): Command | null {
     default:
       return code === 'Numpad5' ? { type: 'wait' } : null
   }
+}
+
+/** 숫자키 한 번에 오가는 화물. 한 톤씩이면 배 한 척을 채우는 데 키를 백 번 눌러야 한다. */
+export const TRADE_LOT_TONS = 10
+
+const DIGIT_CODE = /^Digit([1-9])$/
+
+/**
+ * 시장의 키. 숫자 N은 시장 목록의 N번째 품목을 한 짐 사고, Shift+숫자 N은 화물 목록의 N번째를 한 짐 판다.
+ *
+ * 숫자패드는 이동이라 윗줄 숫자(`Digit`)만 받는다. 정박 중이 아니면 `null` — 키가 다른 뜻으로 새지 않게.
+ */
+export function tradeCommandForKey(code: string, shift: boolean, run: RunState): Command | null {
+  const match = DIGIT_CODE.exec(code)
+  const portId = run.player.conveyance === 'ship' ? run.grid.portAt(run.player.cell) : null
+  if (match === null || portId === null) {
+    return null
+  }
+  const index = Number(match[1]) - 1
+  if (shift) {
+    const goodId = cargoGoods(run.supplies)[index]
+    return goodId === undefined ? null : { type: 'sell', goodId, tons: TRADE_LOT_TONS }
+  }
+  const line = marketAt(portId)[index]
+  return line === undefined ? null : { type: 'buy', goodId: line.good.id, tons: TRADE_LOT_TONS }
+}
+
+export function goodName(goodId: GoodId): string {
+  return GOODS.find((good) => good.id === goodId)?.name ?? goodId
+}
+
+/** 부호를 붙인 수. 늘면 `+`, 줄면 `−`. */
+export function signed(value: number): string {
+  return `${value >= 0 ? '+' : '−'}${Math.abs(value).toLocaleString()}`
 }
 
 export const CONVEYANCE_LABEL: Readonly<Record<Conveyance, string>> = {
@@ -142,7 +178,12 @@ export function describeEvent(event: RunEvent): LogLine | null {
     case 'ration':
       return { text: describeRation(event), tone: 'bad' }
     case 'resupply':
-      return { text: '식량과 물을 가득 채웠다', tone: 'info' }
+      return describeResupply(event)
+    case 'trade':
+      return {
+        text: `${portName(event.portId)}에서 ${goodName(event.goodId)} ${event.tons}톤을 ${event.side === 'buy' ? '샀다' : '팔았다'} (${signed(event.gold)}두카트)`,
+        tone: event.side === 'sell' ? 'good' : 'info',
+      }
     case 'ended':
       return {
         text: `원정이 끝났다 — ${END_LABEL[event.reason]}`,
@@ -167,7 +208,10 @@ export function describeEvent(event: RunEvent): LogLine | null {
         tone: 'good',
       }
     case 'hire':
-      return { text: `${portName(event.portId)}에서 선원 ${event.hired}명을 모았다`, tone: 'info' }
+      return {
+        text: `${portName(event.portId)}에서 선원 ${event.hired}명을 모았다 (${signed(-event.wage)}두카트)`,
+        tone: 'info',
+      }
     case 'tribute':
       return {
         text: `${withParticle(encounterName(event.kind), '이', '가')} ${describeTribute(event)} 받고 떠났다`,
@@ -192,6 +236,14 @@ function describeCombat(event: Extract<RunEvent, { type: 'combat' }>): string {
     : `${withParticle(name, '이', '가')} 덮쳐 왔다`
   const hull = event.hullLost > 0 ? ` · 선체 -${event.hullLost}` : ''
   return `${opening} — 우리 -${event.crewLost}명${hull} · 적 -${event.foeLost}명 (남은 적 ${event.foeLeft})`
+}
+
+function describeResupply(event: Extract<RunEvent, { type: 'resupply' }>): LogLine {
+  const change = `식량 ${signed(event.food)} · 물 ${signed(event.water)} · ${signed(event.gold)}두카트`
+  if (event.short) {
+    return { text: `금화가 모자라 식량·물을 다 채우지 못했다 (${change})`, tone: 'bad' }
+  }
+  return { text: `식량·물을 화물이 남긴 자리까지 맞췄다 (${change})`, tone: 'info' }
 }
 
 function describeTribute(event: Extract<RunEvent, { type: 'tribute' }>): string {

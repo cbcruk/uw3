@@ -428,9 +428,19 @@ describe('선원 고용 — 항구에서 정원까지 채운다', () => {
     const run = createRun(CONFIG, grid)
     const hours = run.elapsedHours
     const events = applyCommand(run, { type: 'hire' })
-    expect(eventsOf(events, 'hire')[0]?.hired).toBeGreaterThan(0)
+    const hire = eventsOf(events, 'hire')[0]
+    expect(hire?.hired).toBeGreaterThan(0)
+    expect(hire?.wage).toBe((hire?.hired ?? 0) * PROVISION.hireWage)
     expect(run.supplies.crew).toBe(run.shipClass.crewMax)
     expect(run.elapsedHours).toBe(hours + PROVISION.hireHours)
+    expect(eventsOf(applyCommand(run, { type: 'hire' }), 'rejected')).toHaveLength(1)
+  })
+
+  it('금화가 모자라면 낼 수 있는 만큼만 모으고, 한 명도 못 내면 거절한다', () => {
+    const run = createRun(CONFIG, grid)
+    run.supplies.gold = PROVISION.hireWage * 3
+    expect(eventsOf(applyCommand(run, { type: 'hire' }), 'hire')[0]?.hired).toBe(3)
+    expect(run.supplies.gold).toBe(0)
     expect(eventsOf(applyCommand(run, { type: 'hire' }), 'rejected')).toHaveLength(1)
   })
 
@@ -491,5 +501,73 @@ describe('내주기 — 식량·물을 주고 붙은 조우에게서 놓여난�
     run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell
     run.encounters = []
     expect(eventsOf(applyCommand(run, { type: 'tribute' }), 'rejected')).toHaveLength(1)
+  })
+})
+
+describe('교역 — 화물과 식량·물이 한 적재량을 나눠 쓴다', () => {
+  const lisbonGood = 'salt' as const
+  const angraOnly = 'woad' as const
+
+  it('산 화물만큼 식량·물이 밀려나 되팔리고, 시간은 흐르지 않는다', () => {
+    const run = createRun(CONFIG, grid)
+    const hours = run.elapsedHours
+    const gold = run.supplies.gold
+    const events = applyCommand(run, { type: 'buy', goodId: lisbonGood, tons: 30 })
+    const trade = eventsOf(events, 'trade')[0]
+    expect(trade).toMatchObject({ side: 'buy', goodId: lisbonGood, tons: 30 })
+    expect(run.supplies.cargo[lisbonGood]).toBe(30)
+    expect(run.supplies.food).toBe(run.supplies.capacity * (2 / 3))
+    expect(run.supplies.water).toBe(run.supplies.food)
+    const resupply = eventsOf(events, 'resupply')[0]
+    expect(resupply?.food).toBeLessThan(0)
+    expect(resupply?.gold).toBeGreaterThan(0)
+    expect(run.supplies.gold).toBe(gold + (trade?.gold ?? 0) + (resupply?.gold ?? 0))
+    expect(run.elapsedHours).toBe(hours)
+    expect(run.commands).toHaveLength(1)
+  })
+
+  it('산지가 아닌 품목은 살 수 없고, 바다에서는 사고팔 수 없다', () => {
+    const run = createRun(CONFIG, grid)
+    expect(
+      eventsOf(applyCommand(run, { type: 'buy', goodId: angraOnly, tons: 10 }), 'rejected'),
+    ).toHaveLength(1)
+    run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell
+    expect(
+      eventsOf(applyCommand(run, { type: 'buy', goodId: lisbonGood, tons: 10 }), 'rejected'),
+    ).toHaveLength(1)
+    expect(run.commands).toHaveLength(0)
+  })
+
+  it('팔면 빈 자리만큼 식량·물을 다시 사서 채운다', () => {
+    const run = createRun(CONFIG, grid)
+    applyCommand(run, { type: 'buy', goodId: lisbonGood, tons: 30 })
+    applyCommand(run, { type: 'sell', goodId: lisbonGood, tons: 30 })
+    expect(run.supplies.cargo).toEqual({})
+    expect(run.supplies.food).toBe(run.supplies.capacity)
+    expect(run.supplies.water).toBe(run.supplies.capacity)
+  })
+
+  it('같은 항구에서 사고팔기를 되풀이해도 금화가 늘지 않는다', () => {
+    const run = createRun(CONFIG, grid)
+    const gold = run.supplies.gold
+    for (let round = 0; round < 5; round += 1) {
+      applyCommand(run, { type: 'buy', goodId: lisbonGood, tons: 30 })
+      applyCommand(run, { type: 'sell', goodId: lisbonGood, tons: 30 })
+    }
+    expect(run.supplies.gold).toBeLessThanOrEqual(gold)
+  })
+
+  it('같은 시드·같은 명령이면 같은 금화와 화물이다', () => {
+    const commands: Command[] = [
+      { type: 'buy', goodId: lisbonGood, tons: 20 },
+      { type: 'buy', goodId: 'olive-oil', tons: 5 },
+      { type: 'wait' },
+      { type: 'sell', goodId: lisbonGood, tons: 7 },
+      { type: 'hire' },
+    ]
+    const run = replayRun(CONFIG, commands, grid)
+    const again = replayRun(CONFIG, commands, grid)
+    expect(again.supplies).toEqual(run.supplies)
+    expect(run.supplies.cargo).toEqual({ salt: 13, 'olive-oil': 5 })
   })
 })
