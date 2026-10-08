@@ -1,6 +1,7 @@
 import { findPort } from '../../content/ports'
 import { cargoTons, provisionLimit } from '../../game/supplies/supplies'
-import { cargoGoods, marketAt, priceAt } from '../../game/trade/trade'
+import { cargoGoods, knownLanguages, marketAt, priceAt } from '../../game/trade/trade'
+import { LANGUAGE_LABELS } from '../../content/content.types'
 import type { RunState } from '../../game/run/run.types'
 import { TRADE_LOT_TONS, goodName } from './game-view.utils'
 
@@ -17,7 +18,11 @@ export function renderMarket(run: RunState): string {
     return ''
   }
   const { supplies } = run
-  const market = marketAt(portId)
+  const languages = knownLanguages(run.config)
+  const market = marketAt(portId, languages)
+  const interpreter = languages.has(port.language)
+    ? ''
+    : ` · ${LANGUAGE_LABELS[port.language]}를 몰라 통역이 뗀다`
   const forSale =
     market.length === 0
       ? '<li class="rl-market__empty">시장이 없다</li>'
@@ -33,14 +38,14 @@ export function renderMarket(run: RunState): string {
       ? '<li class="rl-market__empty">비었다</li>'
       : held
           .map((goodId, i) => {
-            const price = priceAt(portId, goodId)
+            const price = priceAt(portId, goodId, 'sell', languages)
             const offer = price === null ? '못 판다' : `여기서 ${price}`
             return `<li><kbd>⇧${i + 1}</kbd> ${goodName(goodId)} ${supplies.cargo[goodId] ?? 0}톤 <span class="rl-market__price">${offer}</span></li>`
           })
           .join('')
   return `
     <section class="rl-market">
-      <h2 class="rl-market__title">${port.name} 시장 · 한 짐 ${TRADE_LOT_TONS}톤 · 값은 톤당 두카트</h2>
+      <h2 class="rl-market__title">${port.name} 시장 · 한 짐 ${TRADE_LOT_TONS}톤 · 값은 톤당 두카트${interpreter}</h2>
       <ol class="rl-market__list">${forSale}</ol>
       <h3 class="rl-market__title">화물 ${cargoTons(supplies.cargo)}/${supplies.holdTons}톤 · 식량·물 상한 ${provisionLimit(supplies).toLocaleString()}</h3>
       <ol class="rl-market__list">${hold}</ol>

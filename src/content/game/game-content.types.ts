@@ -60,3 +60,9 @@ export interface Good {
   id: GoodId
   name: string
 }
+
+/** 명성의 칭호 하나. 화면 표시용이다. */
+export interface FameTitle {
+  minFame: number
+  title: string
+}

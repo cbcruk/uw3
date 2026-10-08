@@ -12,9 +12,12 @@ import {
   dailyConfig,
   dailyKey,
   freeConfig,
+  migrateMeta,
   recordOf,
 } from './expedition'
-import type { RunRecord } from './expedition.types'
+import type { MetaStateV1, RunRecord } from './expedition.types'
+import { FAME } from '../../content/game/fame.tuning'
+import { TRADE } from '../../content/game/trade.tuning'
 
 const grid = createWorld()
 
@@ -78,7 +81,11 @@ describe('원정의 끝 — 목표 항구에 배로 들어오면 성공이다', 
     })
     const meta = applyRunToMeta(createMeta(), run, record)
     expect(meta.knownPortIds).toEqual(['lisboa'])
-    expect(meta.records).toEqual([record])
+    // 도착 몫 + 처음 들어간 리스본의 몫. 출항 금화보다 늘지 않았으니 이익 몫은 없다.
+    const fame = FAME.fameArrived + FAME.fameDiscovery
+    expect(meta.records).toEqual([{ ...record, fame }])
+    expect(meta.fame).toBe(fame)
+    expect(meta.languageDocks).toEqual({ portuguese: 1 })
   })
 })
 
@@ -112,5 +119,57 @@ describe('리더보드 순서 — 도착 > 짧은 날수 > 남긴 선원', () =>
     const richButSlow = { ...base, days: 11, gold: 99999 }
     const poor = { ...base, gold: 100 }
     expect([poor, richButSlow, rich].sort(compareRecords)).toEqual([rich, poor, richButSlow])
+  })
+})
+
+describe('명성·어학 — 끝난 원정에서만 쌓이고, 설정을 거쳐 다음 원정에 닿는다', () => {
+  const seasoned = {
+    ...createMeta(),
+    fame: 300,
+    languageDocks: { castilian: FAME.languageDocksToLearn, arabic: 1, portuguese: 9 },
+  }
+
+  it('같은 시드라도 메타가 다르면 다른 설정이고, 데일리는 메타와 무관하게 같다', () => {
+    const fresh = freeConfig(11, createMeta())
+    const veteran = freeConfig(11, seasoned)
+    expect(fresh).not.toEqual(veteran)
+    expect(veteran.patronGold).toBe(300 * FAME.patronGoldPerFame)
+    expect(veteran.languages).toEqual(['castilian'])
+    expect(fresh).toMatchObject({ patronGold: 0, languages: [] })
+    expect(dailyConfig('2026-10-08')).toMatchObject({ patronGold: 0, languages: [] })
+  })
+
+  it('후원금은 출항 금화에 더해지고 상한이 있다', () => {
+    const run = createRun(freeConfig(11, seasoned), grid)
+    expect(run.supplies.gold).toBe(TRADE.startGold + 300 * FAME.patronGoldPerFame)
+    const legend = freeConfig(11, { ...createMeta(), fame: 1_000_000 })
+    expect(legend.patronGold).toBe(FAME.patronGoldMax)
+  })
+
+  it('죽은 원정도 물리친 조우와 처음 들어간 항구의 명성은 남긴다', () => {
+    const run = createRun(freeConfig(11, createMeta()), grid)
+    run.defeated = 2
+    run.ended = 'crew-lost'
+    run.supplies.gold += 5000
+    const record = recordOf(run, null) as RunRecord
+    const meta = applyRunToMeta(createMeta(), run, record)
+    expect(meta.fame).toBe(2 * FAME.fameDefeated + FAME.fameDiscovery)
+  })
+
+  it('옛 메타(버전 1)를 읽으면 명성·어학이 0인 버전 2가 된다', () => {
+    const old: MetaStateV1 = {
+      version: 1,
+      knownPortIds: ['angra'],
+      visitedRegions: ['1,2'],
+      records: [],
+    }
+    expect(migrateMeta(old)).toEqual({
+      ...old,
+      version: 2,
+      fame: 0,
+      languageDocks: {},
+    })
+    const current = createMeta()
+    expect(migrateMeta(current)).toBe(current)
   })
 })

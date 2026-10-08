@@ -19,6 +19,8 @@ import {
 } from '../../game/expedition/expedition'
 import type { WorldGrid } from '../../game/grid/world-grid.types'
 import { findPort } from '../../content/ports'
+import { LANGUAGE_LABELS } from '../../content/content.types'
+import { fameTitle, learnedLanguages } from '../../game/fame/fame'
 import { bearingDeg, haversineNm } from '../../sim/geo/geo.utils'
 import { loadActive, loadMeta, saveActive, saveMeta } from './game-storage'
 import { renderExpeditionPanel } from './expedition-panel'
@@ -170,8 +172,19 @@ export function mountGame(root: HTMLElement): void {
     pushLines([...events.map(describeEvent), describeDrift(events)])
     const record = wasRunning ? recordOf(run, daily) : null
     if (record !== null) {
+      const learnedBefore = learnedLanguages(meta.languageDocks)
       meta = applyRunToMeta(meta, run, record)
       saveMeta(meta)
+      const newlyLearned = learnedLanguages(meta.languageDocks).filter(
+        (language) => !learnedBefore.includes(language),
+      )
+      pushLines([
+        { text: `명성 +${meta.records.at(-1)?.fame ?? 0} — ${fameTitle(meta.fame)}`, tone: 'good' },
+        ...newlyLearned.map((language) => ({
+          text: `${LANGUAGE_LABELS[language]}를 익혔다. 그 말을 쓰는 항구에서는 통역 없이 거래한다`,
+          tone: 'good' as const,
+        })),
+      ])
       saveActive(null)
     } else if (run.ended === null) {
       saveActive({ config: run.config, commands: run.commands, daily })

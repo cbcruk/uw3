@@ -1,4 +1,5 @@
 import type { GoodId } from '../../content/game/game-content.types'
+import type { LanguageId } from '../../content/content.types'
 import type { GameDate } from '../../sim/calendar/calendar.types'
 import type { ShipClass } from '../../sim/ship/ship.types'
 import type { Encounter } from '../encounter/encounter.types'
@@ -23,6 +24,13 @@ export interface RunConfig {
    * 메타가 런을 바꾸는 유일한 통로다 — 데일리에서는 비운다 (§0 경계).
    */
   knownPortIds?: readonly string[]
+  /** 메타의 명성에서 나온 후원금. 출항 금화에 더한다 (§20). 데일리에서는 0이다. */
+  patronGold?: number
+  /**
+   * 메타에서 배운 말. 원정의 모국어(포르투갈어)는 늘 안다 — 여기에는 그 밖의 말만 둔다.
+   * 그 말을 쓰는 항구에서는 통역 없이 거래한다 (R58). 데일리에서는 비운다.
+   */
+  languages?: readonly LanguageId[]
 }
 
 /** 격자 위를 움직이는 것. 원본의 `Actor`에서 전투 상태를 뺀 것이다 (전투는 P3). */

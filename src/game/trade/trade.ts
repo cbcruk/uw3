@@ -1,10 +1,21 @@
 import { GOODS, findGoodByName } from '../../content/game/goods'
 import type { GoodId } from '../../content/game/game-content.types'
+import { FAME } from '../../content/game/fame.tuning'
 import { GOOD_BASE_PRICE, TRADE } from '../../content/game/trade.tuning'
+import type { LanguageId } from '../../content/content.types'
+import type { RunConfig } from '../run/run.types'
 import { findPort } from '../../content/ports'
 import { cargoTons } from '../supplies/supplies'
 import type { Supplies } from '../supplies/supplies.types'
-import type { MarketLine, TradeResult } from './trade.types'
+import type { MarketLine, TradeResult, TradeSide } from './trade.types'
+
+/** 원정의 모국어. 계약은 포르투갈 왕실의 원정이라 이 말은 처음부터 안다. */
+export const NATIVE_LANGUAGE: LanguageId = 'portuguese'
+
+/** 이 원정이 아는 말. 모국어와 메타에서 넘어온 말이다 (R40). */
+export function knownLanguages(config: RunConfig): ReadonlySet<LanguageId> {
+  return new Set([NATIVE_LANGUAGE, ...(config.languages ?? [])])
+}
 
 /** 시장이 있는 항구인가. 시장이 없으면 사지도 팔지도 못한다. */
 function hasMarket(portId: string): boolean {
@@ -27,26 +38,36 @@ function producedAt(portId: string): Set<GoodId> {
  *
  * 산지는 기준값 × `localPriceRatio`에 사고팔고, 산지가 아니면 기준값 × `foreignPriceRatio`에 사들인다.
  * 거리도 재고도 보지 않는다 — 값은 항구와 품목에서만 정해진다 (R54).
+ *
+ * 항구의 말을 모르면 통역이 `interpreterFee`만큼 뗀다 — 사는 값은 오르고 파는 값은 내린다 (R58).
  */
-export function priceAt(portId: string, goodId: GoodId): number | null {
+export function priceAt(
+  portId: string,
+  goodId: GoodId,
+  side: TradeSide,
+  languages: ReadonlySet<LanguageId>,
+): number | null {
   // 저장소에서 되살린 명령 로그에는 표에 없는 품목이 섞여 있을 수 있다.
   const base = GOOD_BASE_PRICE[goodId] as number | undefined
   if (base === undefined || !hasMarket(portId)) {
     return null
   }
   const ratio = producedAt(portId).has(goodId) ? TRADE.localPriceRatio : TRADE.foreignPriceRatio
-  return Math.round(base * ratio)
+  const language = findPort(portId)?.language
+  const fee = language === undefined || languages.has(language) ? 0 : FAME.interpreterFee
+  const markup = side === 'buy' ? 1 + fee : 1 - fee
+  return Math.round(base * ratio * markup)
 }
 
 /** 이 항구에서 살 수 있는 품목과 값. 산지인 품목만 판다. */
-export function marketAt(portId: string): MarketLine[] {
+export function marketAt(portId: string, languages: ReadonlySet<LanguageId>): MarketLine[] {
   if (!hasMarket(portId)) {
     return []
   }
   const produced = producedAt(portId)
   return GOODS.filter((good) => produced.has(good.id)).map((good) => ({
     good,
-    price: priceAt(portId, good.id) ?? 0,
+    price: priceAt(portId, good.id, 'buy', languages) ?? 0,
   }))
 }
 
@@ -65,8 +86,9 @@ export function buyGoods(
   portId: string,
   goodId: GoodId,
   tons: number,
+  languages: ReadonlySet<LanguageId>,
 ): TradeResult {
-  const price = priceAt(portId, goodId)
+  const price = priceAt(portId, goodId, 'buy', languages)
   if (price === null || !producedAt(portId).has(goodId)) {
     return { ok: false, reason: '이 항구에서는 그 품목을 팔지 않는다' }
   }
@@ -91,8 +113,9 @@ export function sellGoods(
   portId: string,
   goodId: GoodId,
   tons: number,
+  languages: ReadonlySet<LanguageId>,
 ): TradeResult {
-  const price = priceAt(portId, goodId)
+  const price = priceAt(portId, goodId, 'sell', languages)
   if (price === null) {
     return { ok: false, reason: '이 항구에는 시장이 없다' }
   }

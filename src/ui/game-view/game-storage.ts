@@ -1,19 +1,20 @@
-import { createMeta } from '../../game/expedition/expedition'
-import type { MetaState } from '../../game/expedition/expedition.types'
+import { createMeta, migrateMeta } from '../../game/expedition/expedition'
+import type { MetaState, MetaStateV1 } from '../../game/expedition/expedition.types'
 import type { SavedRun } from './game-view.types'
 
 const META_KEY = 'uw3.roguelike.meta'
 const ACTIVE_KEY = 'uw3.roguelike.active'
 
 /**
- * 메타를 읽는다. 저장소가 막혔거나 비었거나 깨졌으면 새 메타다.
+ * 메타를 읽는다. 저장소가 막혔거나 비었거나 깨졌으면 새 메타다. 옛 형식(버전 1)은 올려서 읽는다.
  *
  * 메타는 이 브라우저에만 있다. 잃어도 런은 돌아간다 — 아는 항구가 비어 있을 뿐이다.
  */
 export function loadMeta(): MetaState {
   const parsed = readJson(META_KEY)
-  if (isRecord(parsed) && parsed['version'] === 1 && Array.isArray(parsed['records'])) {
-    return parsed as unknown as MetaState
+  const version = isRecord(parsed) ? parsed['version'] : undefined
+  if (isRecord(parsed) && (version === 1 || version === 2) && Array.isArray(parsed['records'])) {
+    return migrateMeta(parsed as unknown as MetaState | MetaStateV1)
   }
   return createMeta()
 }

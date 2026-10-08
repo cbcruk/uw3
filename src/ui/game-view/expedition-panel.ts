@@ -3,6 +3,9 @@ import { compareRecords } from '../../game/expedition/expedition'
 import type { MetaState, RunRecord } from '../../game/expedition/expedition.types'
 import type { RunState } from '../../game/run/run.types'
 import { END_LABEL } from './game-view.utils'
+import { LANGUAGE_LABELS } from '../../content/content.types'
+import { fameTitle, learnedLanguages, patronGoldFor } from '../../game/fame/fame'
+import { NATIVE_LANGUAGE } from '../../game/trade/trade'
 
 const BOARD_LIMIT = 5
 
@@ -17,8 +20,9 @@ function recordLine(record: RunRecord): string {
       ? `${record.days}일 · 선원 ${record.crewLeft}/${record.crewAtStart}`
       : `${END_LABEL[record.outcome]} · ${record.days}일째`
   const gold = record.gold === undefined ? '' : ` · ${record.gold.toLocaleString()}두카트`
+  const fame = record.fame === undefined ? '' : ` · 명성 +${record.fame}`
   const tag = record.daily === null ? '' : `<span class="rl-board__tag">${record.daily}</span> `
-  return `<li class="rl-board__item rl-board__item--${record.outcome === 'arrived' ? 'good' : 'bad'}">${tag}${route} · ${result}${gold}</li>`
+  return `<li class="rl-board__item rl-board__item--${record.outcome === 'arrived' ? 'good' : 'bad'}">${tag}${route} · ${result}${gold}${fame}</li>`
 }
 
 /**
@@ -46,10 +50,14 @@ export function renderExpeditionPanel(
     : ''
   const board = [...meta.records].sort(compareRecords).slice(0, BOARD_LIMIT)
   const known = meta.knownPortIds.map(portName).join(', ') || '없음'
+  const languages = [NATIVE_LANGUAGE, ...learnedLanguages(meta.languageDocks)]
+    .map((language) => LANGUAGE_LABELS[language])
+    .join(', ')
   return `
     <p class="rl-expedition__contract">${mode} · ${contract}</p>
     ${buttons}
-    <p class="rl-expedition__meta">아는 항구: ${known} · 원정 ${meta.records.length}회</p>
+    <p class="rl-expedition__meta">${fameTitle(meta.fame)} · 명성 ${meta.fame.toLocaleString()} · 후원금 ${patronGoldFor(meta.fame).toLocaleString()}두카트</p>
+    <p class="rl-expedition__meta">아는 말: ${languages} · 아는 항구: ${known} · 원정 ${meta.records.length}회</p>
     ${board.length > 0 ? `<ol class="rl-board">${board.map(recordLine).join('')}</ol>` : ''}
   `
 }
