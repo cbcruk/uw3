@@ -13,6 +13,7 @@ function foe(kind: Encounter["kind"], crew: number): Encounter {
     kind,
     cell: { x: 0, y: 0 },
     crew,
+    crewAtStart: crew,
     conveyance: kind === "pirate" ? "ship" : "horse",
     nextActHours: 0,
     rounds: 0,
@@ -79,5 +80,25 @@ describe("한 합 — 머릿수가 곧 공격력이다", () => {
       events = fightRound({ seed: 1, supplies, conveyance: "horse", foe: enemy, initiated: true });
     }
     expect(events.at(-1)).toEqual({ type: "defeated", encounterId: "beast-x", kind: "beast" });
+  });
+});
+
+describe("퇴각 — 절반을 잃으면 물러난다", () => {
+  it("처음 머릿수의 절반 아래로 줄면 routed를 내고 격자에서 빠진다", () => {
+    const supplies = createSupplies(shipClass);
+    const enemy = foe("bandit", 20);
+    let routed = false;
+    for (let i = 0; i < 30 && enemy.crew > 0; i += 1) {
+      const events = fightRound({
+        seed: 3,
+        supplies,
+        conveyance: "horse",
+        foe: enemy,
+        initiated: true,
+      });
+      routed ||= events.some((e) => e.type === "routed");
+    }
+    expect(routed).toBe(true);
+    expect(enemy.crew).toBe(0);
   });
 });

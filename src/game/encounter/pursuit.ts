@@ -2,7 +2,8 @@ import { ENCOUNTER_KINDS } from "../../content/game/encounter-kinds";
 import type { EncounterKind } from "../../content/game/game-content.types";
 import { findShipClass } from "../../content/ships";
 import { HOURS_PER_DAY } from "../../sim/calendar/calendar";
-import { isInSight } from "../fog/fog";
+import { COMBAT } from "../../content/game/combat.tuning";
+import { isWithinNm, sightRadiusNm } from "../fog/fog";
 import { DIRECTIONS } from "../grid/direction";
 import type { Direction } from "../grid/direction.types";
 import type { ShipClass } from "../../sim/ship/ship.types";
@@ -117,8 +118,14 @@ export function kindOf(encounter: Encounter): EncounterKind {
   return kind;
 }
 
+/**
+ * 조우가 플레이어를 보는가. 알아채는 거리는 시야보다 짧고, 한 번 쫓기 시작하면 시야 끝까지 놓치지 않는다 (R45).
+ * 그래서 먼저 본 쪽이 피할 수 있고, 붙잡힌 뒤에는 시야 밖으로 벗어나야 따돌린다.
+ */
 function sees(context: PursuitContext, encounter: Encounter): boolean {
-  return isInSight(context.grid, encounter.cell, encounter.conveyance, context.target.cell);
+  const sightNm = sightRadiusNm(encounter.conveyance);
+  const radiusNm = encounter.chasing ? sightNm : sightNm * COMBAT.noticeRatio;
+  return isWithinNm(context.grid, encounter.cell, context.target.cell, radiusNm);
 }
 
 /**

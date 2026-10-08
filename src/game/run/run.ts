@@ -9,6 +9,7 @@ import { spawnEncounters } from "../encounter/encounter";
 import { actEncounters, canStrike } from "../encounter/pursuit";
 import { fightRound } from "../combat/combat";
 import { COMBAT } from "../../content/game/combat.tuning";
+import { PROVISION } from "../../content/game/provisions.tuning";
 import { cellsInSight, createExploredMap, isInSight, sightRadiusNm } from "../fog/fog";
 import { DIRECTIONS } from "../grid/direction";
 import { createWorldGrid } from "../grid/world-grid";
@@ -179,7 +180,9 @@ function fight(run: RunState, foe: Encounter, initiated: boolean): CombatEvent[]
     foe,
     initiated,
   });
-  run.defeated += events.filter((event) => event.type === "defeated").length;
+  run.defeated += events.filter(
+    (event) => event.type === "defeated" || event.type === "routed",
+  ).length;
   return events;
 }
 
@@ -279,6 +282,8 @@ function resolveCommand(run: RunState, command: Command, events: RunEvent[]): bo
       return disembark(run, command.mount, events);
     case "embark":
       return embark(run, events);
+    case "hire":
+      return hire(run, events);
   }
 }
 
@@ -396,6 +401,32 @@ function disembark(run: RunState, mount: Mount, events: RunEvent[]): boolean {
   player.cell = landing;
   player.conveyance = mount;
   events.push({ type: "disembark", mount, portId });
+  return true;
+}
+
+/**
+ * 항구에서 선원을 정원까지 채운다. 값은 아직 받지 않는다 — 대가는 시간과 보급이다.
+ *
+ * 사람이 늘면 백병전에 강해지지만 하루에 먹는 양도 는다. 버틸 날이 줄어든다 (R47).
+ */
+function hire(run: RunState, events: RunEvent[]): boolean {
+  const portId = dockedPortId(run);
+  if (portId === null) {
+    events.push({
+      type: "rejected",
+      command: "hire",
+      reason: "항구에 정박한 배에서만 사람을 모을 수 있다",
+    });
+    return false;
+  }
+  const hired = run.shipClass.crewMax - run.supplies.crew;
+  if (hired <= 0) {
+    events.push({ type: "rejected", command: "hire", reason: "이미 정원이 찼다" });
+    return false;
+  }
+  run.supplies.crew += hired;
+  run.elapsedHours += PROVISION.hireHours;
+  events.push({ type: "hire", portId, hired });
   return true;
 }
 

@@ -13,4 +13,6 @@ export type CombatEvent =
       foeLost: number;
       foeLeft: number;
     }
-  | { type: "defeated"; encounterId: string; kind: EncounterKindId };
+  | { type: "defeated"; encounterId: string; kind: EncounterKindId }
+  /** 절반을 잃고 물러났다. 격자에서 사라지는 것은 쓰러뜨린 것과 같다. */
+  | { type: "routed"; encounterId: string; kind: EncounterKindId; fled: number };

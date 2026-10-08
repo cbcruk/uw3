@@ -23,6 +23,7 @@ function pirate(cell: Cell, id = "pirate-a"): Encounter {
     kind: "pirate",
     cell,
     crew: 30,
+    crewAtStart: 30,
     conveyance: "ship",
     nextActHours: 0,
     rounds: 0,
@@ -47,11 +48,11 @@ function context(
 
 describe("추격 — 다음 행동 시각 순으로 한 칸씩 다가온다", () => {
   it("보이는 해적은 다가오고, 다가온 만큼 시간이 밀린다", () => {
-    const encounter = pirate(at(5, 0));
+    const encounter = pirate(at(3, 0));
     const events = actEncounters(context(6), [encounter]);
     expect(events[0]).toEqual({ type: "chase", encounterId: "pirate-a", kind: "pirate" });
-    expect(cellDistance(grid, encounter.cell, ATLANTIC)).toBeLessThan(5);
-    expect(encounter.nextActHours).toBeGreaterThan(6);
+    expect(cellDistance(grid, encounter.cell, ATLANTIC)).toBeLessThan(3);
+    expect(encounter.nextActHours).toBeGreaterThan(0);
     expect(encounter.chasing).toBe(true);
   });
 
@@ -61,6 +62,14 @@ describe("추격 — 다음 행동 시각 순으로 한 칸씩 다가온다", ()
     expect(adjacent(grid, encounter.cell, ATLANTIC)).toBe(true);
     expect(events.filter((e) => e.type === "engaged")).toHaveLength(1);
     expect(actEncounters(context(24 * 6, undefined, 24 * 5), [encounter])).toEqual([]);
+  });
+
+  it("알아채는 거리는 시야보다 짧다 — 먼저 본 쪽이 피할 수 있다", () => {
+    const unnoticed = pirate(at(6, 0));
+    expect(actEncounters(context(6), [unnoticed])).toEqual([]);
+    const chasing = { ...pirate(at(6, 0)), chasing: true };
+    actEncounters(context(6), [chasing]);
+    expect(cellDistance(grid, chasing.cell, ATLANTIC)).toBeLessThan(6);
   });
 
   it("시야 밖의 조우는 움직이지 않는다", () => {
@@ -78,8 +87,8 @@ describe("추격 — 다음 행동 시각 순으로 한 칸씩 다가온다", ()
   });
 
   it("두 조우는 한 칸에 겹치지 않는다", () => {
-    const a = pirate(at(4, 0), "pirate-a");
-    const b = pirate(at(4, 1), "pirate-b");
+    const a = pirate(at(3, 0), "pirate-a");
+    const b = pirate(at(3, 1), "pirate-b");
     actEncounters(context(24 * 5), [a, b]);
     expect(a.cell).not.toEqual(b.cell);
     expect(adjacent(grid, a.cell, ATLANTIC)).toBe(true);
@@ -95,8 +104,8 @@ describe("추격 — 다음 행동 시각 순으로 한 칸씩 다가온다", ()
   });
 
   it("쫓지 않던 조우는 명령이 시작된 시각부터 깨어난다 — 지난 시간을 몰아서 따라잡지 않는다", () => {
-    const encounter = pirate(at(5, 0));
+    const encounter = pirate(at(3, 0));
     actEncounters(context(1000 + 1, undefined, 1000), [encounter]);
-    expect(cellDistance(grid, encounter.cell, ATLANTIC)).toBeGreaterThanOrEqual(4);
+    expect(cellDistance(grid, encounter.cell, ATLANTIC)).toBeGreaterThanOrEqual(2);
   });
 });

@@ -21,6 +21,8 @@ const FOE_LETHALITY: Readonly<Record<EncounterKindId, number>> = {
  *
  * 운은 `시드 × 조우 × 몇 번째 합`에서만 나온다. 런 전체의 난수 상태를 들고 다니지 않아도
  * 재현된다 (R8, R33).
+ *
+ * 처음 머릿수의 절반 아래로 줄면 물러난다 (R46). 짐승도 같다 — 무리가 반으로 줄면 흩어진다.
  */
 export function fightRound(options: {
   seed: number;
@@ -58,6 +60,10 @@ export function fightRound(options: {
   ];
   if (foe.crew <= 0) {
     events.push({ type: "defeated", encounterId: foe.id, kind: foe.kind });
+  } else if (foe.crew <= foe.crewAtStart * COMBAT.routRatio) {
+    // 물러난 무리는 격자에서 지운다. 돌아오게 하려면 조우마다 퇴각 상태와 회복이 필요하다.
+    events.push({ type: "routed", encounterId: foe.id, kind: foe.kind, fled: foe.crew });
+    foe.crew = 0;
   }
   return events;
 }

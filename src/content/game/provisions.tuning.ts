@@ -1,4 +1,4 @@
-import { tunedValues } from "../tuning/tuning";
+import { internal, tunedValues } from "../tuning/tuning";
 import type { Tuned } from "../tuning/tuning.types";
 
 /**
@@ -20,6 +20,11 @@ const PROVISION_SCALARS = {
     grade: "unverified",
     source: "감으로 정함. 물 없이는 며칠을 못 버틴다는 방향만 둔 값. 표류 생존 기록 필요",
   },
+  hireHours: internal(
+    12,
+    "시간",
+    "항구에서 선원을 정원까지 모으는 데 쓰는 시간. 게임 속도 값 — 고용이 공짜 행동이 되지 않게 한다",
+  ),
 } as const satisfies Record<string, Tuned>;
 
 export const PROVISION_TABLES = [PROVISION_SCALARS] as const;

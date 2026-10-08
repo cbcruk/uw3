@@ -32,11 +32,13 @@ export function spawnEncounters(grid: WorldGrid, seed: number, region: RegionId)
       rng,
     );
     for (const cell of pickDistinct(candidates, count, rng, grid, taken)) {
+      const crew = rollCrew(kind, rng);
       encounters.push({
         id: `${kind.id}@${key}#${encounters.length}`,
         kind: kind.id,
         cell,
-        crew: rollCrew(kind, rng),
+        crew,
+        crewAtStart: crew,
         conveyance: kind.conveyances[0] ?? "horse",
         nextActHours: 0,
         rounds: 0,

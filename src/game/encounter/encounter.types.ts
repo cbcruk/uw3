@@ -9,6 +9,8 @@ export interface Encounter {
   kind: EncounterKindId;
   cell: Cell;
   crew: number;
+  /** 태어날 때의 머릿수. 이것의 일정 비율 아래로 줄면 물러난다 (R46). */
+  crewAtStart: number;
   /** 지금 타고 있는 것. 시야 반경과 하루 행정이 여기서 나온다. */
   conveyance: Conveyance;
   /**

@@ -50,6 +50,8 @@ export function commandForKey(key: string, code: string): Command | null {
       return { type: "disembark", mount: "camel" };
     case "e":
       return { type: "embark" };
+    case "r":
+      return { type: "hire" };
     default:
       return code === "Numpad5" ? { type: "wait" } : null;
   }
@@ -178,6 +180,13 @@ export function describeEvent(event: RunEvent): LogLine | null {
       };
     case "combat":
       return { text: describeCombat(event), tone: event.crewLost > event.foeLost ? "bad" : "warn" };
+    case "routed":
+      return {
+        text: `${withParticle(encounterName(event.kind), "이", "가")} ${event.fled}명을 남기고 물러났다`,
+        tone: "good",
+      };
+    case "hire":
+      return { text: `${portName(event.portId)}에서 선원 ${event.hired}명을 모았다`, tone: "info" };
     case "defeated":
       return {
         text: `${withParticle(encounterName(event.kind), "을", "를")} 물리쳤다`,

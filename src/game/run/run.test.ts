@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { COMBAT } from "../../content/game/combat.tuning";
 import { MOUNT } from "../../content/game/mounts.tuning";
+import { PROVISION } from "../../content/game/provisions.tuning";
 import { findShipClass } from "../../content/ships";
 import { toDayNumber } from "../../sim/calendar/calendar";
 import type { ShipClass } from "../../sim/ship/ship.types";
@@ -333,6 +334,7 @@ describe("런의 추격 — 플레이어의 명령이 흘린 시간만큼 조우
         kind: "pirate",
         cell: { x: run.player.cell.x + dx, y: run.player.cell.y },
         crew: 30,
+        crewAtStart: 30,
         conveyance: "ship",
         nextActHours: 0,
         rounds: 0,
@@ -355,7 +357,7 @@ describe("런의 추격 — 플레이어의 명령이 흘린 시간만큼 조우
   });
 
   it("기다리는 동안 보이는 해적이 따라와 붙는다", () => {
-    const run = seaRunWithPirate(-4);
+    const run = seaRunWithPirate(-3);
     const events = applyCommand(run, { type: "wait" });
     expect(eventsOf(events, "chase")).toHaveLength(1);
     expect(eventsOf(events, "engaged")).toHaveLength(1);
@@ -372,6 +374,7 @@ describe("전투 — 붙으면 양쪽이 머릿수를 잃는다", () => {
         kind: "pirate",
         cell: { x: run.player.cell.x + 1, y: run.player.cell.y },
         crew,
+        crewAtStart: crew,
         conveyance: "ship",
         nextActHours: 0,
         rounds: 0,
@@ -420,5 +423,23 @@ describe("전투 — 붙으면 양쪽이 머릿수를 잃는다", () => {
       return { supplies: run.supplies, encounters: run.encounters };
     };
     expect(play()).toEqual(play());
+  });
+});
+
+describe("선원 고용 — 항구에서 정원까지 채운다", () => {
+  it("정박 중에는 정원까지 모으고 시간이 흐른다. 이미 차 있으면 거절한다", () => {
+    const run = createRun(CONFIG, grid);
+    const hours = run.elapsedHours;
+    const events = applyCommand(run, { type: "hire" });
+    expect(eventsOf(events, "hire")[0]?.hired).toBeGreaterThan(0);
+    expect(run.supplies.crew).toBe(run.shipClass.crewMax);
+    expect(run.elapsedHours).toBe(hours + PROVISION.hireHours);
+    expect(eventsOf(applyCommand(run, { type: "hire" }), "rejected")).toHaveLength(1);
+  });
+
+  it("바다에서는 모을 수 없다", () => {
+    const run = createRun(CONFIG, grid);
+    run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell;
+    expect(eventsOf(applyCommand(run, { type: "hire" }), "rejected")).toHaveLength(1);
   });
 });

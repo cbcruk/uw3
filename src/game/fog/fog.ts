@@ -38,7 +38,12 @@ export function isInSight(
   conveyance: Conveyance,
   target: Cell,
 ): boolean {
-  const radius = sightRadiusNm(conveyance) / grid.stepNm(viewer, "e");
+  return isWithinNm(grid, viewer, target, sightRadiusNm(conveyance));
+}
+
+/** 두 칸이 그 해리 안에 있는가. 칸 크기는 보는 쪽 위도에서 잰다. */
+export function isWithinNm(grid: WorldGrid, viewer: Cell, target: Cell, radiusNm: number): boolean {
+  const radius = radiusNm / grid.stepNm(viewer, "e");
   const rawDx = Math.abs(target.x - viewer.x);
   const dx = Math.min(rawDx, grid.width - rawDx);
   return Math.hypot(dx, target.y - viewer.y) <= radius;
