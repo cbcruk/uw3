@@ -5,7 +5,7 @@ import { findPort } from '../../content/ports'
 import { HOURS_PER_DAY } from '../../sim/calendar/calendar'
 import type { Direction } from '../../game/grid/direction.types'
 import type { Command, RunEvent, RunState } from '../../game/run/run.types'
-import { cargoGoods, marketAt } from '../../game/trade/trade'
+import { cargoGoods, knownLanguages, marketAt } from '../../game/trade/trade'
 import type { ExpeditionEnd } from '../../game/supplies/supplies.types'
 import type { Conveyance } from '../../game/travel/travel.types'
 import type { LogLine } from './game-view.types'
@@ -81,7 +81,7 @@ export function tradeCommandForKey(code: string, shift: boolean, run: RunState):
     const goodId = cargoGoods(run.supplies)[index]
     return goodId === undefined ? null : { type: 'sell', goodId, tons: TRADE_LOT_TONS }
   }
-  const line = marketAt(portId)[index]
+  const line = marketAt(portId, knownLanguages(run.config))[index]
   return line === undefined ? null : { type: 'buy', goodId: line.good.id, tons: TRADE_LOT_TONS }
 }
 

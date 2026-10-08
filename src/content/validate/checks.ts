@@ -16,6 +16,7 @@ import { MOUNT_TABLES } from '../game/mounts.tuning'
 import { PROVISION_TABLES } from '../game/provisions.tuning'
 import { SIGHT_TABLES } from '../game/sight.tuning'
 import { TRADE_TABLES } from '../game/trade.tuning'
+import { FAME_TABLES } from '../game/fame.tuning'
 import { findGoodByName } from '../game/goods'
 import { TERRAIN_ZONES } from '../game/terrain-zones'
 import { gradeTally, tuningEntries } from '../tuning/tuning'
@@ -52,6 +53,7 @@ const GAME_SCALAR_TABLES = [
   ...ENCOUNTER_TABLES,
   ...COMBAT_TABLES,
   ...TRADE_TABLES,
+  ...FAME_TABLES,
 ]
 const GAME_TUNED: readonly Tuned<unknown>[] = tuningEntries(GAME_SCALAR_TABLES)
 

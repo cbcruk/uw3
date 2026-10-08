@@ -2,7 +2,14 @@ import { PORTS } from '../../content/ports'
 import { createRng, hashString } from '../../sim/rng/rng'
 import { currentDay } from '../run/run'
 import type { RunConfig, RunState } from '../run/run.types'
-import type { Contract, MetaState, RunRecord } from './expedition.types'
+import {
+  addLanguageDocks,
+  fameEarned,
+  languageDocksOf,
+  learnedLanguages,
+  patronGoldFor,
+} from '../fame/fame'
+import type { Contract, MetaState, MetaStateV1, RunRecord } from './expedition.types'
 
 /** 계약에 쓰는 선형. 원정마다 같은 배로 떠난다 — 배를 고르는 것은 교역이 들어온 뒤다. */
 const EXPEDITION_SHIP = 'caravela-redonda'
@@ -40,15 +47,29 @@ export function dailyKey(date: Date): string {
  * 메타를 넘기지 않는다. 아는 항구가 많은 사람이 유리하면 비교가 안 된다 (§0 경계).
  */
 export function dailyConfig(key: string): RunConfig {
-  return configFor(hashString(`${DAILY_SALT}:${key}`), [])
+  return configFor(hashString(`${DAILY_SALT}:${key}`), {
+    knownPortIds: [],
+    patronGold: 0,
+    languages: [],
+  })
 }
 
-/** 자유 원정. 메타의 아는 항구를 들고 간다. */
+/**
+ * 자유 원정. 메타가 주는 몫 셋을 들고 간다 — 아는 항구, 명성의 후원금, 배운 말.
+ * 메타가 런을 바꾸는 통로는 이 설정뿐이다 (R40).
+ */
 export function freeConfig(seed: number, meta: MetaState): RunConfig {
-  return configFor(seed, meta.knownPortIds)
+  return configFor(seed, {
+    knownPortIds: [...meta.knownPortIds],
+    patronGold: patronGoldFor(meta.fame),
+    languages: learnedLanguages(meta.languageDocks),
+  })
 }
 
-function configFor(seed: number, knownPortIds: readonly string[]): RunConfig {
+function configFor(
+  seed: number,
+  fromMeta: Required<Pick<RunConfig, 'knownPortIds' | 'patronGold' | 'languages'>>,
+): RunConfig {
   const contract = contractFor(seed)
   return {
     seed,
@@ -56,7 +77,7 @@ function configFor(seed: number, knownPortIds: readonly string[]): RunConfig {
     startPortId: contract.startPortId,
     goalPortId: contract.goalPortId,
     shipClassId: EXPEDITION_SHIP,
-    knownPortIds: [...knownPortIds],
+    ...fromMeta,
   }
 }
 
@@ -79,20 +100,42 @@ export function recordOf(run: RunState, daily: string | null): RunRecord | null 
 }
 
 export function createMeta(): MetaState {
-  return { version: 1, knownPortIds: [], visitedRegions: [], records: [] }
+  return {
+    version: 2,
+    knownPortIds: [],
+    visitedRegions: [],
+    records: [],
+    fame: 0,
+    languageDocks: {},
+  }
+}
+
+/**
+ * 옛 메타를 지금 형식으로 올린다. 명성과 어학은 0에서 시작한다 —
+ * 옛 기록으로 거슬러 셈하지 않는다. 옛 기록에는 물리친 수·들른 항구가 다 남아 있지 않다.
+ */
+export function migrateMeta(meta: MetaState | MetaStateV1): MetaState {
+  if (meta.version === 2) {
+    return meta
+  }
+  return { ...meta, version: 2, fame: 0, languageDocks: {} }
 }
 
 /**
  * 끝난 원정을 메타에 더한다. 새 값을 돌려주고 원래 값은 건드리지 않는다.
  *
- * **죽어도 앎은 남는다.** 들어가 본 항구와 영역은 결과와 상관없이 더한다 — 로그라이트의 뜻이 여기 있다.
+ * **죽어도 앎은 남는다.** 들어가 본 항구와 영역, 그 항구들의 말은 결과와 상관없이 더한다 —
+ * 로그라이트의 뜻이 여기 있다. 명성은 결과에 따라 다르게 번다(`fameEarned`).
  */
 export function applyRunToMeta(meta: MetaState, run: RunState, record: RunRecord): MetaState {
+  const fame = fameEarned(run, meta.knownPortIds).total
   return {
-    version: 1,
+    version: 2,
     knownPortIds: union(meta.knownPortIds, run.dockedPorts),
     visitedRegions: union(meta.visitedRegions, run.visitedRegions),
-    records: [...meta.records, record],
+    records: [...meta.records, { ...record, fame }],
+    fame: meta.fame + fame,
+    languageDocks: addLanguageDocks(meta.languageDocks, languageDocksOf(run)),
   }
 }
 

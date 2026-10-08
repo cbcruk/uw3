@@ -28,7 +28,7 @@ import {
 } from '../travel/drift'
 import type { EastNorth } from '../travel/drift.types'
 import { consumeDay, createSupplies, expeditionEndOf, settleProvisions } from '../supplies/supplies'
-import { buyGoods, sellGoods } from '../trade/trade'
+import { buyGoods, knownLanguages, sellGoods } from '../trade/trade'
 import type { Mount, Passage } from '../travel/travel.types'
 import type { Direction } from '../grid/direction.types'
 import type { Command, RunConfig, RunEvent, RunState } from './run.types'
@@ -62,7 +62,7 @@ export function createRun(config: RunConfig, grid: WorldGrid = createWorld()): R
     throw new Error(`unknown port: ${config.startPortId}`)
   }
   const region = regionOf(cell)
-  const supplies = createSupplies(shipClass)
+  const supplies = createSupplies(shipClass, config.patronGold ?? 0)
   const run: RunState = {
     config,
     grid,
@@ -522,7 +522,13 @@ function trade(
     return false
   }
   const deal = command.type === 'buy' ? buyGoods : sellGoods
-  const result = deal(run.supplies, portId, command.goodId, command.tons)
+  const result = deal(
+    run.supplies,
+    portId,
+    command.goodId,
+    command.tons,
+    knownLanguages(run.config),
+  )
   if (!result.ok) {
     events.push({ type: 'rejected', command: command.type, reason: result.reason })
     return false

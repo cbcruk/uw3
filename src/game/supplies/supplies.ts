@@ -10,8 +10,12 @@ import type {
   Supplies,
 } from './supplies.types'
 
-/** 출항 때의 보급. 시뮬의 새 게임과 같은 규칙이다 — 선원은 정원의 가운데, 식량·물은 가득, 화물칸은 비었다. */
-export function createSupplies(shipClass: ShipClass): Supplies {
+/**
+ * 출항 때의 보급. 시뮬의 새 게임과 같은 규칙이다 — 선원은 정원의 가운데, 식량·물은 가득, 화물칸은 비었다.
+ *
+ * @param patronGold 명성에서 나온 후원금. 출항 금화에 더한다.
+ */
+export function createSupplies(shipClass: ShipClass, patronGold = 0): Supplies {
   const capacity = supplyCapacity(shipClass.capacityTons)
   return {
     crew: Math.round((shipClass.crewMin + shipClass.crewMax) / 2),
@@ -21,7 +25,7 @@ export function createSupplies(shipClass: ShipClass): Supplies {
     hullMax: shipClass.hullPoints,
     capacity,
     holdTons: shipClass.capacityTons,
-    gold: TRADE.startGold,
+    gold: TRADE.startGold + patronGold,
     cargo: {},
   }
 }
