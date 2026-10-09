@@ -17,6 +17,11 @@ const ENCOUNTER_SCALARS = {
   ),
   bandit: internal(0.8, '무리/천 칸', '게임 체감 값. 뭍만 있는 영역에 약 2무리'),
   beast: internal(0.6, '무리/천 칸', '게임 체감 값. 초지만 있는 영역에 1~2무리'),
+  corsairs: internal(
+    0.4,
+    '무리/천 칸',
+    '게임 체감 값. 해적의 약 3분의 1 — 바다만 있는 영역에 한 무리쯤. 지역별 밀도가 아니다',
+  ),
 } as const satisfies Record<EncounterKindId, Tuned>
 
 const ZONE_FACTOR_NOTE = '방향은 자료에 있으나 배율 값은 저작했다'

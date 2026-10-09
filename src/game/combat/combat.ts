@@ -11,12 +11,14 @@ const FOE_LETHALITY: Readonly<Record<EncounterKindId, number>> = {
   pirate: COMBAT.pirateLethality,
   bandit: COMBAT.skirmishLethality,
   beast: COMBAT.beastLethality,
+  corsairs: COMBAT.pirateLethality,
 }
 
 const FOE_BREAK_LOSS: Readonly<Record<EncounterKindId, number>> = {
   pirate: COMBAT.raiderBreakLoss,
   bandit: COMBAT.raiderBreakLoss,
   beast: COMBAT.beastBreakLoss,
+  corsairs: COMBAT.raiderBreakLoss,
 }
 
 /**
@@ -61,7 +63,7 @@ export function fightRound(options: {
   const crewLost = Math.min(supplies.crew, casualties(foeFighting * FOE_LETHALITY[foe.kind], rng))
   const foeLost = Math.min(foe.crew, casualties(playerFighting * playerLethality, rng))
   const { hull, hullMax } = supplies
-  const shelled = foe.kind === 'pirate' && atSea && hull !== undefined && hullMax !== undefined
+  const shelled = atSea && hull !== undefined && hullMax !== undefined
   const hullLost =
     shelled && rng.chance(COMBAT.holingChance)
       ? Math.min(hull, Math.ceil(hullMax * COMBAT.holingShare))

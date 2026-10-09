@@ -16,7 +16,7 @@ export interface TerrainZone {
 }
 
 /** 조우 종류의 식별자. 밀도 표(`encounters.tuning.ts`)의 키와 같다. */
-export type EncounterKindId = 'pirate' | 'bandit' | 'beast'
+export type EncounterKindId = 'pirate' | 'bandit' | 'beast' | 'corsairs'
 
 /**
  * 조우 종류. 어느 지형에 나오고 머릿수가 얼마인가.
@@ -41,6 +41,11 @@ export interface EncounterKind {
   carriesGold: boolean
   /** 배로 움직이는 종류의 선형. 바람을 받는 방식이 선형마다 다르다. 뭍의 종류는 없다. */
   shipClassId?: string
+  /**
+   * 이만한 적재량(톤) 이상인 배만 노린다 (R83). 없으면 배의 크기를 가리지 않는다.
+   * 해적 선단처럼 두세 척을 모아 나서는 무리는 값진 큰 배를 노린다.
+   */
+  minPreyTons?: number
 }
 
 /** 교역 품목의 식별자. 값 표(`trade.tuning.ts`)의 키와 같다. */

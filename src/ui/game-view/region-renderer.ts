@@ -1,3 +1,4 @@
+import type { EncounterKindId } from '../../content/game/game-content.types'
 import { GRID } from '../../content/game/grid.tuning'
 import { headingOf } from '../../game/grid/direction'
 import { isInSight } from '../../game/fog/fog'
@@ -98,7 +99,7 @@ export function drawRegion(
     const [cx, cy] = center(frame, cell)
     ctx.save()
     ctx.globalAlpha = RUMOR_ALPHA
-    if (rumor.kind === 'pirate') {
+    if (sailsKind(rumor.kind)) {
       drawShip(ctx, cx, cy, tile, headingOf('e'), PIRATE_SHIP)
     } else {
       drawSprite(
@@ -123,7 +124,7 @@ export function drawRegion(
     }
     const [cx, cy] = center(frame, cell)
     const toward = directionToward(cell, player.cell) ?? 'e'
-    if (encounter.kind === 'pirate') {
+    if (sailsKind(encounter.kind)) {
       drawShip(ctx, cx, cy, tile, headingOf(toward), PIRATE_SHIP)
     } else {
       const sprite = bakeSprite(encounter.kind, SPRITES[encounter.kind], facingOf(toward))
@@ -193,4 +194,9 @@ function drawBadge(frame: Frame, cell: Cell, text: string): void {
   ctx.textAlign = 'right'
   ctx.textBaseline = 'top'
   ctx.fillText(text, right - 2, top + 1)
+}
+
+/** 배를 타는 조우인가. 해적과 해적 선단은 배로, 나머지는 스프라이트로 그린다. */
+function sailsKind(kind: EncounterKindId): kind is 'pirate' | 'corsairs' {
+  return kind === 'pirate' || kind === 'corsairs'
 }

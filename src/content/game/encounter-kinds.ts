@@ -35,4 +35,21 @@ export const ENCOUNTER_KINDS: readonly EncounterKind[] = [
     conveyances: ['horse'],
     carriesGold: false,
   },
+  /**
+   * 해적 선단 — 갈리오트 두세 척이 함께 다닌다 (R83). 피에르 당(1649)은 알제 해적이 "배 두세 척으로 한 척을" 덮쳤다고 썼고,
+   * 하에도(1612)는 스무 벤치 갈리오트에 전투원 약 40명을 적었다(`combat-3.md`). 그래서 90–150명이다.
+   * 큰 배만 노리고(`minPreyTons`) 머릿수로 앞서 덮친다(R80·R83). 표의 맨 뒤에 둔다 — 앞 종류의 생성 난수가 바뀌지 않는다.
+   */
+  {
+    id: 'corsairs',
+    name: '해적 선단',
+    terrains: ['sea'],
+    crewMin: 90,
+    crewMax: 150,
+    conveyances: ['ship'],
+    carriesGold: true,
+    shipClassId: 'caravela-latina',
+    // 카라벨(60–90톤)과 나우(220톤) 사이. 그 사이 어느 값이든 결과가 같다 — 근거 등급을 달 값이 아니다.
+    minPreyTons: 150,
+  },
 ]

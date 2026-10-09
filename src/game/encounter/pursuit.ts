@@ -136,21 +136,29 @@ export function kindOf(encounter: Encounter): EncounterKind {
  * 플레이어가 먼저 들이받았더라도 끝까지 싸운다. 짐승은 따지지 않는다.
  */
 function willing(context: PursuitContext<unknown>, encounter: Encounter): boolean {
-  const { crew } = context.target
-  return crew === undefined || willingAgainst(encounter, crew)
+  const { crew, holdTons } = context.target
+  return crew === undefined || willingAgainst(encounter, crew, holdTons)
 }
 
 /**
  * 이 조우가 머릿수 `crew`의 무리에게 덤비려 하는가 (R80). 런이 붙은 조우를 가릴 때도 쓴다.
  *
+ * 큰 배만 노리는 무리(`minPreyTons`)는 플레이어 배가 그보다 작으면 덤비지 않는다 (R83).
+ *
  * @param crew 플레이어가 지금 이끄는 무리(배의 선원이나 뭍 무리)의 머릿수.
+ * @param holdTons 플레이어 배의 적재량. 모르면 배의 크기를 가리지 않는다.
  */
-export function willingAgainst(encounter: Encounter, crew: number): boolean {
-  return (
-    encounter.rounds > 0 ||
-    !kindOf(encounter).carriesGold ||
-    encounter.crew >= crew * COMBAT.chaseOdds
-  )
+export function willingAgainst(encounter: Encounter, crew: number, holdTons?: number): boolean {
+  if (encounter.rounds > 0) {
+    return true
+  }
+  const kind = kindOf(encounter)
+  if (!kind.carriesGold) {
+    return true
+  }
+  const prey =
+    kind.minPreyTons === undefined || holdTons === undefined || holdTons >= kind.minPreyTons
+  return prey && encounter.crew >= crew * COMBAT.chaseOdds
 }
 
 /**

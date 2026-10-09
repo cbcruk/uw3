@@ -34,7 +34,7 @@ function pirate(cell: Cell, id = 'pirate-a'): Encounter {
 
 function context(
   hours: number,
-  target: { cell: Cell; conveyance: Conveyance; crew?: number } = {
+  target: { cell: Cell; conveyance: Conveyance; crew?: number; holdTons?: number } = {
     cell: ATLANTIC,
     conveyance: 'ship',
   },
@@ -141,5 +141,32 @@ describe('우세 — 사람 무리는 머릿수가 앞설 때만 쫓는다 (R80)
       actEncounters(context(6, target(1000)), [encounter]).some((e) => e.type === 'chase')
     expect(chased(beast)).toBe(true)
     expect(chased(fought)).toBe(true)
+  })
+})
+
+describe('해적 선단 — 큰 배만 노린다 (R83)', () => {
+  const squadron = (): Encounter => ({
+    ...pirate(at(3, 0), 'corsairs-a'),
+    kind: 'corsairs',
+    crew: 120,
+    crewAtStart: 120,
+  })
+  const chased = (holdTons: number) =>
+    actEncounters(context(6, { cell: ATLANTIC, conveyance: 'ship', crew: 32, holdTons }), [
+      squadron(),
+    ]).some((e) => e.type === 'chase')
+
+  it('카라벨(90톤)은 머릿수로 앞서도 쫓지 않고, 나우(220톤)는 쫓는다', () => {
+    expect(chased(90)).toBe(false)
+    expect(chased(220)).toBe(true)
+  })
+
+  it('보통 해적은 배의 크기를 가리지 않는다', () => {
+    const pirates = { ...pirate(at(3, 0)), crew: 60, crewAtStart: 60 }
+    const events = actEncounters(
+      context(6, { cell: ATLANTIC, conveyance: 'ship', crew: 32, holdTons: 90 }),
+      [pirates],
+    )
+    expect(events.some((e) => e.type === 'chase')).toBe(true)
   })
 })
