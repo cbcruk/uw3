@@ -97,7 +97,7 @@ export function mountGame(root: HTMLElement): void {
     <main class="layout">
       <section class="chart">
         <canvas id="rl-canvas" class="rl-canvas"></canvas>
-        <p class="chart__hint">방향키 이동 · y u b n 대각선 · . 기다림(다음 날) · h 말 하선 · c 낙타 하선(절반, ⇧ 전원) · e 승선 · r 선원 고용(항구) · 1–9 사기 · ⇧1–9 팔기(항구) · 적에게 가면 공격 · t 내주고 놓여나기 · x 항복 · <a href="#sim">시뮬레이터 →</a></p>
+        <p class="chart__hint">방향키 이동 · y u b n 대각선 · . 기다림(다음 날) · h 말 하선 · c 낙타 하선(절반, ⇧ 전원) · e 승선 · r 선원 고용(항구) · f 선체 수리(조선소) · 1–9 사기 · ⇧1–9 팔기(항구) · 적에게 가면 공격 · t 내주고 놓여나기 · x 항복 · <a href="#sim">시뮬레이터 →</a></p>
       </section>
       <aside class="panel">
         <div id="rl-expedition" class="rl-expedition"></div>

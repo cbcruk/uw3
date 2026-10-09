@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { COMBAT } from '../../content/game/combat.tuning'
+import { REPAIR } from '../../content/game/repair.tuning'
 import { GOOD_BASE_PRICE } from '../../content/game/trade.tuning'
 import { MOUNT } from '../../content/game/mounts.tuning'
 import { PROVISION } from '../../content/game/provisions.tuning'
@@ -560,6 +561,42 @@ describe('선원 고용 — 항구에서 정원까지 채운다', () => {
     const run = createRun(CONFIG, grid)
     run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell
     expect(eventsOf(applyCommand(run, { type: 'hire' }), 'rejected')).toHaveLength(1)
+  })
+})
+
+describe('선체 수리 — 조선소가 있는 항구에서만 고친다 (R84)', () => {
+  it('정박한 조선소 항구에서는 금화와 시간을 들여 선체를 고친다', () => {
+    const run = createRun(CONFIG, grid)
+    run.supplies.hull -= 10
+    const { gold } = run.supplies
+    const hours = run.elapsedHours
+    const events = applyCommand(run, { type: 'repair' })
+    const cost = Math.ceil(10 * REPAIR.repairGoldPerPoint)
+    expect(eventsOf(events, 'repair')).toEqual([
+      { type: 'repair', portId: 'lisboa', points: 10, gold: cost },
+    ])
+    expect(run.supplies.hull).toBe(run.supplies.hullMax)
+    expect(run.supplies.gold).toBe(gold - cost)
+    expect(run.elapsedHours).toBe(hours + 10 * REPAIR.repairHoursPerPoint)
+    expect(eventsOf(applyCommand(run, { type: 'repair' }), 'rejected')).toHaveLength(1)
+  })
+
+  it('금화가 모자라면 낼 수 있는 만큼만 고친다', () => {
+    const run = createRun(CONFIG, grid)
+    run.supplies.hull -= 10
+    run.supplies.gold = REPAIR.repairGoldPerPoint * 3
+    expect(eventsOf(applyCommand(run, { type: 'repair' }), 'repair')[0]?.points).toBe(3)
+    expect(run.supplies.hull).toBe(run.supplies.hullMax - 7)
+  })
+
+  it('조선소가 없는 항구와 바다에서는 고칠 수 없다', () => {
+    const ceuta = createRun({ ...CONFIG, startPortId: 'ceuta' }, grid)
+    ceuta.supplies.hull -= 10
+    expect(eventsOf(applyCommand(ceuta, { type: 'repair' }), 'rejected')).toHaveLength(1)
+    const atSea = createRun(CONFIG, grid)
+    atSea.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell
+    atSea.supplies.hull -= 10
+    expect(eventsOf(applyCommand(atSea, { type: 'repair' }), 'rejected')).toHaveLength(1)
   })
 })
 

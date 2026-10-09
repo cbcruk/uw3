@@ -89,9 +89,14 @@ Ladero(1999), Melis를 열었다. 다섯 품목 모두 1480–1530의 무게당 
 더 낮아야 하는데, 그 값은 1516년 잡힌 무어인의 말 한마디(일꾼 노예 약 26–31두카트)뿐이다. 그래서 `captiveRansom` 30은 `unverified`다.
 말라가 1487의 30도블라(약 36두카트)는 도시 전체의 머릿수 세금이라 견주지 않았다.
 
+## 선체 수리 — 배 값에 견줬다(#45)
+
+[repair](research/2026-10-09/repair.md)에서 마젤란 함대 장부(Navarrete t. IV)와 콜럼버스 항해일지(t. I)를 열었다. 선체 정비비는 배 값의 33–58%(두 해 원정 전 정비),
+수리 날수는 최악의 상한(핀타호 24일 안쪽, 트리니다드호 석 달)뿐이다. 선체 점수가 추상이라 `repairGoldPerPoint` 2.5·`repairHoursPerPoint` 1은 `unverified`다.
+
 ## 근거를 찾지 못한 것
 
-살상률(`playerLethality` `pirateLethality` `beastLethality`) — 승선전 기록은 공격 측 사망자를 세지 않았다. `skirmishLethality` — 기마전 사례는 몇 시간에 0–1명이라 0.001보다 낮을 수도 있다. `chargeShock` `surpriseFactor` — 무너짐의 계기(돌격·매복)는 서술뿐이다. `beastBreakLoss` — 늑대 무리의 기록이 없다. `captiveRansom` — 평범한 포로를 그 자리에서 넘긴 거래 기록이 없다. `holingChance` `holingShare` — 흘수선 아래를 맞은 사례만 기록에 남아 비율이 없다. `defenderBreakLoss` — 방어 측이 무너진 손실 비율의 기록이 없다. `tributeDays` — 늑대는
+살상률(`playerLethality` `pirateLethality` `beastLethality`) — 승선전 기록은 공격 측 사망자를 세지 않았다. `skirmishLethality` — 기마전 사례는 몇 시간에 0–1명이라 0.001보다 낮을 수도 있다. `chargeShock` `surpriseFactor` — 무너짐의 계기(돌격·매복)는 서술뿐이다. `beastBreakLoss` — 늑대 무리의 기록이 없다. `captiveRansom` — 평범한 포로를 그 자리에서 넘긴 거래 기록이 없다. `repairGoldPerPoint` `repairHoursPerPoint` — 전투 손상 수리의 값·날수 기록이 없다. `holingChance` `holingShare` — 흘수선 아래를 맞은 사례만 기록에 남아 비율이 없다. `defenderBreakLoss` — 방어 측이 무너진 손실 비율의 기록이 없다. `tributeDays` — 늑대는
 보급을 가져가지 않아 대응물이 없을 수 있다.
 
 ## 사료와 크게 어긋나 결정한 것

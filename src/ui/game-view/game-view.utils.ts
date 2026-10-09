@@ -53,6 +53,8 @@ export function commandForKey(key: string, code: string): Command | null {
       return { type: 'embark' }
     case 'r':
       return { type: 'hire' }
+    case 'f':
+      return { type: 'repair' }
     case 't':
       return { type: 'tribute' }
     case 'x':
@@ -262,6 +264,11 @@ export function describeEvent(event: RunEvent): LogLine | null {
           ? `${subject(event.kind)} 뱃전을 넘어왔다. 선원이 무너져 배를 빼앗겼다`
           : `무리가 무너져 흩어졌다${describePursuit(event.lost, event.captured, '붙잡혀 갔다')}`,
         tone: 'bad',
+      }
+    case 'repair':
+      return {
+        text: `${portName(event.portId)} 조선소에서 선체 ${event.points}점을 고쳤다 (${signed(-event.gold)}두카트)`,
+        tone: 'info',
       }
     case 'hire':
       return {
