@@ -49,6 +49,9 @@ describe('명성과 어학의 환산', () => {
   it('이익의 명성은 이익에 비례하되 상한에서 멈춘다 (R82)', () => {
     const per = FAME.fameGoldDivisor
     expect(fameEarned(arrivedWith(TRADE.startGold + 7 * per), []).profit).toBe(7)
+    const atCap = TRADE.startGold + FAME.fameProfitMax * per
+    expect(fameEarned(arrivedWith(atCap - 1), []).profit).toBe(FAME.fameProfitMax - 1)
+    expect(fameEarned(arrivedWith(atCap), []).profit).toBe(FAME.fameProfitMax)
     expect(fameEarned(arrivedWith(TRADE.startGold + 10_000_000), []).profit).toBe(
       FAME.fameProfitMax,
     )

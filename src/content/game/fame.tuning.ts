@@ -20,7 +20,7 @@ const FAME_SCALARS = {
   fameProfitMax: internal(
     50,
     '점',
-    `${FAME_IS_GAME}. 한 원정의 이익에서 나오는 명성의 상한 — 도착의 몫(fameArrived)과 같게 두어 교역이 계약을 앞서지 않게 한다. 값이 고정이라(R54) 두 항구를 오가면 금화는 끝없이 분다(R82)`,
+    `${FAME_IS_GAME}. 한 원정의 이익에서 나오는 명성의 상한 — 도착의 몫(fameArrived)과 같게 두어 교역이 계약을 앞서지 않게 한다(R82)`,
   ),
   patronGoldPerFame: internal(
     2,
