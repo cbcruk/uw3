@@ -415,7 +415,8 @@ describe('전투 — 붙으면 양쪽이 머릿수를 잃는다', () => {
     const run = seaRunNextTo(2)
     let defeated = false
     for (let i = 0; i < 10 && !defeated; i += 1) {
-      defeated = eventsOf(applyCommand(run, { type: 'move', dir: 'e' }), 'defeated').length > 0
+      const events = applyCommand(run, { type: 'move', dir: 'e' })
+      defeated = [...eventsOf(events, 'defeated'), ...eventsOf(events, 'routed')].length > 0
     }
     expect(defeated).toBe(true)
     expect(run.encounters).toHaveLength(0)
