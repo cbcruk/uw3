@@ -53,9 +53,10 @@ export function fightRound(options: {
   const skirmish = foe.kind !== 'beast' && foe.conveyance !== 'ship' && conveyance !== 'ship'
   const engaged = (crew: number): number => (atSea ? Math.min(crew, COMBAT.boardingFrontage) : crew)
   const foeFighting = engaged(foe.crew)
+  const playerFighting = engaged(supplies.crew)
   const playerLethality = skirmish ? COMBAT.skirmishLethality : COMBAT.playerLethality
   const crewLost = Math.min(supplies.crew, casualties(foeFighting * FOE_LETHALITY[foe.kind], rng))
-  const foeLost = Math.min(foe.crew, casualties(engaged(supplies.crew) * playerLethality, rng))
+  const foeLost = Math.min(foe.crew, casualties(playerFighting * playerLethality, rng))
   const hullLost =
     foe.kind === 'pirate' && conveyance === 'ship' && supplies.hull !== undefined
       ? Math.min(supplies.hull, casualties(foeFighting * COMBAT.pirateHullDamage, rng))
@@ -83,7 +84,8 @@ export function fightRound(options: {
     events.push({ type: 'defeated', encounterId: foe.id, kind: foe.kind })
     return events
   }
-  if (supplies.crew <= 0) {
+  // 선원이나 선체가 바닥난 쪽은 무너질 것도 없다 — 끝은 런이 정한다.
+  if (supplies.crew <= 0 || (supplies.hull !== undefined && supplies.hull <= 0)) {
     return events
   }
 
@@ -92,7 +94,7 @@ export function fightRound(options: {
       crew: foe.crew,
       crewAtStart: foe.crewAtStart,
       breakLoss: FOE_BREAK_LOSS[foe.kind],
-      charger: initiated ? engaged(supplies.crew) / foeFighting : null,
+      charger: initiated ? playerFighting / foeFighting : null,
       surprised,
     }),
   )
@@ -103,7 +105,7 @@ export function fightRound(options: {
         crew: supplies.crew,
         crewAtStart: foe.opposedCrew,
         breakLoss: COMBAT.defenderBreakLoss,
-        charger: initiated || atSea ? null : foeFighting / engaged(supplies.crew),
+        charger: initiated || atSea ? null : foeFighting / playerFighting,
         surprised: false,
       }),
     )
@@ -151,7 +153,7 @@ function breakChance(side: {
   crew: number
   crewAtStart: number
   breakLoss: number
-  /** 이번 합에 이쪽을 들이받았다면 싸우는 머릿수의 비(들이받은 쪽 ÷ 이쪽). 받지 않았으면 `null`. */
+  /** 이번 합에 이쪽을 들이받았다면 합 전에 싸우던 머릿수의 비(들이받은 쪽 ÷ 이쪽). 받지 않았으면 `null`. */
   charger: number | null
   surprised: boolean
 }): number {

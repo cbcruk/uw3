@@ -186,9 +186,10 @@ describe('사료의 사례 — 견제는 거의 죽이지 않고, 손실은 무�
           ? fightRound({ seed, supplies, conveyance: 'ship', foe: enemy, initiated: false })
           : [],
       )
-      return !events.some((e) => e.type === 'broken')
+      return { held: !events.some((e) => e.type === 'broken'), lost: 48 - supplies.crew }
     })
-    expect(held.filter(Boolean).length).toBeGreaterThan(60)
+    expect(held.filter((t) => t.held).length).toBeGreaterThan(60)
+    expect(held.reduce((sum, t) => sum + t.lost, 0) / held.length).toBeLessThan(6)
   })
 
   it('포르투 다스 페드라스(1514) — 144명과 900명의 투창 견제는 한 합에 한 명 남짓 죽인다', () => {
@@ -231,7 +232,7 @@ describe('사료의 사례 — 견제는 거의 죽이지 않고, 손실은 무�
 
   it('알아채지 못한 무리를 들이받으면 첫 합에 더 자주 무너진다 (아르실라 1509 알가라파)', () => {
     const breaks = (chasing: boolean) =>
-      trials(200, (seed) => {
+      trials(1000, (seed) => {
         const { supplies, enemy } = horseFight(seed, 80, 110, 'algarrafa')
         const events = fightRound({
           seed,
@@ -242,7 +243,7 @@ describe('사료의 사례 — 견제는 거의 죽이지 않고, 손실은 무�
         })
         return events.some((e) => e.type === 'routed')
       }).filter(Boolean).length
-    expect(breaks(false)).toBeGreaterThan(breaks(true))
+    expect(breaks(false)).toBeGreaterThan(breaks(true) * 1.5)
   })
 
   it('바다에서 무너진 해적은 제 배로 물러날 뿐이라 추격 손실도 포로도 없다', () => {

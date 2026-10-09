@@ -66,13 +66,13 @@ Andrews · Tenenti)은 읽지 못했다.
 바다의 방어 측 손실은 자릿수가 같지만(상선 방어 다섯 건, 포격 섞임), 퇴각(사료는 0–20% 손실이나 지휘관의 죽음에 무너진다)과 뭍의 살상률(몇 시간에 0–1명)이 모델의 모양과
 달랐다. 값을 고쳐서는 나오지 않아 한 합을 견제 → 무너짐 → 추격으로 나눴다(SPEC-roguelike §31, R76–R78).
 
-그 흐름 위에서 사료의 범위를 옮길 수 있게 된 값이 `qualitative`가 됐다 — `raiderBreakLoss` 0.15, `defenderBreakLoss` 0.5,
-`pursuitLoss` 0.5, `captureShare` 0.4. 모두 사례 몇 건의 범위라 `measured`는 아니다. 무너짐을 확률로 옮기는 `chargeShock`·`surpriseFactor`는
-사료에 대응하는 수가 없어 `unverified`로 새로 늘었다.
+그 흐름 위에서 사료의 범위를 옮길 수 있게 된 값이 `qualitative`가 됐다 — `raiderBreakLoss` 0.15(해적에게는 뭍에서 옮겨 쓴다),
+`pursuitLoss` 0.5, `captureShare` 0.4(15–54%). 모두 사례 몇 건의 범위라 `measured`는 아니다. `defenderBreakLoss` 0.5는 Dolphin·Revenge가
+버틴 하한일 뿐이고(끝은 화약·선체가 정했다), 무너짐을 확률로 옮기는 `chargeShock`·`surpriseFactor`는 사료에 대응하는 수가 없어 셋 다 `unverified`다.
 
 ## 근거를 찾지 못한 것
 
-살상률(`playerLethality` `pirateLethality` `beastLethality`) — 승선전 기록은 공격 측 사망자를 세지 않았다. `skirmishLethality` — 기마전 사례는 몇 시간에 0–1명이라 0.001보다 낮을 수도 있다. `chargeShock` `surpriseFactor` — 무너짐의 계기(돌격·매복)는 서술뿐이다. `beastBreakLoss` — 늑대 무리의 기록이 없다. `tributeDays` — 늑대는
+살상률(`playerLethality` `pirateLethality` `beastLethality`) — 승선전 기록은 공격 측 사망자를 세지 않았다. `skirmishLethality` — 기마전 사례는 몇 시간에 0–1명이라 0.001보다 낮을 수도 있다. `chargeShock` `surpriseFactor` — 무너짐의 계기(돌격·매복)는 서술뿐이다. `beastBreakLoss` — 늑대 무리의 기록이 없다. `defenderBreakLoss` — 방어 측이 무너진 손실 비율의 기록이 없다. `tributeDays` — 늑대는
 보급을 가져가지 않아 대응물이 없을 수 있다.
 
 ## 사료와 크게 어긋나 결정한 것

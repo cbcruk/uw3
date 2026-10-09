@@ -444,12 +444,13 @@ describe('전투 — 붙으면 양쪽이 머릿수를 잃는다', () => {
   it('큰 해적에게 무너지면 배를 빼앗겨 원정이 captured로 끝난다', () => {
     const run = seaRunNextTo(400)
     run.supplies.cargo = { salt: 3 }
-    let ended = false
-    for (let i = 0; i < 100 && !ended; i += 1) {
-      ended = eventsOf(applyCommand(run, { type: 'wait' }), 'ended').length > 0
+    let ended: RunEvent[] = []
+    for (let i = 0; i < 100 && ended.length === 0; i += 1) {
+      ended = eventsOf(applyCommand(run, { type: 'wait' }), 'ended')
     }
-    expect(run.ended).toBe('captured')
-    expect(run.supplies).toMatchObject({ gold: 0, cargo: {} })
+    expect(ended).toEqual([{ type: 'ended', reason: 'captured' }])
+    expect(run.supplies.gold).toBe(0)
+    expect(run.supplies.cargo).toEqual({})
     expect(eventsOf(applyCommand(run, { type: 'wait' }), 'rejected')).toHaveLength(1)
   })
 
