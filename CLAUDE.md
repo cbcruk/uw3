@@ -50,6 +50,9 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 `vp run shot`도 같은 성격이다 — 게임 화면을 `scripts/shots/`의 장면대로 찍어 `.shots/`에 낸다.
 화면을 고쳤으면 전후로 찍어 견준다.
 
+`vp run verify -- 기록.json`은 데일리 기록을 다시 돌려 받을지 가린다 (SPEC-roguelike §39). 규칙 버전은
+`src/sim`·`src/game`·`src/content`의 해시라, 런을 바꾸는 코드를 그 밖에 두면 검증이 틀린다.
+
 단일 시드로 충실도를 판단하지 않는다. SPEC 3.3의 표가 한 번 그렇게 틀렸다.
 
 수치를 새로 넣을 때:

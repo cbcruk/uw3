@@ -25,7 +25,9 @@ import { DEFAULT_EXPEDITION_SHIP } from '../../content/game/expedition-ships'
 import { LANGUAGE_LABELS } from '../../content/content.types'
 import { fameTitle, learnedLanguages } from '../../game/fame/fame'
 import { bearingDeg, haversineNm } from '../../sim/geo/geo.utils'
-import { loadActive, loadMeta, saveActive, saveMeta } from './game-storage'
+import { loadActive, loadMeta, saveActive, saveMeta, saveSubmission } from './game-storage'
+import { RULES_VERSION } from './rules-version'
+import { submissionOf } from '../../game/daily/submission'
 import { renderExpeditionPanel } from './expedition-panel'
 import { drawRegion } from './region-renderer'
 import { motionOf, poseAt, snapshotOf } from './motion'
@@ -227,6 +229,10 @@ export function mountGame(root: HTMLElement): void {
       const learnedBefore = learnedLanguages(meta.languageDocks)
       meta = applyRunToMeta(meta, run, record)
       saveMeta(meta)
+      const submission = submissionOf(run, daily, RULES_VERSION)
+      if (submission !== null) {
+        saveSubmission(submission)
+      }
       const newlyLearned = learnedLanguages(meta.languageDocks).filter(
         (language) => !learnedBefore.includes(language),
       )
