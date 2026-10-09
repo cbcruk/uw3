@@ -244,7 +244,8 @@ export function mountGame(root: HTMLElement): void {
     draw()
     motion = reducedMotion.matches ? null : motionOf(before, run, events, performance.now())
     if (motion !== null) {
-      frameId = requestAnimationFrame(animate)
+      // 첫 자세를 곧바로 그린다 — 끝 상태가 한 프레임 비치고 출발 칸으로 되돌아가지 않게.
+      animate(performance.now())
     }
   })
   window.addEventListener('resize', draw)

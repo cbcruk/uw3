@@ -48,13 +48,23 @@ export function motionOf(
       run.encounters.find((encounter) => encounter.id === event.encounterId)?.cell ??
       from.encounters.get(event.encounterId)
     if (event.crewLost > 0) {
-      floaters.push({ at: run.player.cell, text: `-${event.crewLost}`, tone: 'bad' })
+      floaters.push({
+        at: run.player.cell,
+        onPlayer: true,
+        text: `-${event.crewLost}`,
+        tone: 'bad',
+      })
     }
     if (event.hullLost > 0) {
-      floaters.push({ at: run.player.cell, text: `선체 -${event.hullLost}`, tone: 'bad' })
+      floaters.push({
+        at: run.player.cell,
+        onPlayer: true,
+        text: `선체 -${event.hullLost}`,
+        tone: 'bad',
+      })
     }
     if (event.foeLost > 0 && foe !== undefined) {
-      floaters.push({ at: foe, text: `-${event.foeLost}`, tone: 'good' })
+      floaters.push({ at: foe, onPlayer: false, text: `-${event.foeLost}`, tone: 'good' })
     }
   }
   const sameRegion = from.region.rx === run.region.rx && from.region.ry === run.region.ry
@@ -78,7 +88,8 @@ export function motionOf(
 
 /** 시각 `now`의 자세. 연출이 끝났으면 `null`이다 — 그때는 런 상태 그대로 그린다. */
 export function poseAt(motion: Motion, run: RunState, now: number): Pose | null {
-  const elapsed = now - motion.startedAt
+  // 프레임의 시각은 키를 누른 시각보다 이를 수 있다. 음수면 배가 뒤로 밀리고 흔들림이 커진다.
+  const elapsed = Math.max(0, now - motion.startedAt)
   const total = Math.max(
     MOVE_MS,
     motion.shake ? SHAKE_MS : 0,
@@ -96,8 +107,9 @@ export function poseAt(motion: Motion, run: RunState, now: number): Pose | null 
   const shaking = motion.shake && elapsed < SHAKE_MS
   const decay = 1 - elapsed / SHAKE_MS
   const float = Math.min(1, elapsed / FLOAT_MS)
+  const player = between(motion.from.player, run.player.cell, t)
   return {
-    player: between(motion.from.player, run.player.cell, t),
+    player,
     encounters,
     shake: shaking
       ? {
@@ -108,6 +120,7 @@ export function poseAt(motion: Motion, run: RunState, now: number): Pose | null 
       : { x: 0, y: 0 },
     floaters: motion.floaters.map((floater) => ({
       ...floater,
+      at: floater.onPlayer ? player : floater.at,
       rise: float * FLOAT_RISE,
       alpha: 1 - float * float,
     })),

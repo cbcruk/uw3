@@ -16,7 +16,9 @@ export interface Snapshot {
 
 /** 칸 위로 떠오르는 숫자 한 개. 전투의 손실을 보여 준다. */
 export interface Floater {
+  /** 띄울 칸. 플레이어 칸이면 미끄러지는 배를 따라간다(`onPlayer`). */
   at: Point
+  onPlayer: boolean
   text: string
   /** 플레이어에게 나쁜 숫자인가(잃은 선원·선체), 좋은 숫자인가(상대가 잃은 머릿수). */
   tone: 'bad' | 'good'
@@ -30,7 +32,7 @@ export interface Motion {
   shake: boolean
 }
 
-/** 시각 `t`에 그릴 자세. 렌더러는 이것으로 위치를 덮어 그린다. */
+/** 한 시각에 그릴 자세. 렌더러는 이것으로 위치를 덮어 그린다. */
 export interface Pose {
   player: Point
   encounters: ReadonlyMap<string, Point>
