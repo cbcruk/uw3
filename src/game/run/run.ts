@@ -259,7 +259,7 @@ export function totalCrew(run: RunState): number {
 }
 
 /** 플레이어가 이끄는 무리. 뭍에 있으면 뭍 무리, 배에 있으면 배의 선원이다. 싸우고 내주는 것은 이 무리다. */
-export function force(run: RunState): Provisioned & { hull?: number } {
+export function force(run: RunState): Provisioned & { hull?: number; hullMax?: number } {
   return run.party ?? run.supplies
 }
 
