@@ -3,7 +3,7 @@ import { dailyConfig, recordOf } from '../expedition/expedition'
 import { DIRECTIONS } from '../grid/direction'
 import { applyCommand, createRun, createWorld } from '../run/run'
 import type { RunState } from '../run/run.types'
-import { parseSubmission, submissionOf, verifySubmission } from './submission'
+import { MAX_COMMANDS, parseSubmission, submissionOf, verifySubmission } from './submission'
 import type { Submission } from './submission.types'
 
 const grid = createWorld()
@@ -45,9 +45,20 @@ describe('데일리 재현 검증', () => {
     expect(verifySubmission(submission, 'rules-b', grid)).toEqual({ ok: false, reason: 'rules' })
   })
 
-  it('다른 날의 키로 내면 다른 판이라 같은 기록이 나오지 않는다', () => {
-    const verdict = verifySubmission({ ...submission, daily: '2026-10-11' }, RULES, grid)
+  it('다른 날의 키로 내면 다른 바다에서 돌린다', () => {
+    const other = '2026-10-11'
+    expect(dailyConfig(other).seed).not.toBe(dailyConfig(DAY).seed)
+    const verdict = verifySubmission({ ...submission, daily: other }, RULES, grid)
     expect(verdict).not.toEqual({ ok: true, record: recordOf(run, DAY) })
+    expect(verdict.ok && verdict.record.config).not.toEqual(run.config)
+  })
+
+  it('명령이 상한보다 많으면 돌리지 않는다', () => {
+    const commands = Array.from({ length: MAX_COMMANDS + 1 }, () => ({ type: 'wait' }))
+    expect(verifySubmission({ ...submission, commands }, RULES, grid)).toEqual({
+      ok: false,
+      reason: 'too-long',
+    })
   })
 
   it('끝난 뒤에 명령이 남으면 받지 않는다', () => {

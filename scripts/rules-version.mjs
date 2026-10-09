@@ -18,11 +18,9 @@ const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 export function rulesVersion(root = REPO_ROOT) {
   const hash = createHash('sha256')
   for (const file of RULE_DIRS.flatMap((dir) => sourcesUnder(root, join(root, dir))).sort(byPath)) {
-    hash
-      .update(file)
-      .update('\0')
-      .update(readFileSync(join(root, file)))
-      .update('\0')
+    // 줄바꿈을 LF로 맞춘다 — CRLF로 체크아웃한 기계에서도 같은 소스면 같은 해시다.
+    const text = readFileSync(join(root, file), 'utf8').replaceAll('\r\n', '\n')
+    hash.update(file).update('\0').update(text).update('\0')
   }
   for (const name of DATA_PACKAGES) {
     const { version } = JSON.parse(

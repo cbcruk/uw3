@@ -7,6 +7,11 @@ import type { Command, RunState } from '../run/run.types'
 import type { Submission, Verdict } from './submission.types'
 
 const DAILY_KEY = /^(\d{4})-(\d{2})-(\d{2})$/
+/**
+ * 받을 명령 수의 상한. 규칙이 아니라 받는 쪽을 지키는 문이다 — 항구에서 기다리기만 해도
+ * 원정은 오래 이어지므로, 끝없는 로그로 검증기를 붙잡아 두지 못하게 한다. 정직한 원정은 수천 줄이다.
+ */
+export const MAX_COMMANDS = 50_000
 type BareCommand = Extract<
   Command,
   { type: 'wait' | 'embark' | 'hire' | 'repair' | 'tribute' | 'surrender' }
@@ -50,6 +55,18 @@ export function verifySubmission(input: unknown, rules: string, grid?: WorldGrid
   if (submission.rules !== rules) {
     return { ok: false, reason: 'rules' }
   }
+  if (submission.commands.length > MAX_COMMANDS) {
+    return { ok: false, reason: 'too-long' }
+  }
+  try {
+    return replay(submission, grid)
+  } catch {
+    // 규칙 코드가 던지면 우리 쪽 결함이지만, 검증기는 멈추지 않고 받지 않는다.
+    return { ok: false, reason: 'rejected' }
+  }
+}
+
+function replay(submission: Submission, grid: WorldGrid | undefined): Verdict {
   const run = createRun(dailyConfig(submission.daily), grid)
   for (const command of submission.commands) {
     if (run.ended !== null) {
