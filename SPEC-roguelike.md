@@ -515,6 +515,9 @@ P5 렌더러 몫이다.
 
 화면 확인은 헤드리스 크로미움으로 했다(브라우저 확장이 연결되지 않았다). 시드를 골라 진행 중 원정 저장을 넣고 띄우는 방식이라,
 같은 화면을 다시 보려면 `localStorage`의 `uw3.roguelike.active`에 `{config, commands, daily}`를 넣으면 된다 — R43 덕분이다.
+이 방식을 `vp run shot`으로 굳혔다(`scripts/shot.mjs`). 장면은 `scripts/shots/*.json`에 시드 + 명령 + 키 입력으로 고정하고,
+결과는 `.shots/`에 PNG로 떨어진다. 출항·해적 조우·하선·정박 넷을 두었다. 의존성 없이 헤드리스 크롬을 CDP로 몬다 —
+크롬은 `CHROME_PATH` → Playwright 캐시 → 시스템 크롬 순으로 찾는다.
 
 ---
 

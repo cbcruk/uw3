@@ -19,6 +19,12 @@ export default defineConfig({
         command: 'node scripts/harness.mjs',
         cache: false,
       },
+      // 게임 화면 스크린샷. 장면은 `scripts/shots/*.json`에 시드 + 명령으로 고정한다.
+      // harness처럼 통과/실패가 없다 — 화면을 고친 전후를 사람이 견준다. 결과는 `.shots/`.
+      shot: {
+        command: 'node scripts/shot.mjs',
+        cache: false,
+      },
     },
   },
   staged: {

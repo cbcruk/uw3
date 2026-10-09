@@ -1,0 +1,74 @@
+{
+  "note": "리스본에서 남으로 열네 칸. 해적이 처음 보인다 — 머릿수 딱지와 나침반",
+  "saved": {
+    "config": {
+      "seed": 2,
+      "startDate": {
+        "year": 1502,
+        "month": 5,
+        "day": 1
+      },
+      "startPortId": "lisboa",
+      "goalPortId": "angra",
+      "shipClassId": "caravela-redonda"
+    },
+    "commands": [
+      {
+        "type": "move",
+        "dir": "s"
+      },
+      {
+        "type": "move",
+        "dir": "s"
+      },
+      {
+        "type": "move",
+        "dir": "s"
+      },
+      {
+        "type": "move",
+        "dir": "s"
+      },
+      {
+        "type": "move",
+        "dir": "s"
+      },
+      {
+        "type": "move",
+        "dir": "s"
+      },
+      {
+        "type": "move",
+        "dir": "s"
+      },
+      {
+        "type": "move",
+        "dir": "s"
+      },
+      {
+        "type": "move",
+        "dir": "s"
+      },
+      {
+        "type": "move",
+        "dir": "s"
+      },
+      {
+        "type": "move",
+        "dir": "s"
+      },
+      {
+        "type": "move",
+        "dir": "s"
+      },
+      {
+        "type": "move",
+        "dir": "s"
+      },
+      {
+        "type": "move",
+        "dir": "s"
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "note": "말라가 정박. 카스티야어 통역이 붙은 시장",
+  "saved": {
+    "config": {
+      "seed": 2,
+      "startDate": {
+        "year": 1502,
+        "month": 5,
+        "day": 1
+      },
+      "startPortId": "malaga",
+      "goalPortId": "funchal",
+      "shipClassId": "caravela-redonda"
+    },
+    "commands": []
+  }
+}

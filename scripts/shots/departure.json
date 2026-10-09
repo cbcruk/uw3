@@ -1,0 +1,13 @@
+{
+  "note": "출항 직후 리스본. 5월 바람, 시장 패널, 선형 고르기 버튼",
+  "saved": {
+    "config": {
+      "seed": 2,
+      "startDate": { "year": 1502, "month": 5, "day": 1 },
+      "startPortId": "lisboa",
+      "goalPortId": "angra",
+      "shipClassId": "caravela-redonda"
+    },
+    "commands": []
+  }
+}
