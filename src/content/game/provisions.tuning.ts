@@ -11,27 +11,30 @@ const PROVISION_SCALARS = {
   starvationLossRatio: {
     value: 0.02,
     unit: '명/명·일',
-    grade: 'unverified',
-    source: '감으로 정함. 굶주림은 몇 주에 걸쳐 죽인다는 방향만 둔 값. 항해 기록의 아사 일지 필요',
+    grade: 'qualitative',
+    source:
+      '물이 있으면 완전 단식으로 46~73일에 죽는다(1981 메이즈 단식). 0.02/일은 중앙값 약 35일로 짧은 쪽 — 항해의 노동·추위·괴혈병 몫으로 둔다. 일정한 비율은 초반에 너무 많이 죽인다 — docs/sources.md',
   },
   thirstLossRatio: {
     value: 0.1,
     unit: '명/명·일',
-    grade: 'unverified',
-    source: '감으로 정함. 물 없이는 며칠을 못 버틴다는 방향만 둔 값. 표류 생존 기록 필요',
+    grade: 'qualitative',
+    source:
+      '물 없이 보통 3~4일, 쉬어도 길어야 일주일(Packer 2002, Scientific American). 0.1/일은 중앙값 약 7일로 긴 쪽이다. 0.15면 4~5일 — docs/sources.md',
   },
   provisionPrice: {
     value: 0.4,
     unit: '두카트/인·일',
     grade: 'unverified',
     source:
-      '감으로 정함. 시뮬(`world.ts`)의 보급 단가와 같은 값이고 그쪽도 근거가 없다. 항구의 비스킷·물통 값 기록 필요',
+      "감으로 정함 — 사료와 크게 어긋난다. 1493년 비스카야 함대 계약 'doce maravedís una persona cada dia'(Navarrete t. II, Núm. LV) = 0.032두카트, 마젤란 1519 장부로 약 0.024. 이 값을 바꾸면 경제의 크기가 함께 바뀌어(화물이 밀어내는 보급의 값, R53) 품목 값과 같이 다시 맞추기로 보류했다. 시뮬(`world.ts`)의 단가도 같은 값이다 — docs/sources.md",
   },
   hireWage: {
-    value: 10,
+    value: 11,
     unit: '두카트/명',
-    grade: 'unverified',
-    source: '감으로 정함. 선원 한 명을 들이는 선금. 포르투갈 왕실 항해의 선원 급료 기록 필요',
+    grade: 'qualitative',
+    source:
+      '1492년 팔로스 왕명의 넉 달 선급(Navarrete, Colección t. II, Núm. VII — 임금률은 없다) × 선원 월급 1,000마라베디(Gould의 2차 재구성에서 추론) = 10.7두카트, 계산값. 같은 무렵의 다른 선급은 비스카야 1493년 5.3, 마젤란 1519년 평균 13.0 — 값은 그 범위 안에서 정했다 — docs/sources.md',
   },
   hireHours: internal(
     12,

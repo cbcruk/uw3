@@ -16,20 +16,26 @@ const guess = (value: number, unit: string, note: string): Tuned => ({
  */
 const COMBAT_SCALARS = {
   playerLethality: guess(0.1, '명/명·합', '무장한 상선 선원. 해적보다 조금 약하다는 방향만 둔 값'),
-  pirateLethality: guess(0.12, '명/명·합', '싸움이 일인 무리라 선원보다 조금 세다는 방향만 둔 값'),
+  pirateLethality: guess(
+    0.12,
+    '명/명·합',
+    '싸움이 일인 무리라 선원보다 조금 세다는 방향만 둔 값. Centurion호(1591)는 48명이 갤리 다섯 척과 5시간 반을 싸워 4명을 잃었다(갤리 쪽 머릿수는 소책자가 갤리당 500~600명이라 과장하고, 150명은 추정이다) — 지금 모델은 같은 조건에서 두 합에 35명을 잃는다. 값이 아니라 구조(한 번에 붙을 수 있는 인원)의 문제다 — docs/sources.md',
+  ),
   banditLethality: guess(0.1, '명/명·합', '기마 약탈대. 선원과 비슷하다는 방향만 둔 값'),
   beastLethality: guess(0.06, '명/명·합', '늑대는 사람을 잘 죽이지 못한다는 방향만 둔 값'),
-  pirateHullDamage: guess(
-    0.1,
-    '점/명·합',
-    '해적 한 명이 한 합에 깎는 선체. 포격·충각·갈고리를 뭉뚱그린 값',
-  ),
+  pirateHullDamage: {
+    value: 0.1,
+    unit: '점/명·합',
+    grade: 'unverified',
+    source:
+      '감으로 정함. 해적 한 명이 한 합에 깎는 선체. 승원 수에 비례하는 피해의 근거가 없다 — Centurion호(1591)의 피해는 스페인 갤리의 포에서 왔다. 나포 기록의 선체 피해 필요 — docs/sources.md',
+  },
   routRatio: {
     value: 0.5,
     unit: '남은/처음 머릿수',
     grade: 'unverified',
     source:
-      '감으로 정함. 해적·도적은 이익을 노리지 죽으러 오지 않는다 — 절반을 잃으면 물러난다는 방향만 둔 값. 습격 기록의 퇴각 시점 필요',
+      '감으로 정함. 해적·도적은 이익을 노리지 죽으러 오지 않는다는 방향만 둔 값. 근세 습격 기록의 퇴각 시점 필요 — 찾은 것은 현대 교리(미 육군 FM 105-5, 공격 측 약 20%·방어 측 약 40% 손실)뿐이고 그것도 0.5와 어긋난다 — docs/sources.md',
   },
   tributeDays: guess(
     10,

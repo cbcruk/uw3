@@ -42,7 +42,7 @@ const FAME_SCALARS = {
     unit: '비',
     grade: 'unverified',
     source:
-      '감으로 정함. 말을 모르는 항구에서 중개인·통역에게 떼이는 몫. 15세기 지중해 중개 수수료 기록 필요',
+      '감으로 정함. 말을 모르는 항구에서 중개인·통역에게 떼이는 몫. 세비야 중개인 수수료는 거래 양쪽에 0.5%씩, 합 약 1%(1528년 왕실 평의회, García Ulecia p. 164) — 0.1은 관세까지 얹은 값이어야 맞는다. 마그레브 항구 관세 기록 필요 — docs/sources.md',
   },
 } as const satisfies Record<string, Tuned>
 
