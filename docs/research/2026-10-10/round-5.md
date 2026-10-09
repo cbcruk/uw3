@@ -92,23 +92,23 @@ Duro II, p. ~262: the flagship was "muy maltratado de los cañonazos de entre do
 
 Reading for Gravelines:
 
-- Four ships are named as holed at or below the waterline: San Martín, San Mateo, San Felipe and María Juan.
+- Four ships are named as holed at or below the waterline: San Martín, San Mateo, San Felipe and María Juan. Only San Martín and San Mateo are explicitly holed in the text. San Felipe only "pidió socorro" (asked for help), and María Juan was "so cannonaded that she sank". Their holing is inferred.
 - If the denominator is about 40 Spanish ships under fire (Duro's figure for Portland, which I reuse), the rate is 4 / (40 × 4.5) ≈ **0.022 per ship per round**.
 - The 4 is a lower bound. The journal names only the flagship and the ships that were lost or asked for help, and says "casi todos los bajeles nuestros de confianza muy malparados" (almost all our trusted ships badly damaged).
 - The 40 is also borrowed from another day.
 
-So the plausible range for Gravelines is about **0.02–0.05 per ship per round**. That was the hardest artillery day of the century in northern waters, fought at close range by race-built galleons.
+So Gravelines gives **about 0.02 per ship per round, as a lower bound**. The numerator may be higher because "casi todos" were badly damaged. The denominator may be lower because fewer than 40 ships may have been under fire. I have no count that sets an upper end. (Review note: an earlier draft said "0.02–0.05". The 0.05 had no derivation and is withdrawn.) That was the hardest artillery day of the century in northern waters, fought at close range by race-built galleons.
 
 ### Reading
 
-- The two sides of one campaign bracket the game value: English ships about 0 per round, Spanish ships at Gravelines about 0.02–0.05. The game's **0.03 sits inside that bracket**.
+- The two sides of one campaign: the Chatham survey records no shot hole in the hulls of the English royal ships it lists, and Spanish ships at Gravelines give about 0.02+ per round. The game's 0.03 is of the same order. That is not a bracket. The Chatham survey covers only "such ships as were at Chatham at this instant". It is also a refit survey (decay, masts, boats), so a patched shot hole might not be listed.
 - The meaning still differs from the game in three ways:
   - These are fleet artillery actions between big royal ships, not corsairs, who wanted the prize afloat and fought to board.
   - Both denominators are my own reconstruction.
   - The ships were 600–1,000 t, not 100–300 t.
 - A corsair, who aimed at the rigging and boarded, would hole less often than Howard's gunners did. That points to 0.03 being high for pirate fights, not low.
 
-**Proposed grade: unverified (no value change).** The numerators are opened, but the denominators (ships under fire, rounds) are my inference and the context is fleet gunnery, not corsairs. If a later round wants to argue `qualitative`, the citation is "Gravelines 1588 ≈ 0.02–0.05 per ship-round (Duro II), English royal ships ≈ 0 (Chatham survey, Laughton II pp. 250–254)".
+**Proposed grade: unverified (no value change).** The numerators are opened, but the denominators (ships under fire, rounds) are my inference and the context is fleet gunnery, not corsairs. If a later round wants to argue `qualitative`, the citation is "Gravelines 1588 ≈ 0.02+ per ship-round with an inferred denominator (Duro II); no shot hole recorded in the Chatham refit survey (Laughton II pp. 250–254)".
 
 ---
 
@@ -155,6 +155,10 @@ The sale:
 
 Translation: "192 slaves were sold for the raid; with the beasts their value came to 66,670 reales. After the usual costs of the _zanco_, the spy, the interpreter and the bonuses were taken out, 8,040 reales went to His Majesty's fifth, and 32,233 reales remained to be shared out, in 1,465 shares … at 22 reales a share."
 
+198 − 192: the text says the Maestre took 5 slaves as his _joya_ and one died.
+
+**Unexplained gap (review note).** The fifth is 8,040 reales, so the taxed base was about 40,200, and 32,233 remained to share. That accounts for about 40k of the 66,670. Roughly 26k goes into "costas" (the _zanco_, the spy, the interpreter, the bonuses) without itemisation, which is a large share for those items. If the realised value was nearer 40k, the per-head figure falls to about **19 ducats**. The gross 66,670 is the sale value the text states, so I keep it as the upper bound, but it may not be what the buyers actually paid in.
+
 Per head: 66,670 ÷ 192 = **≤ 347 reales ≈ 11,800 mrs ≈ 31.5 ducats**. This is an upper bound, because the 85 beasts are in the total. If the beasts fetched 50–150 reales each, the captives averaged about 280–325 reales, or **≈ 25–30 ducats**.
 
 The other raids in the same book [opened] give looser upper bounds. They fit the same order once livestock is taken out.
@@ -184,7 +188,7 @@ The appraisal ("aprecio") happened on arrival at Oran, and the auction followed 
 3. **Upper bounds only.** The beasts are mixed into every total.
 4. These points pull in opposite directions: adult men sell higher, deflation pushes lower. So 30 is not contradicted, but neither is it measured.
 
-Even so, this is the first [opened] **auction** price for captured Maghrebis that I have found. The earlier rounds had only a remark in a chronicle and ransoms paid months later.
+Even so, this is the first [opened] **auction** price for captured Maghrebis that I have found (not necessarily the first that exists). The earlier rounds had only a remark in a chronicle and ransoms paid months later.
 
 ### 3b. Arzila, three captured guards auctioned (Anais I, pp. 281–282) [opened, no price]
 
