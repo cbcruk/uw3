@@ -11,7 +11,7 @@ import type { FameGain, LanguageDocks } from './fame.types'
  * 끝난 원정이 번 명성. 메타에 더하기 전에 계산한다 — 처음 들어간 항구는 메타에 없던 것만 센다.
  *
  * 죽어도 물리친 조우와 처음 들어간 항구의 몫은 남는다 (R42). 도착과 이익의 몫은 도착한 원정만 받는다 —
- * 가라앉은 배의 금화는 없는 금화다.
+ * 가라앉은 배의 금화는 없는 금화다. 이익의 몫은 `fameProfitMax`에서 멈춘다 (R82).
  */
 export function fameEarned(run: RunState, knownPortIds: readonly string[]): FameGain {
   const known = new Set(knownPortIds)
@@ -21,7 +21,10 @@ export function fameEarned(run: RunState, knownPortIds: readonly string[]): Fame
   const startGold = TRADE.startGold + (run.config.patronGold ?? 0)
   const profit =
     run.ended === 'arrived'
-      ? Math.floor(Math.max(0, run.supplies.gold - startGold) / FAME.fameGoldDivisor)
+      ? Math.min(
+          FAME.fameProfitMax,
+          Math.floor(Math.max(0, run.supplies.gold - startGold) / FAME.fameGoldDivisor),
+        )
       : 0
   return { arrived, defeated, discovery, profit, total: arrived + defeated + discovery + profit }
 }
