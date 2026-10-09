@@ -29,17 +29,31 @@ const ACTIVE_KEY = 'uw3.roguelike.active'
 const META_KEY = 'uw3.roguelike.meta'
 const VIEWPORT = { width: 1400, height: 900 }
 const LAUNCH_TIMEOUT_MS = 10_000
+// 한 장면의 읽기·명령 하나가 이보다 오래 걸리면 멈춘 것으로 본다. 크롬이 죽거나 서버가 없을 때 영원히 기다리지 않게.
+const STEP_TIMEOUT_MS = 15_000
 const POLL_MS = 100
 // 첫 그림과 키 입력 뒤의 다시 그리기를 기다린다. 화면은 명령마다 동기로 그려서 길 필요가 없다.
 const SETTLE_MS = 400
 
-const args = process.argv.slice(2)
+// `vp run shot -- …`는 `--`까지 넘긴다. 인자 구분자일 뿐이라 버린다.
+const args = process.argv.slice(2).filter((arg) => arg !== '--')
 const option = (name) => {
   const index = args.indexOf(`--${name}`)
-  return index === -1 ? undefined : args.splice(index, 2)[1]
+  if (index === -1) {
+    return undefined
+  }
+  const value = args.splice(index, 2)[1]
+  if (value === undefined || value.startsWith('--')) {
+    fail(`--${name}에 값이 없다`)
+  }
+  return value
 }
 const outDir = option('out') ?? '.shots'
 const givenUrl = option('url')
+const unknownFlag = args.find((arg) => arg.startsWith('--'))
+if (unknownFlag !== undefined) {
+  fail(`모르는 옵션이다: ${unknownFlag} (--out, --url만 받는다)`)
+}
 const wanted = new Set(args)
 
 const scenes = readdirSync(SCENE_DIR)
@@ -48,44 +62,49 @@ const scenes = readdirSync(SCENE_DIR)
     name: basename(file, '.json'),
     ...JSON.parse(readFileSync(new URL(file, SCENE_DIR), 'utf8')),
   }))
-  .filter((scene) => wanted.size === 0 || wanted.has(scene.name))
-if (scenes.length === 0) {
-  console.error(`장면이 없다: ${[...wanted].join(', ') || '(scripts/shots 비었음)'}`)
-  process.exit(1)
+const known = new Set(scenes.map((scene) => scene.name))
+const missing = [...wanted].filter((name) => !known.has(name))
+if (missing.length > 0) {
+  fail(`없는 장면이다: ${missing.join(', ')} (있는 것: ${[...known].join(', ')})`)
+}
+const chosen = scenes.filter((scene) => wanted.size === 0 || wanted.has(scene.name))
+if (chosen.length === 0) {
+  fail('장면이 없다 (scripts/shots 비었음)')
 }
 
 const executable = findChrome()
 if (executable === null) {
-  console.error(
+  fail(
     '크롬을 찾지 못했다. CHROME_PATH를 주거나 `npx playwright install chromium-headless-shell`로 받는다',
   )
-  process.exit(1)
 }
 
-const server =
-  givenUrl === undefined ? await createServer({ logLevel: 'error', server: { port: 0 } }) : null
-if (server !== null) {
-  await server.listen()
-}
-const baseUrl = givenUrl ?? server?.resolvedUrls?.local[0]
+let server = null
+let chrome = null
 const profile = mkdtempSync(join(tmpdir(), 'uw3-shot-'))
-const chrome = spawn(
-  executable,
-  [
-    '--headless',
-    '--disable-gpu',
-    '--no-first-run',
-    '--hide-scrollbars',
-    `--window-size=${VIEWPORT.width},${VIEWPORT.height}`,
-    '--remote-debugging-port=0',
-    `--user-data-dir=${profile}`,
-    'about:blank',
-  ],
-  { stdio: 'ignore' },
-)
-
 try {
-  const page = await connect(await devtoolsPort(profile))
+  if (givenUrl === undefined) {
+    server = await createServer({ logLevel: 'error', server: { port: 0 } })
+    await server.listen()
+  }
+  const baseUrl = givenUrl ?? server?.resolvedUrls?.local[0]
+  chrome = spawn(
+    executable,
+    [
+      '--headless',
+      '--disable-gpu',
+      '--no-first-run',
+      '--hide-scrollbars',
+      `--window-size=${VIEWPORT.width},${VIEWPORT.height}`,
+      '--remote-debugging-port=0',
+      `--user-data-dir=${profile}`,
+      'about:blank',
+    ],
+    { stdio: 'ignore' },
+  )
+  // 실행 파일이 없거나 못 띄우면 'error'가 온다. 받지 않으면 정리 없이 죽는다.
+  const launchFailed = new Promise((_, reject) => chrome.once('error', reject))
+  const page = await connect(await Promise.race([devtoolsPort(profile), launchFailed]))
   await page.send('Page.enable')
   await page.send('Emulation.setDeviceMetricsOverride', {
     ...VIEWPORT,
@@ -93,20 +112,40 @@ try {
     mobile: false,
   })
   mkdirSync(outDir, { recursive: true })
-  for (const scene of scenes) {
+  for (const scene of chosen) {
     const file = join(outDir, `${scene.name}.png`)
-    await capture(page, scene, file)
+    await capture(page, scene, file, baseUrl)
     console.log(`${scene.name} → ${file}`)
   }
   page.close()
 } finally {
-  chrome.kill()
+  if (chrome !== null && chrome.exitCode === null) {
+    // 크롬이 프로필에 쓰기를 마칠 때까지 기다려야 폴더를 지울 수 있다.
+    const exited = new Promise((resolve) => chrome.once('exit', resolve))
+    chrome.kill()
+    await Promise.race([exited, sleep(LAUNCH_TIMEOUT_MS)])
+  }
   await server?.close()
-  rmSync(profile, { recursive: true, force: true })
+  rmSync(profile, { recursive: true, force: true, maxRetries: 3 })
+}
+
+function fail(message) {
+  console.error(message)
+  process.exit(1)
+}
+
+/** 약속이 이 시간 안에 풀리지 않으면 실패로 돌린다. */
+function within(promise, what) {
+  return Promise.race([
+    promise,
+    sleep(STEP_TIMEOUT_MS).then(() => {
+      throw new Error(`${what}이 ${STEP_TIMEOUT_MS / 1000}초 안에 끝나지 않았다`)
+    }),
+  ])
 }
 
 /** 장면 하나: 저장소를 채우고, 다시 읽히고, 키를 누르고, 찍는다. */
-async function capture(page, scene, file) {
+async function capture(page, scene, file, baseUrl) {
   await navigate(page, baseUrl)
   const storage = {
     [ACTIVE_KEY]: { daily: null, ...scene.saved },
@@ -131,12 +170,20 @@ async function capture(page, scene, file) {
 
 async function navigate(page, url) {
   const loaded = page.once('Page.loadEventFired')
-  await page.send('Page.navigate', { url })
-  await loaded
+  const { errorText } = await page.send('Page.navigate', { url })
+  if (errorText !== undefined) {
+    throw new Error(`${url}을 열지 못했다: ${errorText}`)
+  }
+  await within(loaded, `${url} 읽기`)
   await sleep(SETTLE_MS)
 }
 
-/** 키 하나. `Shift+KeyH`처럼 Shift를 붙일 수 있다. `key`·`code`는 화면의 키 처리기가 읽는 그대로다. */
+/**
+ * 키 하나. `Shift+KeyH`처럼 Shift를 붙일 수 있다.
+ *
+ * `code`는 그대로 보내고 `key`는 화면이 읽는 만큼만 흉내 낸다 — Shift+Digit1의 `key`는 실제 브라우저의 `!`가
+ * 아니라 `1`이다. 화면의 시장 키는 `code`와 Shift만 본다.
+ */
 async function press(page, spec) {
   const shift = spec.startsWith('Shift+')
   const code = shift ? spec.slice('Shift+'.length) : spec
@@ -145,7 +192,8 @@ async function press(page, spec) {
     key,
     code,
     modifiers: shift ? 8 : 0,
-    windowsVirtualKeyCode: key.length === 1 ? key.toUpperCase().charCodeAt(0) : 0,
+    // 가상 키 코드는 글자·숫자만 문자 코드와 같다. '.'의 46은 Delete다.
+    windowsVirtualKeyCode: /^[a-z0-9]$/i.test(key) ? key.toUpperCase().charCodeAt(0) : 0,
   }
   await page.send('Input.dispatchKeyEvent', {
     type: 'keyDown',
@@ -237,6 +285,13 @@ async function connect(port) {
   let nextId = 1
   const pending = new Map()
   const waiters = new Map()
+  // 크롬이 죽어 소켓이 닫히면 기다리던 명령을 모두 실패로 돌린다. 그러지 않으면 영원히 기다린다.
+  socket.addEventListener('close', () => {
+    for (const { reject } of pending.values()) {
+      reject(new Error('크롬과의 연결이 끊겼다'))
+    }
+    pending.clear()
+  })
   socket.addEventListener('message', ({ data }) => {
     const message = JSON.parse(data)
     if (message.id !== undefined) {
@@ -254,8 +309,9 @@ async function connect(port) {
   return {
     send(method, params = {}) {
       const id = nextId++
+      const reply = new Promise((resolve, reject) => pending.set(id, { resolve, reject }))
       socket.send(JSON.stringify({ id, method, params }))
-      return new Promise((resolve, reject) => pending.set(id, { resolve, reject }))
+      return within(reply, method)
     },
     once(method) {
       return new Promise((resolve) =>
