@@ -500,6 +500,29 @@ describe('전투 — 붙으면 양쪽이 머릿수를 잃는다', () => {
     expect(eventsOf(events, 'captives-ransomed')).toHaveLength(0)
   })
 
+  it('해적 선단은 카라벨에게 덤비지 않고 나우에게는 덤빈다 — 런이 배의 적재량을 넘긴다 (R83)', () => {
+    const waitBeside = (shipClassId: string) => {
+      const run = createRun({ ...CONFIG, shipClassId }, grid)
+      run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell
+      run.encounters = [
+        {
+          id: 'corsairs-test',
+          kind: 'corsairs',
+          cell: { x: run.player.cell.x + 1, y: run.player.cell.y },
+          crew: 150,
+          crewAtStart: 150,
+          conveyance: 'ship',
+          nextActHours: 0,
+          rounds: 0,
+          chasing: true,
+        },
+      ]
+      return eventsOf(applyCommand(run, { type: 'wait' }), 'combat')
+    }
+    expect(waitBeside('caravela-redonda')).toHaveLength(0)
+    expect(waitBeside('nau').length).toBeGreaterThan(0)
+  })
+
   it('같은 시드·같은 명령이면 같은 전투 결과다', () => {
     const play = () => {
       const run = seaRunNextTo(30)

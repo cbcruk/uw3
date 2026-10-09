@@ -158,7 +158,7 @@ export function applyCommand(run: RunState, command: Command): RunEvent[] {
     ...actEncounters(
       {
         grid: run.grid,
-        target: { ...run.player, crew: force(run).crew },
+        target: { ...run.player, crew: force(run).crew, holdTons: run.shipClass.capacityTons },
         startHours,
         nowHours: run.elapsedHours,
         dayNumberAt: (hours) =>
@@ -329,7 +329,8 @@ function forgetOpposition(run: RunState): void {
  */
 function pressing(run: RunState, encounter: Encounter): boolean {
   return (
-    canStrike(run.grid, encounter, run.player.cell) && willingAgainst(encounter, force(run).crew)
+    canStrike(run.grid, encounter, run.player.cell) &&
+    willingAgainst(encounter, force(run).crew, run.shipClass.capacityTons)
   )
 }
 

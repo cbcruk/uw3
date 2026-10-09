@@ -14,9 +14,10 @@ export interface PursuitContext<E = CombatEvent> {
   grid: WorldGrid
   /**
    * 쫓기는 쪽(플레이어)의 칸과 탈것, 그리고 싸울 무리의 머릿수. 탈것은 시야가 아니라 조우가 볼 대상일 뿐이다.
-   * 머릿수를 모르면 사람 무리도 모두 덤빈다 — 우세를 따지지 않는다 (R80).
+   * 머릿수를 모르면 사람 무리도 모두 덤빈다 — 우세를 따지지 않는다 (R80). `holdTons`는 플레이어 배의 적재량이다 —
+   * 모르면 큰 배만 노리는 무리도 가리지 않는다 (R83).
    */
-  target: { cell: Cell; conveyance: Conveyance; crew?: number }
+  target: { cell: Cell; conveyance: Conveyance; crew?: number; holdTons?: number }
   /** 플레이어의 명령이 시작된 시각. 쫓지 않던 조우는 이 시각부터 깨어난다. */
   startHours: number
   /** 플레이어의 명령이 끝난 시각. 조우는 이 시각까지 따라잡는다. */

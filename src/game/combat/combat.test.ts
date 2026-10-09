@@ -58,7 +58,7 @@ describe('한 합 — 머릿수가 곧 공격력이다', () => {
     expect(supplies.crew + (round?.type === 'combat' ? round.crewLost : 0)).toBe(32)
   })
 
-  it('해적만 배의 선체를 깎는다. 흘수선 아래를 맞을 때만, 머릿수와 상관없이 같은 몫이다 (R79)', () => {
+  it('배를 탄 무리만 배의 선체를 깎는다. 흘수선 아래를 맞을 때만, 머릿수와 상관없이 같은 몫이다 (R79)', () => {
     const hullLost = (kind: Encounter['kind'], crew: number, conveyance: 'ship' | 'horse') =>
       trials(300, (seed) => {
         const supplies = createSupplies(shipClass)
