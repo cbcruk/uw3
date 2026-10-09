@@ -1,5 +1,5 @@
 import type { Terrain } from '../../../game/grid/world-grid.types'
-import type { TileKey } from './map-art.types'
+import type { TileKey, WavePhase } from './map-art.types'
 import { tileCacheKey } from './map-art.utils'
 
 /** 타일 한 장의 픽셀 수. 2편의 지도 타일처럼 16×16으로 그리고 화면 칸 크기로 키운다. */
@@ -29,9 +29,14 @@ const TREE = '#2a5422'
 
 const cache = new Map<string, HTMLCanvasElement>()
 
-/** 타일을 굽는다. 같은 키는 한 번만 굽는다. */
-export function terrainTile(key: TileKey): HTMLCanvasElement {
-  const cacheKey = tileCacheKey(key)
+/**
+ * 타일을 굽는다. 같은 키는 한 번만 굽는다.
+ *
+ * @param wavePhase 바다 타일의 물결 무늬 두 장 가운데 어느 것인가. 뭍 타일은 보지 않는다.
+ */
+export function terrainTile(key: TileKey, wavePhase: WavePhase = 0): HTMLCanvasElement {
+  const phase = key.terrain === 'sea' ? wavePhase : 0
+  const cacheKey = `${tileCacheKey(key)}~${phase}`
   const hit = cache.get(cacheKey)
   if (hit !== undefined) {
     return hit
@@ -43,9 +48,10 @@ export function terrainTile(key: TileKey): HTMLCanvasElement {
   if (ctx === null) {
     throw new Error('2d context unavailable')
   }
-  const random = lcg(hashKey(cacheKey))
+  // 무늬의 자리는 물결 장과 무관하게 같은 난수에서 뽑는다. 두 장이 같은 물결의 앞뒤 박자가 된다.
+  const random = lcg(hashKey(tileCacheKey(key)))
   if (key.terrain === 'sea') {
-    paintSea(ctx, key.shallow ? SHALLOW : PALETTE.sea, random)
+    paintSea(ctx, key.shallow ? SHALLOW : PALETTE.sea, random, phase)
   } else {
     paintLand(ctx, key, random)
   }
@@ -53,21 +59,31 @@ export function terrainTile(key: TileKey): HTMLCanvasElement {
   return canvas
 }
 
-/** 물결: 짧은 ‿ 무늬 두세 개. 2편 바다의 반짝이는 줄무늬다. */
+/**
+ * 물결: 짧은 ‿ 무늬 두세 개. 2편 바다의 반짝이는 줄무늬다.
+ *
+ * 둘째 장은 무늬가 한 픽셀 오른쪽으로 밀리고 골이 얕아진다 — 번갈아 그리면 물결이 일렁인다.
+ */
 function paintSea(
   ctx: CanvasRenderingContext2D,
   palette: TerrainPalette,
   random: () => number,
+  phase: WavePhase,
 ): void {
   fill(ctx, palette.base, 0, 0, TILE_PX, TILE_PX)
   const waves = 2 + Math.floor(random() * 2)
   for (let i = 0; i < waves; i += 1) {
-    const x = Math.floor(random() * (TILE_PX - 4))
+    const x = Math.floor(random() * (TILE_PX - 4)) + phase
     const y = 2 + Math.floor(random() * (TILE_PX - 4))
-    fill(ctx, palette.light, x, y, 1, 1)
-    fill(ctx, palette.light, x + 1, y + 1, 2, 1)
-    fill(ctx, palette.light, x + 3, y, 1, 1)
-    fill(ctx, palette.dark, x + 1, y + 2, 2, 1)
+    if (phase === 0) {
+      fill(ctx, palette.light, x, y, 1, 1)
+      fill(ctx, palette.light, x + 1, y + 1, 2, 1)
+      fill(ctx, palette.light, x + 3, y, 1, 1)
+      fill(ctx, palette.dark, x + 1, y + 2, 2, 1)
+    } else {
+      fill(ctx, palette.light, x, y + 1, 4, 1)
+      fill(ctx, palette.dark, x + 1, y + 2, 2, 1)
+    }
   }
 }
 

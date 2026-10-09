@@ -2,12 +2,15 @@ import type { EncounterKindId } from '../../content/game/game-content.types'
 import { GRID } from '../../content/game/grid.tuning'
 import { headingOf } from '../../game/grid/direction'
 import { isInSight } from '../../game/fog/fog'
+import type { Direction } from '../../game/grid/direction.types'
 import type { Cell } from '../../game/grid/world-grid.types'
+import type { RegionId } from '../../game/region/region.types'
 import type { RunState } from '../../game/run/run.types'
 import { bakeSprite, drawSprite } from './map-art/pixel-sprite'
 import { PIRATE_SHIP, PLAYER_SHIP, drawShip } from './map-art/ship-art'
 import { SPRITES } from './map-art/sprites'
 import { terrainTile } from './map-art/terrain-tiles'
+import type { WavePhase } from './map-art/map-art.types'
 import { directionToward, facingOf, tileKeyOf } from './map-art/map-art.utils'
 import type { Point, Pose } from './motion.types'
 
@@ -31,6 +34,8 @@ interface Frame {
   originY: number
   x0: number
   y0: number
+  rows: number
+  wavePhase: WavePhase
 }
 
 /**
@@ -39,19 +44,20 @@ interface Frame {
  * 안개 규칙은 그대로다: 탐사하지 않은 칸은 비우고, 본 적만 있는 칸은 어둡게 덮고,
  * 조우는 지금 보이는 것만 그린다.
  *
- * @param pose 연출 중의 자세(`motion.ts`). 플레이어와 조우를 칸 사이에 그리고, 화면을 흔들고, 손실 숫자를 띄운다.
+ * @param pose 연출 중의 자세(`motion.ts`). 플레이어와 조우를 칸 사이에 그리고, 화면을 흔들고, 손실 숫자를 띄우고,
+ *   쓰러진 조우를 흐리게 하고, 영역이 바뀌면 옛 영역을 밀어낸다.
  *   없으면 런 상태 그대로 그린다. 무엇을 그릴지(안개·시야)는 언제나 런 상태가 정한다.
+ * @param wavePhase 물결 무늬 두 장 가운데 어느 것인가(0·1). 게임 상태와 무관한 화면 시계다.
  */
 export function drawRegion(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   run: RunState,
   pose?: Pose,
+  wavePhase: WavePhase = 0,
 ): void {
-  const { grid, region, player, berth } = run
-  const x0 = region.rx * GRID.regionCols
-  const y0 = region.ry * GRID.regionRows
-  const rows = Math.min(GRID.regionRows, grid.height - y0)
+  const { grid, region } = run
+  const rows = Math.min(GRID.regionRows, grid.height - region.ry * GRID.regionRows)
   const cols = GRID.regionCols
 
   const ratio = window.devicePixelRatio || 1
@@ -67,14 +73,39 @@ export function drawRegion(
     ctx.translate(pose.shake.x * tile, pose.shake.y * tile)
   }
 
-  const frame: Frame = {
-    ctx,
-    tile,
-    originX: Math.floor((box.width - tile * cols) / 2),
-    originY: Math.floor((box.height - tile * rows) / 2),
-    x0,
-    y0,
+  const frameOf = (shown: RegionId, shiftX: number, shiftY: number): Frame => {
+    const shownRows = Math.min(GRID.regionRows, grid.height - shown.ry * GRID.regionRows)
+    return {
+      ctx,
+      tile,
+      originX: Math.floor((box.width - tile * cols) / 2) + shiftX,
+      originY: Math.floor((box.height - tile * rows) / 2) + shiftY,
+      x0: shown.rx * GRID.regionCols,
+      y0: shown.ry * GRID.regionRows,
+      rows: shownRows,
+      wavePhase,
+    }
   }
+
+  // 나간 쪽으로 옛 영역이 밀려나고, 새 영역이 반대쪽에서 들어온다. 플레이어는 새 영역에만 그린다.
+  const slide = pose?.slide ?? null
+  if (slide === null) {
+    drawArea(frameOf(region, 0, 0), run, pose)
+    return
+  }
+  const width = tile * cols
+  const height = tile * GRID.regionRows
+  const pushX = Math.round(slide.dx * slide.t * width)
+  const pushY = Math.round(slide.dy * slide.t * height)
+  drawArea(frameOf(slide.from, -pushX, -pushY), run, undefined, false)
+  drawArea(frameOf(region, slide.dx * width - pushX, slide.dy * height - pushY), run, pose)
+}
+
+/** 영역 한 장의 타일·조우·플레이어. 밀어내기 중에는 옛 영역을 플레이어 없이 한 번 더 그린다. */
+function drawArea(frame: Frame, run: RunState, pose: Pose | undefined, withPlayer = true): void {
+  const { ctx, tile, x0, y0, rows } = frame
+  const { grid, player, berth } = run
+  const cols = GRID.regionCols
   const seen = (cell: Cell): boolean => isInSight(grid, player.cell, player.conveyance, cell)
 
   for (let y = 0; y < rows; y += 1) {
@@ -86,7 +117,7 @@ export function drawRegion(
       }
       const left = frame.originX + x * tile
       const top = frame.originY + y * tile
-      ctx.drawImage(terrainTile(key), left, top, tile, tile)
+      ctx.drawImage(terrainTile(key, frame.wavePhase), left, top, tile, tile)
       if (grid.portAt(cell) !== null) {
         const [cx, cy] = center(frame, cell)
         drawSprite(ctx, bakeSprite('port', SPRITES.port, 'right'), cx, cy, tile, PORT_SCALE)
@@ -101,54 +132,53 @@ export function drawRegion(
   // 소문은 들은 자리에 흐리게 그린다. 지금 보이는 칸이면 진짜가 거기 있든 없든 소문은 그리지 않는다.
   for (const rumor of run.rumors) {
     const { cell } = rumor
-    if (!inFrame(frame, cell, cols, rows) || seen(cell)) {
+    if (!inFrame(frame, cell) || seen(cell)) {
       continue
     }
     const [cx, cy] = center(frame, cell)
     ctx.save()
     ctx.globalAlpha = RUMOR_ALPHA
-    if (sailsKind(rumor.kind)) {
-      drawShip(ctx, cx, cy, tile, headingOf('e'), PIRATE_SHIP)
-    } else {
-      drawSprite(
-        ctx,
-        bakeSprite(rumor.kind, SPRITES[rumor.kind], 'right'),
-        cx,
-        cy,
-        tile,
-        SPRITE_SCALE,
-      )
-    }
+    drawFoe(frame, rumor.kind, cx, cy, 'e')
     ctx.restore()
     if (tile >= BADGE_MIN_TILE) {
       drawBadge(frame, cell, `?${rumor.crew}`)
     }
   }
 
+  // 쓰러진 조우는 있던 칸에서 흐려지며 조금 가라앉는다. 그때 보이던 칸이어야 한다.
+  for (const gone of pose?.vanishing ?? []) {
+    const cell = { x: Math.round(gone.at.x), y: Math.round(gone.at.y) }
+    if (!inFrame(frame, cell) || !seen(cell)) {
+      continue
+    }
+    const [cx, cy] = at(frame, { x: gone.at.x, y: gone.at.y + gone.sink })
+    ctx.save()
+    ctx.globalAlpha = gone.alpha
+    drawFoe(frame, gone.kind, cx, cy, directionToward(cell, player.cell) ?? 'e')
+    ctx.restore()
+  }
+
   for (const encounter of run.encounters) {
     const { cell } = encounter
-    if (!inFrame(frame, cell, cols, rows) || !seen(cell)) {
+    if (!inFrame(frame, cell) || !seen(cell)) {
       continue
     }
     const shown = pose?.encounters.get(encounter.id) ?? cell
     const [cx, cy] = at(frame, shown)
-    const toward = directionToward(cell, player.cell) ?? 'e'
-    if (sailsKind(encounter.kind)) {
-      drawShip(ctx, cx, cy, tile, headingOf(toward), PIRATE_SHIP)
-    } else {
-      const sprite = bakeSprite(encounter.kind, SPRITES[encounter.kind], facingOf(toward))
-      drawSprite(ctx, sprite, cx, cy, tile, SPRITE_SCALE)
-    }
+    drawFoe(frame, encounter.kind, cx, cy, directionToward(cell, player.cell) ?? 'e')
     if (tile >= BADGE_MIN_TILE) {
       drawBadge(frame, shown, String(encounter.crew))
     }
   }
 
-  if (berth !== null && inFrame(frame, berth.cell, cols, rows)) {
+  if (berth !== null && inFrame(frame, berth.cell)) {
     const [cx, cy] = center(frame, berth.cell)
     drawDocked(ctx, cx, cy, tile)
   }
 
+  if (!withPlayer) {
+    return
+  }
   // 칸 안 위치(해류가 쌓은 편류)만큼 어긋나게 그린다. 칸 경계를 넘기 전에 밀리는 것이 보인다.
   const side = grid.stepNm(player.cell, 'e')
   const body = pose?.player ?? player.cell
@@ -172,6 +202,28 @@ export function drawRegion(
 
   for (const floater of pose?.floaters ?? []) {
     drawFloater(frame, floater.at, floater.text, floater.tone, floater.rise, floater.alpha)
+  }
+}
+
+/** 조우 하나를 그린다. 배를 타는 무리는 배로, 나머지는 스프라이트로. */
+function drawFoe(
+  frame: Frame,
+  kind: EncounterKindId,
+  cx: number,
+  cy: number,
+  toward: Direction,
+): void {
+  if (sailsKind(kind)) {
+    drawShip(frame.ctx, cx, cy, frame.tile, headingOf(toward), PIRATE_SHIP)
+  } else {
+    drawSprite(
+      frame.ctx,
+      bakeSprite(kind, SPRITES[kind], facingOf(toward)),
+      cx,
+      cy,
+      frame.tile,
+      SPRITE_SCALE,
+    )
   }
 }
 
@@ -222,9 +274,12 @@ function center(frame: Frame, cell: Cell): [number, number] {
   ]
 }
 
-function inFrame(frame: Frame, cell: Cell, cols: number, rows: number): boolean {
+function inFrame(frame: Frame, cell: Cell): boolean {
   return (
-    cell.x >= frame.x0 && cell.x < frame.x0 + cols && cell.y >= frame.y0 && cell.y < frame.y0 + rows
+    cell.x >= frame.x0 &&
+    cell.x < frame.x0 + GRID.regionCols &&
+    cell.y >= frame.y0 &&
+    cell.y < frame.y0 + frame.rows
   )
 }
 
