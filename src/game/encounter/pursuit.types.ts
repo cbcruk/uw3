@@ -38,5 +38,7 @@ export type PursuitEvent =
   | { type: 'chase'; encounterId: string; kind: EncounterKindId }
   | { type: 'engaged'; encounterId: string; kind: EncounterKindId }
   | { type: 'evaded'; encounterId: string; kind: EncounterKindId }
+  /** 보이는 채로 쫓기를 그만뒀다. 플레이어 무리가 커져 우세가 깨졌다 (R80). */
+  | { type: 'gave-up'; encounterId: string; kind: EncounterKindId }
   | { type: 'encounter-move'; encounterId: string; from: Cell; to: Cell; hours: number }
   | CombatEvent

@@ -5,6 +5,7 @@ import type { Cell } from '../grid/world-grid.types'
 import { createWorld } from '../run/run'
 import type { Conveyance } from '../travel/travel.types'
 import type { Encounter } from './encounter.types'
+import { COMBAT } from '../../content/game/combat.tuning'
 import { actEncounters, adjacent, cellDistance } from './pursuit'
 import type { PursuitContext } from './pursuit.types'
 
@@ -33,7 +34,10 @@ function pirate(cell: Cell, id = 'pirate-a'): Encounter {
 
 function context(
   hours: number,
-  target: { cell: Cell; conveyance: Conveyance } = { cell: ATLANTIC, conveyance: 'ship' },
+  target: { cell: Cell; conveyance: Conveyance; crew?: number } = {
+    cell: ATLANTIC,
+    conveyance: 'ship',
+  },
   startHours = 0,
 ): PursuitContext {
   return {
@@ -107,5 +111,35 @@ describe('추격 — 다음 행동 시각 순으로 한 칸씩 다가온다', ()
     const encounter = pirate(at(3, 0))
     actEncounters(context(1000 + 1, undefined, 1000), [encounter])
     expect(cellDistance(grid, encounter.cell, ATLANTIC)).toBeGreaterThanOrEqual(2)
+  })
+})
+
+describe('우세 — 사람 무리는 머릿수가 앞설 때만 쫓는다 (R80)', () => {
+  /** 해적 30명(픽스처)이 겨우 우세한 무리와, 겨우 못 미치는 무리의 머릿수. */
+  const outnumbered = Math.floor(30 / COMBAT.chaseOdds)
+  const target = (crew?: number) => ({ cell: ATLANTIC, conveyance: 'ship' as const, crew })
+
+  it('우세하지 않으면 보여도 쫓지 않고, 우세하면 쫓는다. 머릿수를 모르면 모두 쫓는다', () => {
+    expect(actEncounters(context(6, target(outnumbered + 1)), [pirate(at(3, 0))])).toEqual([])
+    const chase = (crew?: number) =>
+      actEncounters(context(6, target(crew)), [pirate(at(3, 0))]).filter((e) => e.type === 'chase')
+    expect(chase(outnumbered)).toHaveLength(1)
+    expect(chase(undefined)).toHaveLength(1)
+  })
+
+  it('쫓던 무리는 우세가 깨지면 보이는 채로 그만둔다 — 따돌린 것이 아니다', () => {
+    const encounter = { ...pirate(at(3, 0)), chasing: true }
+    const events = actEncounters(context(6, target(outnumbered + 1)), [encounter])
+    expect(events).toEqual([{ type: 'gave-up', encounterId: 'pirate-a', kind: 'pirate' }])
+    expect(encounter.chasing).toBe(false)
+  })
+
+  it('짐승과 이미 맞붙은 무리는 머릿수를 따지지 않는다', () => {
+    const beast = { ...pirate(at(3, 0)), kind: 'beast' as const, crew: 1 }
+    const fought = { ...pirate(at(3, 0), 'pirate-b'), crew: 1, rounds: 1 }
+    const chased = (encounter: Encounter) =>
+      actEncounters(context(6, target(1000)), [encounter]).some((e) => e.type === 'chase')
+    expect(chased(beast)).toBe(true)
+    expect(chased(fought)).toBe(true)
   })
 })

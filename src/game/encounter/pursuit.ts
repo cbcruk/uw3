@@ -84,13 +84,16 @@ export function actEncounters<E = CombatEvent>(
   }
 
   for (const encounter of encounters) {
-    if (
-      encounter.chasing &&
-      encounter.crew > 0 &&
-      (!sees(context, encounter) || !willing(context, encounter))
-    ) {
+    if (!encounter.chasing || encounter.crew <= 0) {
+      continue
+    }
+    if (!sees(context, encounter)) {
       encounter.chasing = false
       events.push({ type: 'evaded', encounterId: encounter.id, kind: encounter.kind })
+    } else if (!willing(context, encounter)) {
+      // 보이는 채로 우세가 깨졌다(승선·고용으로 무리가 커졌다). 따돌린 것이 아니라 상대가 물러선 것이다.
+      encounter.chasing = false
+      events.push({ type: 'gave-up', encounterId: encounter.id, kind: encounter.kind })
     }
   }
   return events
@@ -127,10 +130,6 @@ export function kindOf(encounter: Encounter): EncounterKind {
 }
 
 /**
- * 조우가 플레이어를 보는가. 알아채는 거리는 시야보다 짧고, 한 번 쫓기 시작하면 시야 끝까지 놓치지 않는다 (R45).
- * 그래서 먼저 본 쪽이 피할 수 있고, 붙잡힌 뒤에는 시야 밖으로 벗어나야 따돌린다.
- */
-/**
  * 이 조우가 플레이어에게 덤비려 하는가 (R80).
  *
  * 사람 무리는 머릿수가 플레이어 무리의 `chaseOdds`배 이상일 때만 쫓고 덮친다. 이미 맞붙은 조우(`rounds` > 0)는
@@ -154,6 +153,10 @@ export function willingAgainst(encounter: Encounter, crew: number): boolean {
   )
 }
 
+/**
+ * 조우가 플레이어를 보는가. 알아채는 거리는 시야보다 짧고, 한 번 쫓기 시작하면 시야 끝까지 놓치지 않는다 (R45).
+ * 그래서 먼저 본 쪽이 피할 수 있고, 붙잡힌 뒤에는 시야 밖으로 벗어나야 따돌린다.
+ */
 function sees(context: PursuitContext<unknown>, encounter: Encounter): boolean {
   const sightNm = sightRadiusNm(encounter.conveyance)
   const radiusNm = encounter.chasing ? sightNm : sightNm * COMBAT.noticeRatio
