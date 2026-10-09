@@ -7,7 +7,7 @@ import { HOURS_PER_DAY, toDayNumber } from '../../sim/calendar/calendar'
 import { WORLD_LAND_CELLS_PER_DEGREE } from '../../sim/map/land-mask.const'
 import { createTileMap } from '../../sim/map/tile-map'
 import { spawnEncounters } from '../encounter/encounter'
-import { actEncounters, canStrike, kindOf } from '../encounter/pursuit'
+import { actEncounters, canStrike, kindOf, willingAgainst } from '../encounter/pursuit'
 import { payRansom } from '../combat/ransom'
 import { fightRound } from '../combat/combat'
 import { COMBAT } from '../../content/game/combat.tuning'
@@ -158,7 +158,7 @@ export function applyCommand(run: RunState, command: Command): RunEvent[] {
     ...actEncounters(
       {
         grid: run.grid,
-        target: run.player,
+        target: { ...run.player, crew: force(run).crew },
         startHours,
         nowHours: run.elapsedHours,
         dayNumberAt: (hours) =>
@@ -309,9 +309,20 @@ function forgetOpposition(run: RunState): void {
   }
 }
 
+/**
+ * 옆에 붙어 덤비는 조우인가. 칠 수 있는 자리에 있고, 우세해서 덤비려 하거나 이미 맞붙었다 (R80).
+ *
+ * 덤빌 생각이 없는 무리는 옆에 있어도 기다리기를 한 합으로 줄이지 않고, 내주기·항복의 상대도 아니다.
+ */
+function pressing(run: RunState, encounter: Encounter): boolean {
+  return (
+    canStrike(run.grid, encounter, run.player.cell) && willingAgainst(encounter, force(run).crew)
+  )
+}
+
 /** 플레이어에게 바로 덤빌 수 있는 조우가 옆에 있는가. */
 function engaged(run: RunState): boolean {
-  return run.encounters.some((encounter) => canStrike(run.grid, encounter, run.player.cell))
+  return run.encounters.some((encounter) => pressing(run, encounter))
 }
 
 /**
@@ -624,7 +635,7 @@ function hire(run: RunState, events: RunEvent[]): boolean {
  * 길은 열지 않는다. 내준 조우는 격자에서 빠지지만 물리친 수에는 세지 않는다 (R48).
  */
 function tribute(run: RunState, events: RunEvent[]): boolean {
-  const foes = run.encounters.filter((encounter) => canStrike(run.grid, encounter, run.player.cell))
+  const foes = run.encounters.filter((encounter) => pressing(run, encounter))
   if (foes.length === 0) {
     events.push({ type: 'rejected', command: 'tribute', reason: '내줄 상대가 붙어 있지 않다' })
     return false
@@ -680,7 +691,7 @@ function tribute(run: RunState, events: RunEvent[]): boolean {
  */
 function surrender(run: RunState, events: RunEvent[]): boolean {
   const captor = run.encounters.some(
-    (encounter) => kindOf(encounter).carriesGold && canStrike(run.grid, encounter, run.player.cell),
+    (encounter) => kindOf(encounter).carriesGold && pressing(run, encounter),
   )
   if (!captor) {
     events.push({
