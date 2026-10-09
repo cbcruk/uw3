@@ -9,6 +9,8 @@ import { SPRITES } from './map-art/sprites'
 import { terrainTile } from './map-art/terrain-tiles'
 import { directionToward, facingOf, tileKeyOf } from './map-art/map-art.utils'
 
+/** 소문으로만 아는 조우의 불투명도. 보이는 조우와 갈라 보이게 흐리게 둔다. */
+const RUMOR_ALPHA = 0.45
 const VOID = '#060a10'
 /** 본 적은 있지만 지금은 안 보이는 칸에 덮는 색. 원본의 "기억한 타일"이다. */
 const FOG_DIM = 'rgba(8, 14, 24, 0.55)'
@@ -84,6 +86,33 @@ export function drawRegion(
         ctx.fillStyle = FOG_DIM
         ctx.fillRect(left, top, tile, tile)
       }
+    }
+  }
+
+  // 소문은 들은 자리에 흐리게 그린다. 지금 보이는 칸이면 진짜가 거기 있든 없든 소문은 그리지 않는다.
+  for (const rumor of run.rumors) {
+    const { cell } = rumor
+    if (!inFrame(frame, cell, cols, rows) || seen(cell)) {
+      continue
+    }
+    const [cx, cy] = center(frame, cell)
+    ctx.save()
+    ctx.globalAlpha = RUMOR_ALPHA
+    if (rumor.kind === 'pirate') {
+      drawShip(ctx, cx, cy, tile, headingOf('e'), PIRATE_SHIP)
+    } else {
+      drawSprite(
+        ctx,
+        bakeSprite(rumor.kind, SPRITES[rumor.kind], 'right'),
+        cx,
+        cy,
+        tile,
+        SPRITE_SCALE,
+      )
+    }
+    ctx.restore()
+    if (tile >= BADGE_MIN_TILE) {
+      drawBadge(frame, cell, `?${rumor.crew}`)
     }
   }
 

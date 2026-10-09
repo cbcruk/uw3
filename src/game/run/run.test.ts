@@ -7,6 +7,7 @@ import { findShipClass } from '../../content/ships'
 import { toDayNumber } from '../../sim/calendar/calendar'
 import type { ShipClass } from '../../sim/ship/ship.types'
 import { regionKey, regionOf } from '../region/region'
+import { isInSight } from '../fog/fog'
 import { DIRECTIONS } from '../grid/direction'
 import { dailyRangeNm, passageToward, waterRatio } from '../travel/travel'
 import { applyCommand, createRun, createWorld, currentDay, rangeTowardNm, replayRun } from './run'
@@ -749,6 +750,108 @@ describe('뭍 무리 — 하선한 인원만 뭍에서 먹고 싸운다', () => 
     Object.assign(alone.party as Provisioned, { crew: 1, food: 0, water: 0 })
     applyCommand(alone, { type: 'wait' })
     expect(alone.ended).toBe('crew-lost')
+  })
+})
+
+describe('어학 — 말이 통하는 항구에서 사람을 모으고 소문을 듣는다', () => {
+  function rumoredRun(startPortId = 'lisboa', languages: RunConfig['languages'] = []) {
+    for (let seed = 1; seed < 200; seed += 1) {
+      const run = createRun({ ...CONFIG, seed, startPortId, languages }, grid)
+      if (run.rumors.length > 0) {
+        return run
+      }
+    }
+    throw new Error('소문이 있는 시드를 찾지 못했다')
+  }
+
+  it('말이 통하는 출발 항구에서는 그 해역의 보이지 않는 조우를 들은 자리 그대로 안다', () => {
+    const run = rumoredRun()
+    const port = grid.cellOfPort('lisboa') as Cell
+    for (const rumor of run.rumors) {
+      const encounter = run.encounters.find((e) => e.id === rumor.encounterId)
+      expect(encounter?.cell).toEqual(rumor.cell)
+      expect(run.sighted.has(rumor.encounterId)).toBe(false)
+      expect(regionKey(regionOf(rumor.cell))).toBe(regionKey(regionOf(port)))
+    }
+  })
+
+  it('말을 모르는 항구에서는 소문을 듣지 못하고, 배우면 듣는다', () => {
+    const deaf = createRun({ ...CONFIG, startPortId: 'malaga' }, grid)
+    expect(deaf.rumors).toEqual([])
+    expect(() => rumoredRun('malaga', ['castilian'])).not.toThrow()
+  })
+
+  it('소문의 자리는 조우가 움직여도 따라가지 않고, 직접 보면 지운다', () => {
+    const run = rumoredRun()
+    const rumor = run.rumors[0] as (typeof run.rumors)[number]
+    const encounter = run.encounters.find((e) => e.id === rumor.encounterId)
+    if (encounter === undefined) {
+      throw new Error('소문의 조우가 없다')
+    }
+    const heardAt = rumor.cell
+    encounter.cell = { x: run.player.cell.x + 1, y: run.player.cell.y }
+    expect(run.rumors[0]?.cell).toEqual(heardAt)
+    applyCommand(run, { type: 'wait' })
+    expect(run.rumors.some((r) => r.encounterId === encounter.id)).toBe(false)
+  })
+
+  it('다시 들으면 그 영역의 옛 소문을 새 소문으로 바꾼다', () => {
+    const run = rumoredRun()
+    const rumor = run.rumors[0] as (typeof run.rumors)[number]
+    const encounter = run.encounters.find((e) => e.id === rumor.encounterId)
+    if (encounter === undefined) {
+      throw new Error('소문의 조우가 없다')
+    }
+    const moved = { x: encounter.cell.x, y: encounter.cell.y + 1 }
+    encounter.cell = moved
+    applyCommand(run, { type: 'move', dir: 's' })
+    applyCommand(run, { type: 'move', dir: 'n' })
+    const heard = run.rumors.find((r) => r.encounterId === encounter.id)
+    expect(run.rumors.filter((r) => r.encounterId === encounter.id).length).toBeLessThanOrEqual(1)
+    if (heard !== undefined) {
+      expect(heard.cell).toEqual(encounter.cell)
+      expect(heard.cell).not.toEqual(rumor.cell)
+    }
+  })
+
+  it('조우가 격자에서 빠지면 보지 않았어도 소문을 지운다', () => {
+    const run = rumoredRun()
+    const rumor = run.rumors[0] as (typeof run.rumors)[number]
+    const encounter = run.encounters.find((e) => e.id === rumor.encounterId)
+    if (encounter === undefined) {
+      throw new Error('소문의 조우가 없다')
+    }
+    encounter.crew = 0
+    applyCommand(run, { type: 'wait' })
+    expect(run.sighted.has(encounter.id)).toBe(false)
+    expect(run.rumors.some((r) => r.encounterId === encounter.id)).toBe(false)
+  })
+
+  it('지금 보이는 조우는 소문으로 세지 않는다', () => {
+    const run = rumoredRun()
+    for (const rumor of run.rumors) {
+      expect(isInSight(grid, run.player.cell, 'ship', rumor.cell)).toBe(false)
+    }
+  })
+
+  it('말이 통하는 항구에 다시 들어가면 소문을 새로 듣는다', () => {
+    const run = createRun(CONFIG, grid)
+    applyCommand(run, { type: 'move', dir: 's' })
+    const events = applyCommand(run, { type: 'move', dir: 'n' })
+    expect(eventsOf(events, 'dock')[0]?.portId).toBe('lisboa')
+    expect(eventsOf(events, 'rumor')).toEqual([
+      { type: 'rumor', portId: 'lisboa', count: run.rumors.length },
+    ])
+  })
+
+  it('말을 모르는 항구에서는 선원을 모을 수 없고, 배우면 모은다', () => {
+    const deaf = createRun({ ...CONFIG, startPortId: 'malaga' }, grid)
+    const crew = deaf.supplies.crew
+    const rejected = eventsOf(applyCommand(deaf, { type: 'hire' }), 'rejected')
+    expect(rejected[0]?.reason).toContain('카스티야어')
+    expect(deaf.supplies.crew).toBe(crew)
+    const fluent = createRun({ ...CONFIG, startPortId: 'malaga', languages: ['castilian'] }, grid)
+    expect(eventsOf(applyCommand(fluent, { type: 'hire' }), 'hire')).toHaveLength(1)
   })
 })
 

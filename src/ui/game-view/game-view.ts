@@ -30,6 +30,7 @@ import { renderExpeditionPanel } from './expedition-panel'
 import { drawRegion } from './region-renderer'
 import { renderMarket } from './market-panel'
 import { canEnter } from '../../game/travel/travel'
+import { knownLanguages, speaksAt } from '../../game/trade/trade'
 import { cargoTons, daysOfSupply } from '../../game/supplies/supplies'
 import type { RunConfig, RunState } from '../../game/run/run.types'
 import type { LogLine } from './game-view.types'
@@ -85,6 +86,7 @@ export function mountGame(root: HTMLElement): void {
   let chosenShip =
     saved === null || saved.daily !== null ? DEFAULT_EXPEDITION_SHIP : saved.config.shipClassId
   const log: LogLine[] = [
+    ...(saved === null ? harborRumor(session.run) : []),
     {
       text: saved === null ? '원정을 떠난다. 방향키로 한 칸씩 움직인다' : '원정을 이어 간다',
       tone: 'info',
@@ -156,7 +158,10 @@ export function mountGame(root: HTMLElement): void {
     if (shipButton !== null && shipClassId !== undefined) {
       chosenShip = shipClassId
       session = startSession(grid, freeConfig(session.run.config.seed, meta, chosenShip), null)
-      pushLines([{ text: `${session.run.shipClass.name}로 떠나기로 한다`, tone: 'info' }])
+      pushLines([
+        { text: `${session.run.shipClass.name}로 떠나기로 한다`, tone: 'info' },
+        ...harborRumor(session.run),
+      ])
       shipButton.blur()
       draw()
       return
@@ -170,7 +175,10 @@ export function mountGame(root: HTMLElement): void {
     const config = daily === null ? freeConfig(freshSeed(), meta, chosenShip) : dailyConfig(daily)
     session = startSession(grid, config, daily)
     log.length = 0
-    pushLines([{ text: `${daily === null ? '자유 원정' : '오늘의 원정'}을 떠난다`, tone: 'info' }])
+    pushLines([
+      { text: `${daily === null ? '자유 원정' : '오늘의 원정'}을 떠난다`, tone: 'info' },
+      ...harborRumor(session.run),
+    ])
     button.blur()
     draw()
   })
@@ -200,7 +208,7 @@ export function mountGame(root: HTMLElement): void {
       pushLines([
         { text: `명성 +${meta.records.at(-1)?.fame ?? 0} — ${fameTitle(meta.fame)}`, tone: 'good' },
         ...newlyLearned.map((language) => ({
-          text: `${LANGUAGE_LABELS[language]}를 익혔다. 그 말을 쓰는 항구에서는 통역료를 내지 않는다`,
+          text: `${LANGUAGE_LABELS[language]}를 익혔다. 그 말을 쓰는 항구에서는 선원을 모으고 소문을 듣는다`,
           tone: 'good' as const,
         })),
       ])
@@ -212,6 +220,19 @@ export function mountGame(root: HTMLElement): void {
   })
   window.addEventListener('resize', draw)
   draw()
+}
+
+/**
+ * 출항 항구에서 들은 소문의 로그. 런을 만들 때의 사건은 명령의 사건이 아니라 따로 낸다 (R74).
+ * 말이 통하지 않는 항구면 아무것도 없다.
+ */
+function harborRumor(run: RunState): LogLine[] {
+  const portId = run.config.startPortId
+  if (!speaksAt(portId, knownLanguages(run.config))) {
+    return []
+  }
+  const line = describeEvent({ type: 'rumor', portId, count: run.rumors.length })
+  return line === null ? [] : [line]
 }
 
 /** 새 원정을 연다. 시작하자마자 저장해 두어 첫 명령 전에 닫아도 같은 계약으로 돌아온다. */

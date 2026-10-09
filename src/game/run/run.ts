@@ -1,4 +1,5 @@
 import { findPort, PORTS, PORT_ANCHORAGES } from '../../content/ports'
+import { LANGUAGE_LABELS } from '../../content/content.types'
 import { findShipClass } from '../../content/ships'
 import { TERRAIN_ZONES } from '../../content/game/terrain-zones'
 import { LAND_POLYGONS } from '../../content/world-land'
@@ -30,7 +31,7 @@ import {
 import type { EastNorth } from '../travel/drift.types'
 import { consumeDay, createSupplies, settleProvisions, trimProvisions } from '../supplies/supplies'
 import type { Provisioned } from '../supplies/supplies.types'
-import { buyGoods, knownLanguages, sellGoods } from '../trade/trade'
+import { buyGoods, knownLanguages, sellGoods, speaksAt } from '../trade/trade'
 import type { Mount, Passage } from '../travel/travel.types'
 import type { Direction } from '../grid/direction.types'
 import type { Command, RunConfig, RunEvent, RunState } from './run.types'
@@ -39,6 +40,38 @@ const PLAYER_ID = 'player'
 
 /** 출발할 때의 뱃머리. 리스본 정박지는 대서양을 향해 열려 있다. */
 const INITIAL_FACING: Direction = 'w'
+
+/**
+ * 말이 통하는 항구에서 그 해역의 조우를 소문으로 듣는다 (R74). 말을 모르면 듣지 못한다.
+ *
+ * 그 항구의 영역에 있는, 아직 보지 못했고 지금도 보이지 않는 조우를 들은 때의 자리로 적는다. 같은 영역의 옛 소문은 새 소문으로 바꾼다 —
+ * 다시 들르면 소식이 새로워진다. 런 상태에서만 나오므로 재현된다 (R8).
+ */
+function hearRumors(run: RunState, portId: string, events: RunEvent[]): void {
+  const cell = run.grid.cellOfPort(portId)
+  if (cell === null || !speaksAt(portId, knownLanguages(run.config))) {
+    return
+  }
+  const region = regionOf(cell)
+  const heard = run.encounters
+    .filter((encounter) => encounter.crew > 0 && sameRegion(regionOf(encounter.cell), region))
+    .filter((encounter) => !run.sighted.has(encounter.id))
+    .filter(
+      (encounter) => !isInSight(run.grid, run.player.cell, run.player.conveyance, encounter.cell),
+    )
+    .map((encounter) => ({
+      encounterId: encounter.id,
+      kind: encounter.kind,
+      crew: encounter.crew,
+      cell: encounter.cell,
+      portId,
+    }))
+  run.rumors = [
+    ...run.rumors.filter((rumor) => !sameRegion(regionOf(rumor.cell), region)),
+    ...heard,
+  ]
+  events.push({ type: 'rumor', portId, count: heard.length })
+}
 
 /** 시뮬 해안선에서 게임 격자를 만든다. 무겁지 않지만 런마다 새로 만들 이유도 없다. */
 export function createWorld(): WorldGrid {
@@ -88,6 +121,7 @@ export function createRun(config: RunConfig, grid: WorldGrid = createWorld()): R
     explored: createExploredMap(grid),
     encounters: spawnEncounters(grid, config.seed, region),
     sighted: new Set(),
+    rumors: [],
     visitedRegions: new Set([regionKey(region)]),
     commands: [],
   }
@@ -97,6 +131,7 @@ export function createRun(config: RunConfig, grid: WorldGrid = createWorld()): R
       run.explored.reveal(cellsInSight(grid, portCell, sightRadiusNm('ship')))
     }
   }
+  hearRumors(run, config.startPortId, [])
   lookAround(run, [])
   return run
 }
@@ -139,6 +174,9 @@ export function applyCommand(run: RunState, command: Command): RunEvent[] {
     ),
   )
   run.encounters = run.encounters.filter((encounter) => encounter.crew > 0)
+  run.rumors = run.rumors.filter((rumor) =>
+    run.encounters.some((encounter) => encounter.id === rumor.encounterId),
+  )
   concludeIfEnded(run, events)
   lookAround(run, events)
   const dayAfter = currentDay(run)
@@ -325,6 +363,7 @@ function lookAround(run: RunState, events: RunEvent[]): void {
     }
     if (isInSight(grid, player.cell, player.conveyance, encounter.cell)) {
       run.sighted.add(encounter.id)
+      run.rumors = run.rumors.filter((rumor) => rumor.encounterId !== encounter.id)
       events.push({
         type: 'sighted',
         encounterId: encounter.id,
@@ -448,6 +487,7 @@ function enterCell(run: RunState, next: Cell, events: RunEvent[]): void {
   if (portId !== null) {
     player.driftNm = NO_DRIFT
     run.dockedPorts.add(portId)
+    hearRumors(run, portId, events)
     events.push({ type: 'dock', portId })
     restock(run, portId, events)
     if (portId === run.config.goalPortId && run.ended === null) {
@@ -522,6 +562,15 @@ function hire(run: RunState, events: RunEvent[]): boolean {
       type: 'rejected',
       command: 'hire',
       reason: '항구에 정박한 배에서만 사람을 모을 수 있다',
+    })
+    return false
+  }
+  if (!speaksAt(portId, knownLanguages(run.config))) {
+    const language = findPort(portId)?.language
+    events.push({
+      type: 'rejected',
+      command: 'hire',
+      reason: `${language === undefined ? '이 항구의 말' : LANGUAGE_LABELS[language]}를 몰라 사람을 모을 수 없다`,
     })
     return false
   }
