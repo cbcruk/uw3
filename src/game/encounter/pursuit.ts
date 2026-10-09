@@ -130,10 +130,11 @@ export function kindOf(encounter: Encounter): EncounterKind {
 }
 
 /**
- * 이 조우가 플레이어에게 덤비려 하는가 (R80).
+ * 이 조우가 플레이어에게 덤비려 하는가 (R80·R83).
  *
- * 사람 무리는 머릿수가 플레이어 무리의 `chaseOdds`배 이상일 때만 쫓고 덮친다. 이미 맞붙은 조우(`rounds` > 0)는
- * 플레이어가 먼저 들이받았더라도 끝까지 싸운다. 짐승은 따지지 않는다.
+ * 사람 무리는 머릿수가 플레이어 무리의 `chaseOdds`배 이상일 때만 쫓고 덮친다. 큰 배만 노리는 무리(`minPreyTons`)는
+ * 배가 그보다 작으면 덤비지 않는다. 이미 맞붙은 조우(`rounds` > 0)는 플레이어가 먼저 들이받았더라도 끝까지 싸운다.
+ * 짐승은 따지지 않는다.
  */
 function willing(context: PursuitContext<unknown>, encounter: Encounter): boolean {
   const { crew, holdTons } = context.target

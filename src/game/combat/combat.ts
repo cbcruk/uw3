@@ -27,7 +27,7 @@ const FOE_BREAK_LOSS: Readonly<Record<EncounterKindId, number>> = {
  * 한 합은 세 단계다 (R76).
  *
  * 1. **견제.** 사상자는 상대 머릿수 × 살상률이다. 배와 배는 `boardingFrontage`만큼만 붙고(R75), 뭍의 사람
- *    무리끼리는 투창만 주고받아 `skirmishLethality`로 거의 죽지 않는다. 해적과 배끼리 맞붙으면 `holingChance`로
+ *    무리끼리는 투창만 주고받아 `skirmishLethality`로 거의 죽지 않는다. 배를 탄 무리와 배끼리 맞붙으면 `holingChance`로
  *    흘수선 아래를 맞아 선체의 `holingShare`를 잃는다 — 머릿수와 상관없다 (R79).
  * 2. **무너짐.** 조우가 먼저, 플레이어가 다음이다. 잃은 몫 ÷ 문턱의 확률로 무너지고, 들이받힌 쪽은
  *    `chargeShock` × 머릿수 비의 제곱이 더해진다. 원정 쪽의 문턱은 바다면 `defenderBreakLoss`, 뭍이면
