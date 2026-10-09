@@ -44,7 +44,7 @@ const INITIAL_FACING: Direction = 'w'
 /**
  * 말이 통하는 항구에서 그 해역의 조우를 소문으로 듣는다 (R74). 말을 모르면 듣지 못한다.
  *
- * 그 항구의 영역에 있는 조우를 들은 때의 자리로 적는다. 같은 영역의 옛 소문은 새 소문으로 바꾼다 —
+ * 그 항구의 영역에 있는, 아직 보지 못했고 지금도 보이지 않는 조우를 들은 때의 자리로 적는다. 같은 영역의 옛 소문은 새 소문으로 바꾼다 —
  * 다시 들르면 소식이 새로워진다. 런 상태에서만 나오므로 재현된다 (R8).
  */
 function hearRumors(run: RunState, portId: string, events: RunEvent[]): void {
@@ -56,6 +56,9 @@ function hearRumors(run: RunState, portId: string, events: RunEvent[]): void {
   const heard = run.encounters
     .filter((encounter) => encounter.crew > 0 && sameRegion(regionOf(encounter.cell), region))
     .filter((encounter) => !run.sighted.has(encounter.id))
+    .filter(
+      (encounter) => !isInSight(run.grid, run.player.cell, run.player.conveyance, encounter.cell),
+    )
     .map((encounter) => ({
       encounterId: encounter.id,
       kind: encounter.kind,

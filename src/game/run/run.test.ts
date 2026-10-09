@@ -7,6 +7,7 @@ import { findShipClass } from '../../content/ships'
 import { toDayNumber } from '../../sim/calendar/calendar'
 import type { ShipClass } from '../../sim/ship/ship.types'
 import { regionKey, regionOf } from '../region/region'
+import { isInSight } from '../fog/fog'
 import { DIRECTIONS } from '../grid/direction'
 import { dailyRangeNm, passageToward, waterRatio } from '../travel/travel'
 import { applyCommand, createRun, createWorld, currentDay, rangeTowardNm, replayRun } from './run'
@@ -792,6 +793,45 @@ describe('어학 — 말이 통하는 항구에서 사람을 모으고 소문을
     expect(run.rumors[0]?.cell).toEqual(heardAt)
     applyCommand(run, { type: 'wait' })
     expect(run.rumors.some((r) => r.encounterId === encounter.id)).toBe(false)
+  })
+
+  it('다시 들으면 그 영역의 옛 소문을 새 소문으로 바꾼다', () => {
+    const run = rumoredRun()
+    const rumor = run.rumors[0] as (typeof run.rumors)[number]
+    const encounter = run.encounters.find((e) => e.id === rumor.encounterId)
+    if (encounter === undefined) {
+      throw new Error('소문의 조우가 없다')
+    }
+    const moved = { x: encounter.cell.x, y: encounter.cell.y + 1 }
+    encounter.cell = moved
+    applyCommand(run, { type: 'move', dir: 's' })
+    applyCommand(run, { type: 'move', dir: 'n' })
+    const heard = run.rumors.find((r) => r.encounterId === encounter.id)
+    expect(run.rumors.filter((r) => r.encounterId === encounter.id).length).toBeLessThanOrEqual(1)
+    if (heard !== undefined) {
+      expect(heard.cell).toEqual(encounter.cell)
+      expect(heard.cell).not.toEqual(rumor.cell)
+    }
+  })
+
+  it('조우가 격자에서 빠지면 보지 않았어도 소문을 지운다', () => {
+    const run = rumoredRun()
+    const rumor = run.rumors[0] as (typeof run.rumors)[number]
+    const encounter = run.encounters.find((e) => e.id === rumor.encounterId)
+    if (encounter === undefined) {
+      throw new Error('소문의 조우가 없다')
+    }
+    encounter.crew = 0
+    applyCommand(run, { type: 'wait' })
+    expect(run.sighted.has(encounter.id)).toBe(false)
+    expect(run.rumors.some((r) => r.encounterId === encounter.id)).toBe(false)
+  })
+
+  it('지금 보이는 조우는 소문으로 세지 않는다', () => {
+    const run = rumoredRun()
+    for (const rumor of run.rumors) {
+      expect(isInSight(grid, run.player.cell, 'ship', rumor.cell)).toBe(false)
+    }
   })
 
   it('말이 통하는 항구에 다시 들어가면 소문을 새로 듣는다', () => {
