@@ -178,7 +178,7 @@ describe('리더보드 순서 — 도착 > 짧은 날수 > 남긴 선원', () =>
 
   it('뭍에서 끝난 원정의 남은 선원은 배 지킴이와 뭍 무리를 더한 것이다', () => {
     const run = createRun(freeConfig(11, createMeta()), grid)
-    run.party = { crew: 5, food: 0, water: 0 }
+    run.party = { crew: 5, food: 0, water: 0, landed: { crew: 5, food: 0, water: 0 } }
     run.supplies.crew = 7
     run.ended = 'surrendered'
     expect(recordOf(run, null)?.crewLeft).toBe(12)

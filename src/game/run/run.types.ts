@@ -132,6 +132,12 @@ export type RunEvent =
   | { type: 'sighted'; encounterId: string; kind: Encounter['kind']; crew: number }
   | PursuitEvent
 
+/** 하선한 뭍 무리. 먹고 마시는 무리이고, 내릴 때의 몫을 기억한다. */
+export interface ShoreParty extends Provisioned {
+  /** 내릴 때의 인원·식량·물. 화면의 막대가 이것을 가득으로 친다 — 배의 정원·상한이 아니다. 규칙에는 쓰지 않는다. */
+  landed: Provisioned
+}
+
 /** 하선 중 항구에 남겨 둔 배. */
 export interface Berth {
   portId: string
@@ -160,7 +166,7 @@ export interface RunState {
    * 하선한 뭍 무리. 내릴 때 식량·물을 머릿수만큼 나눠 들고 간다. 뭍에서 먹고 싸우는 것은 이 무리뿐이고,
    * 배에 남은 선원(`supplies.crew`)은 항구에서 보급받는다 (R69). 배에 있으면 `null`.
    */
-  party: Provisioned | null
+  party: ShoreParty | null
   region: RegionId
   /** 한 번이라도 본 칸. 명령 로그에서 파생되므로 재현하면 같아진다 (R8). */
   explored: ExploredMap

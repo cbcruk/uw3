@@ -235,6 +235,13 @@ function renderStatus(run: RunState): string {
   const { supplies } = run
   const lead = force(run)
   const crewLabel = run.party === null ? '선원' : '뭍 무리'
+  // 뭍 무리는 내릴 때의 몫이 가득이다. 배의 정원·상한으로 재면 절반만 내려도 경고색이 된다.
+  const full = run.party?.landed ?? {
+    crew: run.shipClass.crewMax,
+    food: supplies.capacity,
+    water: supplies.capacity,
+  }
+  const crewFull = full.crew
   const keepers =
     run.party === null
       ? ''
@@ -245,10 +252,10 @@ function renderStatus(run: RunState): string {
       <p>목표 ${describeGoal(run, position)}</p>
     </header>
     <div class="gauges">
-      ${renderGauge(crewLabel, lead.crew, run.shipClass.crewMax, `${lead.crew}/${run.shipClass.crewMax}명`)}
+      ${renderGauge(crewLabel, lead.crew, crewFull, `${lead.crew}/${crewFull}명`)}
       ${renderGauge('선체', supplies.hull, supplies.hullMax, `${supplies.hull}/${supplies.hullMax}`)}
-      ${renderGauge('식량', lead.food, supplies.capacity, lead.food.toLocaleString())}
-      ${renderGauge('물', lead.water, supplies.capacity, lead.water.toLocaleString())}
+      ${renderGauge('식량', lead.food, full.food, lead.food.toLocaleString())}
+      ${renderGauge('물', lead.water, full.water, lead.water.toLocaleString())}
     </div>
     <dl class="readout">
       <div class="readout__wide"><dt>보급</dt><dd>${daysOfSupply(lead, waterRatioOf(run))}일분 · ${CONVEYANCE_LABEL[run.player.conveyance]}${describeWaterRatio(waterRatioOf(run))}</dd></div>

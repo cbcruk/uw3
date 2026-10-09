@@ -501,7 +501,7 @@ function disembark(
   supplies.crew -= size
   supplies.food -= food
   supplies.water -= water
-  run.party = { crew: size, food, water }
+  run.party = { crew: size, food, water, landed: { crew: size, food, water } }
   run.berth = { portId, cell: player.cell }
   player.driftNm = NO_DRIFT
   player.cell = landing
