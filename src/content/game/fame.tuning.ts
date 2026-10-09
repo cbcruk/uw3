@@ -40,9 +40,9 @@ const FAME_SCALARS = {
   interpreterFee: {
     value: 0.1,
     unit: '비',
-    grade: 'unverified',
+    grade: 'qualitative',
     source:
-      '감으로 정함. 말을 모르는 항구에서 중개인·통역에게 떼이는 몫. 세비야 중개인 수수료는 거래 양쪽에 0.5%씩, 합 약 1%(1528년 왕실 평의회, García Ulecia p. 164) — 0.1은 관세까지 얹은 값이어야 맞는다. 마그레브 항구 관세 기록 필요 — docs/sources.md',
+      '하프스 왕조 튀니스에서 기독교 상인의 수입 관세가 10%(피렌체 10.5%, 금·은 5%) — Brunschvig 1947 II, pp. 241–242; 제노바–튀니스 1445 조약 "decem pro centanario"(Mas Latrie 1866). 통역료 자체는 0.5%였다. 값의 크기는 외국 상인이 낯선 항구에서 떼이는 몫으로서 사료가 대고, 그것을 말에 묶은 것(R58)과 사고팔기 양쪽에 거는 것은 게임의 선택이다 — docs/sources.md',
   },
 } as const satisfies Record<string, Tuned>
 

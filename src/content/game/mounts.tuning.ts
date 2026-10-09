@@ -25,9 +25,9 @@ const MOUNT_SCALARS = {
   camelGrassland: {
     value: 18,
     unit: '해리/일',
-    grade: 'unverified',
+    grade: 'qualitative',
     source:
-      '감으로 정함. 초지의 낙타 행정만 따로 잰 사료를 찾지 못했다. 짐 실은 낙타 13~19해리라는 일반 수치는 출처를 확인하지 못했고, 이븐 바투타의 왈라타 → 말리(약 15해리)는 탈것이 불분명하다. 초지 18 < 사막 20은 게임 쪽 선택이다 — docs/sources.md',
+      '랠프 피치 1583(Hakluyt): 트리폴리(시리아) → 알레포 "with the caravan… in seven days" — 약 123해리(현대 대권)/7일 ≈ 17.6해리. 사막이 아닌 대상로다. 이븐 바투타 왈라타 → 말리(약 15해리)와도 맞는다. 초지 18 < 사막 20은 게임 쪽 선택 — docs/sources.md',
   },
   camelDesert: {
     value: 20,
