@@ -32,9 +32,9 @@ const PROVISION_SCALARS = {
   hireWage: {
     value: 11,
     unit: '두카트/명',
-    grade: 'measured',
+    grade: 'qualitative',
     source:
-      "1492년 4월 30일 팔로스 왕명의 'sueldo por cuatro meses' 선급(Navarrete, Colección t. II, Núm. VII) × 선원(marinero) 월급 1,000마라베디(Gould의 1492년 선원 명부 재구성) = 4,000마라베디 ÷ 375 = 10.7두카트 — docs/sources.md",
+      '1492년 팔로스 왕명의 넉 달 선급(Navarrete, Colección t. II, Núm. VII — 임금률은 없다) × 선원 월급 1,000마라베디(Gould의 2차 재구성에서 추론) = 10.7두카트, 계산값. 같은 무렵의 다른 선급은 비스카야 1493년 5.3, 마젤란 1519년 평균 13.0 — 값은 그 범위 안에서 정했다 — docs/sources.md',
   },
   hireHours: internal(
     12,

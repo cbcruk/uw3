@@ -20,14 +20,14 @@ const MOUNT_SCALARS = {
     unit: '해리/일',
     grade: 'qualitative',
     source:
-      "카다모스토(c.1455): 타가자 → 팀북투 'forty days journey on horseback' — 약 788km(현대 지명 간 대권)/40일 ≈ 10.6해리. 일수는 사료, 거리는 현대 지리라 qualitative — docs/sources.md",
+      "카다모스토(c.1455)가 아랍 상인에게 전해 들은 타가자 → 팀북투 'forty days journey on horseback' — 약 788km(현대 지명 간 대권)/40일 ≈ 10.6해리. 전문(傳聞)이고 같은 장의 다른 거리가 틀려 qualitative — docs/sources.md",
   },
   camelGrassland: {
     value: 18,
     unit: '해리/일',
-    grade: 'qualitative',
+    grade: 'unverified',
     source:
-      '짐 실은 낙타 하루 13~19해리(일반 수치). 이븐 바투타 왈라타 → 말리 약 15해리. 사료상 낙타 속도는 지형을 크게 타지 않는다 — 초지 18 < 사막 20의 차이는 게임 쪽 선택이다 — docs/sources.md',
+      '감으로 정함. 초지의 낙타 행정만 따로 잰 사료를 찾지 못했다. 짐 실은 낙타 13~19해리라는 일반 수치는 출처를 확인하지 못했고, 이븐 바투타의 왈라타 → 말리(약 15해리)는 탈것이 불분명하다. 초지 18 < 사막 20은 게임 쪽 선택이다 — docs/sources.md',
   },
   camelDesert: {
     value: 20,
@@ -50,7 +50,7 @@ const MOUNT_WATER_SCALARS = {
     unit: '배',
     grade: 'unverified',
     source:
-      '사료와 크게 어긋난다 — 더운 날 일하는 말은 하루 70L 넘게 마신다(MSD 수의학 매뉴얼, NRC 2007). 말의 물까지 실어 나르면 사람 배급(1.5~2L) 대비 15~60배다. 3배는 말이 날마다 우물에서 마신다는 가정이어야 맞는다 — 어느 쪽인지 정하기 전까지 감으로 정함으로 둔다 — docs/sources.md',
+      '감으로 정함. 설계 가정: 말은 날마다 우물에서 마시고, 원정이 싣고 다니는 물은 사람 몫(더위에 늘어난)뿐이다. 말의 물까지 실어 나르면 사람 배급의 15~60배다(더운 날 말 70L 이상, MSD 수의학 매뉴얼·NRC 2007) — 사막은 낙타만 건넌다는 사료 쪽 결과 대신 말로도 짧게는 들어가게 두었다 — docs/sources.md',
   },
   camelDesertWater: {
     value: 1.5,
