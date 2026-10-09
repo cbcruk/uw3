@@ -77,7 +77,12 @@ export function zoneAt(grid: WorldGrid, kind: EncounterKind, cell: Cell): Encoun
   )
 }
 
-/** 후보 칸을 구역별로 나눈다. 구역 표 순서, 구역 밖은 배율 1로 마지막이다. 빈 무리는 뺀다. */
+/**
+ * 후보 칸을 구역별로 나눈다. 구역 표 순서, 구역 밖은 배율 1로 마지막이다.
+ *
+ * 빈 구역 무리는 빼지만 **구역 밖 무리는 비어도 남긴다.** 후보가 0칸이어도 개수를 정하는 데 난수를
+ * 하나 쓰기 때문이다(`chance(0)`). 빼면 해적 후보가 없는 내륙 영역에서 도적·짐승의 난수가 밀린다.
+ */
 function densityGroups(
   grid: WorldGrid,
   kind: EncounterKind,
@@ -95,7 +100,7 @@ function densityGroups(
   }
   return [...ENCOUNTER_ZONES, null]
     .map((zone) => ({ cells: byZone.get(zone) ?? [], factor: zone?.factor ?? 1 }))
-    .filter((group) => group.cells.length > 0)
+    .filter((group, index, groups) => group.cells.length > 0 || index === groups.length - 1)
 }
 
 function regionCells(grid: WorldGrid, region: RegionId): Cell[] {

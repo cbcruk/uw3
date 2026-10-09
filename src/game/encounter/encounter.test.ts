@@ -76,7 +76,8 @@ describe('조우 생성 — 시드 × 영역만으로 정해진다', () => {
 
   it('대양 한복판 영역의 해적 수는 평균적으로 밀도 표 × 구역 배율을 따른다', () => {
     const expected = ENCOUNTER_DENSITY.pirate * ENCOUNTER_ZONE_FACTOR.openAtlanticPirates
-    expect(piratesPerThousandSea(OPEN_ATLANTIC, 400)).toBeCloseTo(expected, 0)
+    const measured = piratesPerThousandSea(OPEN_ATLANTIC, 400)
+    expect(Math.abs(measured - expected) / expected).toBeLessThan(0.2)
   })
 
   it('사막에는 늑대가 없고 도적은 있다', () => {
@@ -105,5 +106,20 @@ describe('밀도 구역 — 해적은 몰려 있었다', () => {
     const cell = grid.cellOf({ lat: 36, lon: 3 }) as Cell
     expect(pirate && zoneAt(grid, pirate, cell)?.id).toBe('barbary')
     expect(bandit && zoneAt(grid, bandit, cell)).toBeNull()
+  })
+
+  it('구역이 닿지 않는 영역은 구역을 넣기 전과 같은 조우가 나온다 — 해적 후보가 없는 내륙도', () => {
+    // 구역 배율을 넣기 전(main 48c3395)의 결과를 그대로 적어 둔다. 해적 후보가 0칸이어도
+    // 개수를 정하는 데 난수 하나를 쓰므로, 빈 무리를 빼면 도적의 자리가 밀린다 (R67).
+    const spawned = spawnEncounters(grid, 7, SAHARA).map((e) => [
+      e.kind,
+      e.cell.x,
+      e.cell.y,
+      e.crew,
+    ])
+    expect(spawned).toEqual([
+      ['bandit', 735, 398, 18],
+      ['bandit', 753, 360, 26],
+    ])
   })
 })
