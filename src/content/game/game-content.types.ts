@@ -80,3 +80,19 @@ export interface ExpeditionShip {
   shipClassId: string
   minFame: number
 }
+
+/**
+ * 조우 밀도 구역. 위경도 상자 안에서 그 종류의 밀도에 배율을 곱한다.
+ *
+ * 같은 종류의 구역은 겹치지 않는다 — 검증기가 막는다. 겹치면 배율을 곱할지 고를지가 정해져야 한다.
+ */
+export interface EncounterZone {
+  id: string
+  name: string
+  kind: EncounterKindId
+  minLat: number
+  maxLat: number
+  minLon: number
+  maxLon: number
+  factor: number
+}

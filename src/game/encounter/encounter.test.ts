@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { ENCOUNTER_KINDS } from '../../content/game/encounter-kinds'
-import { ENCOUNTER_DENSITY } from '../../content/game/encounters.tuning'
+import { ENCOUNTER_DENSITY, ENCOUNTER_ZONE_FACTOR } from '../../content/game/encounters.tuning'
 import { isWithinNm, sightRadiusNm } from '../fog/fog'
 import type { Cell } from '../grid/world-grid.types'
 import { regionOf } from '../region/region'
 import { createWorld } from '../run/run'
-import { spawnEncounters } from './encounter'
+import { spawnEncounters, zoneAt } from './encounter'
+import { GRID } from '../../content/game/grid.tuning'
 
 const grid = createWorld()
 
@@ -16,6 +17,22 @@ function regionAt(lat: number, lon: number) {
 const OPEN_ATLANTIC = regionAt(30, -40)
 const IBERIA = regionAt(39, -8)
 const SAHARA = regionAt(24, 5)
+const BARBARY = regionAt(36, 3)
+
+/** 영역의 바다 칸 천 개당 해적 수의 평균. 시드 여럿으로 낸다 — 한 시드로는 밀도를 말할 수 없다. */
+function piratesPerThousandSea(region: ReturnType<typeof regionAt>, seeds: number): number {
+  let pirates = 0
+  for (let seed = 0; seed < seeds; seed += 1) {
+    pirates += spawnEncounters(grid, seed, region).filter((e) => e.kind === 'pirate').length
+  }
+  let sea = 0
+  for (let y = region.ry * GRID.regionRows; y < (region.ry + 1) * GRID.regionRows; y += 1) {
+    for (let x = region.rx * GRID.regionCols; x < (region.rx + 1) * GRID.regionCols; x += 1) {
+      sea += grid.terrainAt({ x, y }) === 'sea' ? 1 : 0
+    }
+  }
+  return (pirates / seeds / sea) * 1000
+}
 
 describe('조우 생성 — 시드 × 영역만으로 정해진다', () => {
   it('같은 시드·같은 영역이면 같은 조우가 나온다', () => {
@@ -57,16 +74,9 @@ describe('조우 생성 — 시드 × 영역만으로 정해진다', () => {
     }
   })
 
-  it('대양 한복판 영역의 해적 수는 평균적으로 밀도 표를 따른다', () => {
-    const seeds = 200
-    let pirates = 0
-    for (let seed = 0; seed < seeds; seed += 1) {
-      pirates += spawnEncounters(grid, seed, OPEN_ATLANTIC).filter(
-        (e) => e.kind === 'pirate',
-      ).length
-    }
-    const expected = (2400 * ENCOUNTER_DENSITY.pirate) / 1000
-    expect(pirates / seeds).toBeCloseTo(expected, 0)
+  it('대양 한복판 영역의 해적 수는 평균적으로 밀도 표 × 구역 배율을 따른다', () => {
+    const expected = ENCOUNTER_DENSITY.pirate * ENCOUNTER_ZONE_FACTOR.openAtlanticPirates
+    expect(piratesPerThousandSea(OPEN_ATLANTIC, 400)).toBeCloseTo(expected, 0)
   })
 
   it('사막에는 늑대가 없고 도적은 있다', () => {
@@ -79,5 +89,21 @@ describe('조우 생성 — 시드 × 영역만으로 정해진다', () => {
       bandits += encounters.filter((e) => e.kind === 'bandit').length
     }
     expect(bandits).toBeGreaterThan(0)
+  })
+})
+
+describe('밀도 구역 — 해적은 몰려 있었다', () => {
+  it('바르바리 해안 영역의 바다는 대서양 한가운데보다 해적이 훨씬 짙다', () => {
+    const barbary = piratesPerThousandSea(BARBARY, 200)
+    const atlantic = piratesPerThousandSea(OPEN_ATLANTIC, 200)
+    expect(barbary).toBeGreaterThan(atlantic * 5)
+  })
+
+  it('구역은 그 종류에만 걸린다 — 바르바리 해안의 늑대·도적은 바탕 밀도다', () => {
+    const pirate = ENCOUNTER_KINDS.find((kind) => kind.id === 'pirate')
+    const bandit = ENCOUNTER_KINDS.find((kind) => kind.id === 'bandit')
+    const cell = grid.cellOf({ lat: 36, lon: 3 }) as Cell
+    expect(pirate && zoneAt(grid, pirate, cell)?.id).toBe('barbary')
+    expect(bandit && zoneAt(grid, bandit, cell)).toBeNull()
   })
 })

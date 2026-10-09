@@ -1,6 +1,7 @@
 import { ENCOUNTER_KINDS } from '../../content/game/encounter-kinds'
 import { ENCOUNTER_DENSITY } from '../../content/game/encounters.tuning'
-import type { EncounterKind } from '../../content/game/game-content.types'
+import { ENCOUNTER_ZONES } from '../../content/game/encounter-zones'
+import type { EncounterKind, EncounterZone } from '../../content/game/game-content.types'
 import { GRID } from '../../content/game/grid.tuning'
 import { PORTS } from '../../content/ports'
 import { isWithinNm, sightRadiusNm } from '../fog/fog'
@@ -20,6 +21,9 @@ const CELLS_PER_DENSITY_UNIT = 1000
  * 난수는 `시드 × 영역`에서만 나온다. 어느 길로 들어왔든, 몇 번째로 들어왔든 같은 영역에는
  * 같은 조우가 놓인다 — 데일리 시드에서 모두가 같은 바다를 만나야 하기 때문이다 (R23).
  * 항구에서 배의 시야 안에는 놓지 않는다 (R51) — 출항하자마자 이미 쫓기고 있는 판을 막는다.
+ *
+ * 밀도는 구역마다 배율이 붙는다 (R67). 칸을 구역별로 나눠 따로 세고 따로 뽑는다 — 구역 표 순서대로,
+ * 구역 밖은 마지막에. 구역이 닿지 않는 영역은 무리가 하나뿐이라 배율을 넣기 전과 같은 조우가 나온다.
  */
 export function spawnEncounters(grid: WorldGrid, seed: number, region: RegionId): Encounter[] {
   const key = regionKey(region)
@@ -33,11 +37,14 @@ export function spawnEncounters(grid: WorldGrid, seed: number, region: RegionId)
   const encounters: Encounter[] = []
   for (const kind of ENCOUNTER_KINDS) {
     const candidates = cells.filter((cell) => fits(kind, grid.terrainAt(cell)))
-    const count = stochasticRound(
-      (candidates.length * ENCOUNTER_DENSITY[kind.id]) / CELLS_PER_DENSITY_UNIT,
-      rng,
-    )
-    for (const cell of pickDistinct(candidates, count, rng, grid, taken)) {
+    const picked = densityGroups(grid, kind, candidates).flatMap(({ cells: group, factor }) => {
+      const count = stochasticRound(
+        (group.length * ENCOUNTER_DENSITY[kind.id] * factor) / CELLS_PER_DENSITY_UNIT,
+        rng,
+      )
+      return pickDistinct(group, count, rng, grid, taken)
+    })
+    for (const cell of picked) {
       const crew = rollCrew(kind, rng)
       encounters.push({
         id: `${kind.id}@${key}#${encounters.length}`,
@@ -53,6 +60,42 @@ export function spawnEncounters(grid: WorldGrid, seed: number, region: RegionId)
     }
   }
   return encounters
+}
+
+/** 한 칸의 밀도 구역. 같은 종류의 구역은 겹치지 않으므로 처음 맞는 것이 그 칸의 구역이다. */
+export function zoneAt(grid: WorldGrid, kind: EncounterKind, cell: Cell): EncounterZone | null {
+  const { lat, lon } = grid.cellCenter(cell)
+  return (
+    ENCOUNTER_ZONES.find(
+      (zone) =>
+        zone.kind === kind.id &&
+        lat >= zone.minLat &&
+        lat < zone.maxLat &&
+        lon >= zone.minLon &&
+        lon < zone.maxLon,
+    ) ?? null
+  )
+}
+
+/** 후보 칸을 구역별로 나눈다. 구역 표 순서, 구역 밖은 배율 1로 마지막이다. 빈 무리는 뺀다. */
+function densityGroups(
+  grid: WorldGrid,
+  kind: EncounterKind,
+  candidates: readonly Cell[],
+): { cells: Cell[]; factor: number }[] {
+  const byZone = new Map<EncounterZone | null, Cell[]>()
+  for (const cell of candidates) {
+    const zone = zoneAt(grid, kind, cell)
+    const group = byZone.get(zone)
+    if (group === undefined) {
+      byZone.set(zone, [cell])
+    } else {
+      group.push(cell)
+    }
+  }
+  return [...ENCOUNTER_ZONES, null]
+    .map((zone) => ({ cells: byZone.get(zone) ?? [], factor: zone?.factor ?? 1 }))
+    .filter((group) => group.cells.length > 0)
 }
 
 function regionCells(grid: WorldGrid, region: RegionId): Cell[] {

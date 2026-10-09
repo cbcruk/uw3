@@ -19,6 +19,7 @@ import { TRADE_TABLES } from '../game/trade.tuning'
 import { FAME_TABLES } from '../game/fame.tuning'
 import { findGoodByName } from '../game/goods'
 import { DEFAULT_EXPEDITION_SHIP, EXPEDITION_SHIPS } from '../game/expedition-ships'
+import { ENCOUNTER_ZONES } from '../game/encounter-zones'
 import { TERRAIN_ZONES } from '../game/terrain-zones'
 import { gradeTally, tuningEntries } from '../tuning/tuning'
 import type { SourceGrade, Tuned } from '../tuning/tuning.types'
@@ -432,6 +433,23 @@ const gameLayer: Check = {
       for (const name of port.goods) {
         if (findGoodByName(name) === undefined) {
           findings.push(error('game', `${port.id}의 품목이 교역 표에 없다: ${name}`))
+        }
+      }
+    }
+    // 같은 종류의 밀도 구역이 겹치면 그 칸의 배율이 표 순서에 따라 조용히 갈린다.
+    for (const [i, zone] of ENCOUNTER_ZONES.entries()) {
+      if (zone.minLat >= zone.maxLat || zone.minLon >= zone.maxLon || zone.factor < 0) {
+        findings.push(error('game', `밀도 구역의 경계나 배율이 잘못됐다: ${zone.id}`))
+      }
+      for (const other of ENCOUNTER_ZONES.slice(i + 1)) {
+        const overlaps =
+          zone.kind === other.kind &&
+          zone.minLat < other.maxLat &&
+          other.minLat < zone.maxLat &&
+          zone.minLon < other.maxLon &&
+          other.minLon < zone.maxLon
+        if (overlaps) {
+          findings.push(error('game', `같은 종류의 밀도 구역이 겹친다: ${zone.id} · ${other.id}`))
         }
       }
     }
