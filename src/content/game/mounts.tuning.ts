@@ -27,7 +27,7 @@ const MOUNT_SCALARS = {
     unit: '해리/일',
     grade: 'qualitative',
     source:
-      '랠프 피치 1583(Hakluyt): 트리폴리(시리아) → 알레포 "with the caravan… in seven days" — 약 123해리(현대 대권)/7일 ≈ 17.6해리. 사막이 아닌 대상로다. 이븐 바투타 왈라타 → 말리(약 15해리)와도 맞는다. 초지 18 < 사막 20은 게임 쪽 선택 — docs/sources.md',
+      '랠프 피치 1583(Kerr 1811 판의 Hakluyt 인용을 읽었다): 트리폴리(시리아) → 알레포 "with the caravan… in seven days" — 약 123해리(현대 대권)/7일 ≈ 17.6해리. 사막이 아닌 대상로다. 이븐 바투타 왈라타 → 말리(약 15해리)와도 맞는다. 초지 18 < 사막 20은 게임 쪽 선택 — docs/sources.md',
   },
   camelDesert: {
     value: 20,

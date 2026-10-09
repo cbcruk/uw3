@@ -40,9 +40,9 @@ const FAME_SCALARS = {
   interpreterFee: {
     value: 0.1,
     unit: '비',
-    grade: 'qualitative',
+    grade: 'unverified',
     source:
-      '하프스 왕조 튀니스에서 기독교 상인의 수입 관세가 10%(피렌체 10.5%, 금·은 5%) — Brunschvig 1947 II, pp. 241–242; 제노바–튀니스 1445 조약 "decem pro centanario"(Mas Latrie 1866). 통역료 자체는 0.5%였다. 값의 크기는 외국 상인이 낯선 항구에서 떼이는 몫으로서 사료가 대고, 그것을 말에 묶은 것(R58)과 사고팔기 양쪽에 거는 것은 게임의 선택이다 — docs/sources.md',
+      '감으로 정함. 말을 모르는 항구에서 떼이는 몫. 크기 10%는 하프스 튀니스에서 기독교 상인이 낸 수입 관세와 같다(Brunschvig 1947 II, pp. 241–242; 제노바–튀니스 1445 조약, Mas Latrie 1866) — 그러나 그것은 말이 아니라 신앙·국적에 걸린 수입 관세이고 수출은 면세였다. 통역료 자체는 0.5%. 게임의 뜻(말에 묶이고 사고팔기 양쪽)에 맞는 사료가 필요하다 — docs/sources.md',
   },
 } as const satisfies Record<string, Tuned>
 
