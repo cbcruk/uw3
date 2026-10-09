@@ -32,6 +32,22 @@ describe('계약 — 시드에서 출발·목표·달이 갈린다', () => {
     }
   })
 
+  it('모든 항구가 출발과 목표로 뽑힌다 — 남쪽 항로의 항구도 계약에 든다', () => {
+    const starts = new Set<string>()
+    const goals = new Set<string>()
+    for (let seed = 0; seed < 500; seed += 1) {
+      const contract = contractFor(seed)
+      starts.add(contract.startPortId)
+      goals.add(contract.goalPortId)
+    }
+    const ids = PORTS.map((port) => port.id)
+    expect([...starts].sort()).toEqual([...ids].sort())
+    expect([...goals].sort()).toEqual([...ids].sort())
+    expect(ids).toEqual(
+      expect.arrayContaining(['funchal', 'las-palmas', 'arguim', 'ribeira-grande']),
+    )
+  })
+
   it('데일리는 날짜에서만 나오고 메타를 들고 가지 않는다', () => {
     expect(dailyKey(new Date(Date.UTC(2026, 9, 8, 23)))).toBe('2026-10-08')
     expect(dailyConfig('2026-10-08')).toEqual(dailyConfig('2026-10-08'))
