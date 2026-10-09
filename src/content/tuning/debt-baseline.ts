@@ -17,8 +17,11 @@ export const DEBT_BASELINE: Readonly<Record<SourceGrade, number>> = {
    * 58 → 59: 압류 구조를 넣으며 `referenceWindKnots`가 붙었다 (SHAPE P9).
    * 새 물리를 넣으면 확인할 것도 같이 는다 — 그것이 정상이고, 줄여야 할 것은
    * 비율이지 절대수가 아니다.
+   *
+   * 59 → 61: `world.ts`에 박혀 집계에 없던 `supplyPerTon`·`resupplyCostPerUnit`을 표로 옮겼다 (#48).
+   * 새로 감으로 정한 값이 아니라 원래 있던 부채가 보이게 된 것이다.
    */
-  unverified: 59,
+  unverified: 61,
   /**
    * 확인 대상이 아닌 값. 이 수도 **늘어나면 안 된다**.
    *

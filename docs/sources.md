@@ -100,5 +100,10 @@ Ladero(1999), Melis를 열었다. 다섯 품목 모두 1480–1530의 무게당 
 
 ## 시뮬 쪽
 
-시뮬(`src/sim/world/world.ts`)의 `RESUPPLY_COST_PER_UNIT` 0.4는 게임 표와 따로 있는 상수이고 등급이 없다. 사료로는 게임과 같이
-약 0.016이다. 시뮬의 표로 옮겨 등급을 다는 일은 시뮬 표 대조 때 한다.
+시뮬(`src/sim/world/world.ts`)에 박혀 있던 `RESUPPLY_COST_PER_UNIT` 0.4와 `SUPPLY_PER_TON` 18을 `content/tuning/supply.tuning.ts`로 옮겨
+시뮬 부채 집계에 넣었다(#48, `unverified` 59 → 61). 값은 그대로다 — 둘 다 게임 쪽 사료와 뜻이 달라 등급을 올리지 않았다.
+
+- `resupplyCostPerUnit` 0.4 — 식량·물과 함께 목재를 사고 선체 수리를 공짜로 얹는다. 게임의 `provisionPrice` 0.016(식량·물 인일만)을 그대로 쓸 수 없다
+- `supplyPerTon` 18 — 마젤란 함대(1519)는 식량만 한 토넬에 약 370인일을 실었다(두 해치, 물 통의 날수는 사료에 없고 토넬·톤 환산은 미확인). 게임의 버틸 날수가 이 값에 서 있어 바꾸려면 균형을 함께 본다
+
+같은 `world.ts`의 목재 상한 120(출항·보급)과 탄약 60도 박혀 있다. 시뮬 표 대조 때 함께 옮긴다.
