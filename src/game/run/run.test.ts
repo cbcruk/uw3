@@ -696,25 +696,28 @@ describe('뭍 무리 — 하선한 인원만 뭍에서 먹고 싸운다', () => 
   })
 
   it('한 합에 선원과 선체가 함께 바닥나면 crew-lost다', () => {
-    const run = createRun(CONFIG, grid)
-    run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell
-    Object.assign(run.supplies, { crew: 1, hull: 1 })
-    run.encounters = [
-      {
-        id: 'pirate-test',
-        kind: 'pirate',
-        cell: { x: run.player.cell.x + 1, y: run.player.cell.y },
-        crew: 400,
-        crewAtStart: 400,
-        conveyance: 'ship',
-        nextActHours: 0,
-        rounds: 0,
-        chasing: true,
-      },
-    ]
-    applyCommand(run, { type: 'wait' })
-    expect(run.supplies).toMatchObject({ crew: 0, hull: 0 })
-    expect(run.ended).toBe('crew-lost')
+    // 흘수선 아래를 맞는 합은 드물다(R79). 선원과 선체가 한 합에 함께 바닥나는 조우 id를 찾는다.
+    const both = Array.from({ length: 500 }, (_, i) => {
+      const run = createRun(CONFIG, grid)
+      run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell
+      Object.assign(run.supplies, { crew: 1, hull: 1 })
+      run.encounters = [
+        {
+          id: `pirate-${i}`,
+          kind: 'pirate',
+          cell: { x: run.player.cell.x + 1, y: run.player.cell.y },
+          crew: 400,
+          crewAtStart: 400,
+          conveyance: 'ship',
+          nextActHours: 0,
+          rounds: 0,
+          chasing: true,
+        },
+      ]
+      applyCommand(run, { type: 'wait' })
+      return run
+    }).find((run) => run.supplies.crew === 0 && run.supplies.hull === 0)
+    expect(both?.ended).toBe('crew-lost')
   })
 
   it('뭍에서 싸우는 것은 뭍 무리뿐이다', () => {

@@ -55,7 +55,6 @@ Andrews · Tenenti)은 읽지 못했다.
 | `cork` · `gum-arabic` | 코르크는 세 번 찾았으나 1566·1574 잉글랜드 값뿐이다. 아라비아고무는 런던 세관 1567–68 값(검색 요약)뿐이다                                                                | prices-2 · prices-3                         |
 | `tributeGold`         | 배 위에서 몸값을 치르고 놓여나는 관행은 확인했다(Lambert 2023) — 금액 기록이 없다                                                                                        | [ransom-2](research/2026-10-09/ransom-2.md) |
 | `plunderGold`         | 사로잡은 해적을 팔면 한 명 약 75–100두카트(나폴리 1575·1585 갤리 노예 평가, Filioli Uranio 2020). 사로잡는 비율이 가정이라 쓰지 않았다                                   | ransom-2                                    |
-| `pirateHullDamage`    | Centurion호(1591)의 피해는 스페인 갤리의 포에서 왔다. 승원 수에 비례하는 피해의 근거가 없다                                                                              | combat                                      |
 | `horseDesertWater`    | 설계 가정 — 아래 2번                                                                                                                                                     | mounts §5                                   |
 
 카디스 1485–86 장부로 보면 포도주 18은 높은 쪽일 수 있다(카디스 7.5).
@@ -73,9 +72,10 @@ Andrews · Tenenti)은 읽지 못했다.
 ### 네 번째 조사 — 바꾼 값 없음
 
 전투([combat-3](research/2026-10-09/combat-3.md))는 Haedo(1612), 아르실라 연대기, Zurara의 『기네 연대기』, Hasleton(1595)을 더 열고, Hakluyt 전권과 Dan을 검색해 해당 대목을 읽었다.
-다섯 값(`defenderBreakLoss` `pirateHullDamage` `tributeGold` `chargeShock` `surpriseFactor`) 모두 사료가 재는 양이 게임 값과 같지 않아 `unverified`로 둔다.
+다섯 값(`defenderBreakLoss` `pirateHullDamage`(지금은 `holingChance`·`holingShare`) `tributeGold` `chargeShock` `surpriseFactor`) 모두 사료가 재는 양이 게임 값과 같지 않아 `unverified`로 둔다.
 대신 구조 문제가 둘 나왔다 — 원정 쪽은 뭍에서 약탈대처럼 일찍 무너졌고, 바다에서 노예가 될 처지의 선원은 머릿수 손실로는 잘 무너지지 않았다(지휘관이나
-선체를 잃을 때 무너졌다). 선체 피해는 포에서 와서 "수십 발을 버팀 / 흘수선 아래를 맞아 침몰"로 갈렸다. #39로 남겼다.
+선체를 잃을 때 무너졌다). 선체 피해는 포에서 와서 "수십 발을 버팀 / 흘수선 아래를 맞아 침몰"로 갈렸다. #39로 남겼고 SPEC-roguelike §32(R79)에서 넣었다 —
+`pirateHullDamage`는 `holingChance`·`holingShare`로 바뀌었다.
 
 품목([prices-4](research/2026-10-09/prices-4.md))은 『카보베르데 통사 — 문서집』 1–2권(산티아구 1513–16 회계), Godinho, 『발렌팅 페르난드스 코덱스』,
 Ladero(1999), Melis를 열었다. 다섯 품목 모두 1480–1530의 무게당 값이 없다. 산티아구 1514 관세 평가의 소가죽 한 장 100헤이스(무게 없음)와
@@ -84,7 +84,7 @@ Ladero(1999), Melis를 열었다. 다섯 품목 모두 1480–1530의 무게당 
 
 ## 근거를 찾지 못한 것
 
-살상률(`playerLethality` `pirateLethality` `beastLethality`) — 승선전 기록은 공격 측 사망자를 세지 않았다. `skirmishLethality` — 기마전 사례는 몇 시간에 0–1명이라 0.001보다 낮을 수도 있다. `chargeShock` `surpriseFactor` — 무너짐의 계기(돌격·매복)는 서술뿐이다. `beastBreakLoss` — 늑대 무리의 기록이 없다. `defenderBreakLoss` — 방어 측이 무너진 손실 비율의 기록이 없다. `tributeDays` — 늑대는
+살상률(`playerLethality` `pirateLethality` `beastLethality`) — 승선전 기록은 공격 측 사망자를 세지 않았다. `skirmishLethality` — 기마전 사례는 몇 시간에 0–1명이라 0.001보다 낮을 수도 있다. `chargeShock` `surpriseFactor` — 무너짐의 계기(돌격·매복)는 서술뿐이다. `beastBreakLoss` — 늑대 무리의 기록이 없다. `holingChance` `holingShare` — 흘수선 아래를 맞은 사례만 기록에 남아 비율이 없다. `defenderBreakLoss` — 방어 측이 무너진 손실 비율의 기록이 없다. `tributeDays` — 늑대는
 보급을 가져가지 않아 대응물이 없을 수 있다.
 
 ## 사료와 크게 어긋나 결정한 것

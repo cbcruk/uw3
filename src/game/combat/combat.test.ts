@@ -58,17 +58,21 @@ describe('한 합 — 머릿수가 곧 공격력이다', () => {
     expect(supplies.crew + (round?.type === 'combat' ? round.crewLost : 0)).toBe(32)
   })
 
-  it('해적만 배의 선체를 깎는다. 뭍에서는 선체가 그대로다', () => {
-    const hullLost = (kind: Encounter['kind'], conveyance: 'ship' | 'horse') =>
-      trials(20, (seed) => {
+  it('해적만 배의 선체를 깎는다. 흘수선 아래를 맞을 때만, 머릿수와 상관없이 같은 몫이다 (R79)', () => {
+    const hullLost = (kind: Encounter['kind'], crew: number, conveyance: 'ship' | 'horse') =>
+      trials(300, (seed) => {
         const supplies = createSupplies(shipClass)
-        const enemy = { ...foe(kind, 40), id: `${kind}-${seed}` }
+        const enemy = { ...foe(kind, crew), id: `${kind}-${seed}` }
         fightRound({ seed, supplies, conveyance, foe: enemy, initiated: false })
         return shipClass.hullPoints - supplies.hull
-      }).reduce((sum, lost) => sum + lost, 0)
-    expect(hullLost('pirate', 'ship')).toBeGreaterThan(0)
-    expect(hullLost('bandit', 'horse')).toBe(0)
-    expect(hullLost('pirate', 'horse')).toBe(0)
+      })
+    const holing = Math.ceil(shipClass.hullPoints * COMBAT.holingShare)
+    const small = hullLost('pirate', 20, 'ship')
+    expect(small.some((lost) => lost === holing)).toBe(true)
+    expect(small.every((lost) => lost === 0 || lost === holing)).toBe(true)
+    expect(hullLost('pirate', 200, 'ship')).toEqual(small)
+    expect(hullLost('bandit', 40, 'horse').every((lost) => lost === 0)).toBe(true)
+    expect(hullLost('pirate', 40, 'horse').every((lost) => lost === 0)).toBe(true)
   })
 
   it('작은 무리는 무너지고, 큰 해적에게는 원정 쪽이 무너진다', () => {
@@ -256,5 +260,49 @@ describe('사료의 사례 — 견제는 거의 죽이지 않고, 손실은 무�
     }).filter((e): e is Extract<CombatEvent, { type: 'routed' }> => e?.type === 'routed')
     expect(routs.length).toBeGreaterThan(0)
     expect(routs.every((e) => e.lost === 0 && e.captured === 0)).toBe(true)
+  })
+})
+
+describe('원정 쪽의 문턱 — 뭍은 일찍, 바다는 선원이나 선체로 (R79)', () => {
+  function brokeAt(
+    conveyance: 'ship' | 'horse',
+    setup: (supplies: ReturnType<typeof createSupplies>) => void,
+    opposedHull?: number,
+  ) {
+    return trials(100, (seed) => {
+      const supplies = createSupplies(shipClass)
+      const kind = conveyance === 'ship' ? 'pirate' : 'bandit'
+      const enemy = { ...foe(kind, 200), id: `${kind}-${seed}`, opposedCrew: 400, opposedHull }
+      setup(supplies)
+      // 조우가 들이받는 합이라 조우는 손실로만 무너진다. 조우가 먼저 무너지는 몇 시드만 원정 쪽 판정을 가린다.
+      return fightRound({ seed, supplies, conveyance, foe: enemy, initiated: false }).some(
+        (e) => e.type === 'broken',
+      )
+    }).filter(Boolean).length
+  }
+
+  it('뭍에서 약탈대 문턱만큼 잃은 무리는 무너진다. 바다에서는 대개 버틴다', () => {
+    const lost = (supplies: ReturnType<typeof createSupplies>) => {
+      supplies.crew = Math.floor(400 * (1 - COMBAT.raiderBreakLoss)) - 1
+    }
+    expect(brokeAt('horse', lost)).toBeGreaterThan(90)
+    expect(brokeAt('ship', lost)).toBeLessThan(60)
+  })
+
+  it('바다에서는 이 싸움에서 선체를 문턱만큼 잃어도 무너진다', () => {
+    const holed = (supplies: ReturnType<typeof createSupplies>) => {
+      supplies.crew = 400
+      supplies.hull = Math.floor(supplies.hullMax * (1 - COMBAT.defenderBreakLoss)) - 1
+    }
+    expect(brokeAt('ship', holed, shipClass.hullPoints)).toBeGreaterThan(90)
+    expect(brokeAt('ship', (supplies) => (supplies.crew = 400))).toBeLessThan(60)
+  })
+
+  it('앞선 싸움에서 맞은 구멍은 이번 싸움의 선원을 흔들지 않는다', () => {
+    const scarred = (supplies: ReturnType<typeof createSupplies>) => {
+      supplies.crew = 400
+      supplies.hull = Math.floor(supplies.hullMax * (1 - COMBAT.defenderBreakLoss)) - 1
+    }
+    expect(brokeAt('ship', scarred)).toBeLessThan(60)
   })
 })

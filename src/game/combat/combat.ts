@@ -25,9 +25,11 @@ const FOE_BREAK_LOSS: Readonly<Record<EncounterKindId, number>> = {
  * 한 합은 세 단계다 (R76).
  *
  * 1. **견제.** 사상자는 상대 머릿수 × 살상률이다. 배와 배는 `boardingFrontage`만큼만 붙고(R75), 뭍의 사람
- *    무리끼리는 투창만 주고받아 `skirmishLethality`로 거의 죽지 않는다. 해적은 배를 탄 플레이어의 선체도 깎는다.
+ *    무리끼리는 투창만 주고받아 `skirmishLethality`로 거의 죽지 않는다. 해적과 배끼리 맞붙으면 `holingChance`로
+ *    흘수선 아래를 맞아 선체의 `holingShare`를 잃는다 — 머릿수와 상관없다 (R79).
  * 2. **무너짐.** 조우가 먼저, 플레이어가 다음이다. 잃은 몫 ÷ 문턱의 확률로 무너지고, 들이받힌 쪽은
- *    `chargeShock` × 머릿수 비가 더해진다. 알아채지 못한 조우의 첫 합은 `surpriseFactor`배다.
+ *    `chargeShock` × 머릿수 비의 제곱이 더해진다. 원정 쪽의 문턱은 바다면 `defenderBreakLoss`, 뭍이면
+ *    약탈대와 같은 `raiderBreakLoss`이고, 바다에서는 선원과 선체 중 많이 잃은 쪽을 센다 (R79). 알아채지 못한 조우의 첫 합은 `surpriseFactor`배다.
  *    플레이어는 사람 무리에게만 무너진다 — 늑대는 들이받지 않는다.
  * 3. **추격.** 뭍에서 무너진 쪽은 남은 머릿수 × `pursuitLoss`를 더 잃고, 그 `captureShare`가 포로다.
  *    바다에서 무너진 해적은 제 배로 물러날 뿐이다. 바다에서 무너진 플레이어는 배를 빼앗긴다 — 끝은 런이 정한다.
@@ -38,7 +40,7 @@ const FOE_BREAK_LOSS: Readonly<Record<EncounterKindId, number>> = {
 export function fightRound(options: {
   seed: number
   /** 싸우는 무리. 배라면 선체도 깎인다 — 뭍 무리에는 선체가 없다. */
-  supplies: Provisioned & { hull?: number }
+  supplies: Provisioned & { hull?: number; hullMax?: number }
   conveyance: Conveyance
   foe: Encounter
   initiated: boolean
@@ -48,6 +50,7 @@ export function fightRound(options: {
   const surprised = initiated && foe.rounds === 0 && !foe.chasing
   foe.rounds += 1
   foe.opposedCrew ??= supplies.crew
+  foe.opposedHull ??= supplies.hull
 
   const atSea = foe.conveyance === 'ship' && conveyance === 'ship'
   const skirmish = foe.kind !== 'beast' && foe.conveyance !== 'ship' && conveyance !== 'ship'
@@ -57,9 +60,11 @@ export function fightRound(options: {
   const playerLethality = skirmish ? COMBAT.skirmishLethality : COMBAT.playerLethality
   const crewLost = Math.min(supplies.crew, casualties(foeFighting * FOE_LETHALITY[foe.kind], rng))
   const foeLost = Math.min(foe.crew, casualties(playerFighting * playerLethality, rng))
+  const { hull, hullMax } = supplies
+  const shelled = foe.kind === 'pirate' && atSea && hull !== undefined && hullMax !== undefined
   const hullLost =
-    foe.kind === 'pirate' && conveyance === 'ship' && supplies.hull !== undefined
-      ? Math.min(supplies.hull, casualties(foeFighting * COMBAT.pirateHullDamage, rng))
+    shelled && rng.chance(COMBAT.holingChance)
+      ? Math.min(hull, Math.ceil(hullMax * COMBAT.holingShare))
       : 0
 
   supplies.crew -= crewLost
@@ -93,6 +98,7 @@ export function fightRound(options: {
     breakChance({
       crew: foe.crew,
       crewAtStart: foe.crewAtStart,
+      hullShare: 0,
       breakLoss: FOE_BREAK_LOSS[foe.kind],
       charger: initiated ? playerFighting / foeFighting : null,
       surprised,
@@ -104,7 +110,8 @@ export function fightRound(options: {
       breakChance({
         crew: supplies.crew,
         crewAtStart: foe.opposedCrew,
-        breakLoss: COMBAT.defenderBreakLoss,
+        hullShare: atSea ? lostShare(foe.opposedHull, supplies.hull) : 0,
+        breakLoss: conveyance === 'ship' ? COMBAT.defenderBreakLoss : COMBAT.raiderBreakLoss,
         charger: initiated || atSea ? null : foeFighting / playerFighting,
         surprised: false,
       }),
@@ -146,21 +153,31 @@ export function fightRound(options: {
 /**
  * 한 무리가 이번 합에 무너질 확률.
  *
- * 잃은 몫이 문턱에 닿으면 1이다. 들이받혔으면 상대 머릿수 ÷ 자기 머릿수 × `chargeShock`가 더해진다 —
+ * 잃은 몫이 문턱에 닿으면 1이다. 들이받혔으면 (상대 머릿수 ÷ 자기 머릿수)² × `chargeShock`가 더해진다 —
  * 수가 많은 쪽에게 받힌 무리는 손실 없이도 무너진다.
  */
 function breakChance(side: {
   crew: number
   crewAtStart: number
+  /** 잃은 선체의 몫. 바다의 원정 쪽만 센다 — 선원과 선체 중 많이 잃은 쪽이 무너짐을 정한다 (R79). */
+  hullShare: number
   breakLoss: number
   /** 이번 합에 이쪽을 들이받았다면 합 전에 싸우던 머릿수의 비(들이받은 쪽 ÷ 이쪽). 받지 않았으면 `null`. */
   charger: number | null
   surprised: boolean
 }): number {
-  const lossRatio = Math.max(0, side.crewAtStart - side.crew) / side.crewAtStart
+  const crewShare = Math.max(0, side.crewAtStart - side.crew) / side.crewAtStart
+  const lossRatio = Math.max(crewShare, side.hullShare)
   const shock = side.charger === null ? 0 : COMBAT.chargeShock * side.charger ** 2
   const chance = (lossRatio / side.breakLoss + shock) * (side.surprised ? COMBAT.surpriseFactor : 1)
   return Math.min(1, chance)
+}
+
+/** 싸움을 시작할 때보다 잃은 선체의 몫. 선체가 없거나 처음부터 0이면 0이다 (R79). */
+function lostShare(atStart: number | undefined, now: number | undefined): number {
+  return atStart === undefined || now === undefined || atStart <= 0
+    ? 0
+    : Math.max(0, atStart - now) / atStart
 }
 
 /** 기댓값을 운으로 흔들고 정수로 만든다. 소수 몫은 확률로 올린다 — 작은 무리도 피해를 낸다. */
