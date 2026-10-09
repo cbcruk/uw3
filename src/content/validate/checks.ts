@@ -18,6 +18,7 @@ import { PROVISION_TABLES } from '../game/provisions.tuning'
 import { SIGHT_TABLES } from '../game/sight.tuning'
 import { TRADE_TABLES } from '../game/trade.tuning'
 import { FAME_TABLES } from '../game/fame.tuning'
+import { REPAIR_TABLES } from '../game/repair.tuning'
 import { findGoodByName } from '../game/goods'
 import { DEFAULT_EXPEDITION_SHIP, EXPEDITION_SHIPS } from '../game/expedition-ships'
 import { ENCOUNTER_ZONES } from '../game/encounter-zones'
@@ -58,6 +59,7 @@ const GAME_SCALAR_TABLES = [
   ...COMBAT_TABLES,
   ...TRADE_TABLES,
   ...FAME_TABLES,
+  ...REPAIR_TABLES,
 ]
 const GAME_TUNED: readonly Tuned<unknown>[] = tuningEntries(GAME_SCALAR_TABLES)
 

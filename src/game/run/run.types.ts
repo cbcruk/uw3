@@ -70,6 +70,8 @@ export type Command =
   | { type: 'disembark'; mount: Mount; crew?: number }
   | { type: 'embark' }
   | { type: 'hire' }
+  /** 조선소가 있는 항구에서 선체를 고친다 (R84). */
+  | { type: 'repair' }
   | { type: 'tribute' }
   | { type: 'surrender' }
   | { type: 'buy'; goodId: GoodId; tons: number }
@@ -107,6 +109,7 @@ export type RunEvent =
       short: boolean
     }
   | { type: 'hire'; portId: string; hired: number; wage: number }
+  | { type: 'repair'; portId: string; points: number; gold: number }
   | {
       type: 'trade'
       portId: string

@@ -11,6 +11,7 @@ import { actEncounters, canStrike, kindOf, willingAgainst } from '../encounter/p
 import { payRansom } from '../combat/ransom'
 import { fightRound } from '../combat/combat'
 import { COMBAT } from '../../content/game/combat.tuning'
+import { REPAIR } from '../../content/game/repair.tuning'
 import { PROVISION } from '../../content/game/provisions.tuning'
 import { cellsInSight, createExploredMap, isInSight, sightRadiusNm } from '../fog/fog'
 import { DIRECTIONS } from '../grid/direction'
@@ -441,6 +442,8 @@ function resolveCommand(run: RunState, command: Command, events: RunEvent[]): bo
       return embark(run, events)
     case 'hire':
       return hire(run, events)
+    case 'repair':
+      return repair(run, events)
     case 'tribute':
       return tribute(run, events)
     case 'surrender':
@@ -592,6 +595,44 @@ function disembark(
   player.cell = landing
   player.conveyance = mount
   events.push({ type: 'disembark', mount, portId, crew: size })
+  return true
+}
+
+/**
+ * 조선소가 있는 항구에서 선체를 고친다. 한 점마다 `repairGoldPerPoint`를 내고, 금화가 모자라면 낼 수 있는 만큼만 고친다.
+ *
+ * 걸리는 시간은 고친 몫에 비례한다(`repairHoursPerPoint`). 조선소가 없는 항구에서는 고칠 수 없다 — 먼 바다에서 맞은 배는
+ * 돌아와야 한다 (R84).
+ */
+function repair(run: RunState, events: RunEvent[]): boolean {
+  const portId = dockedPortId(run)
+  const reject = (reason: string): false => {
+    events.push({ type: 'rejected', command: 'repair', reason })
+    return false
+  }
+  if (portId === null) {
+    return reject('항구에 정박한 배만 고칠 수 있다')
+  }
+  if (!(findPort(portId)?.facilities.includes('shipyard') ?? false)) {
+    return reject('이 항구에는 조선소가 없다')
+  }
+  const wanted = run.supplies.hullMax - run.supplies.hull
+  if (wanted <= 0) {
+    return reject('선체가 멀쩡하다')
+  }
+  let points = Math.min(wanted, Math.floor(run.supplies.gold / REPAIR.repairGoldPerPoint))
+  // 값을 올림하므로 낼 수 있는 점수를 한 번 더 깎을 수 있다 — 가진 금화보다 더 내지 않는다.
+  while (points > 0 && Math.ceil(points * REPAIR.repairGoldPerPoint) > run.supplies.gold) {
+    points -= 1
+  }
+  if (points <= 0) {
+    return reject(`금화가 모자라다 (한 점 ${REPAIR.repairGoldPerPoint}두카트)`)
+  }
+  const gold = Math.ceil(points * REPAIR.repairGoldPerPoint)
+  run.supplies.hull += points
+  run.supplies.gold -= gold
+  run.elapsedHours += points * REPAIR.repairHoursPerPoint
+  events.push({ type: 'repair', portId, points, gold })
   return true
 }
 
