@@ -610,7 +610,12 @@ describe('뭍 무리 — 하선한 인원만 뭍에서 먹고 싸운다', () => 
     const { run, before, events } = ashore(10)
     const food = Math.floor((before.food * 10) / before.crew)
     expect(eventsOf(events, 'disembark')[0]?.crew).toBe(10)
-    expect(run.party).toEqual({ crew: 10, food, water: food })
+    expect(run.party).toEqual({
+      crew: 10,
+      food,
+      water: food,
+      landed: { crew: 10, food, water: food },
+    })
     expect(run.supplies).toMatchObject({ crew: before.crew - 10, food: before.food - food })
   })
 
