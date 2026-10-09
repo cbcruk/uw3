@@ -27,7 +27,7 @@ const PROVISION_SCALARS = {
     unit: '두카트/단위',
     grade: 'measured',
     source:
-      "1493년 비스카야 함대 계약: 'un ducado cada mes ... que sale á doce maravedís una persona cada dia'(Navarrete, Colección t. II, Núm. LV, p. 93) — 한 사람 하루 12마라베디 = 0.032두카트. 게임은 하루치를 식량·물 두 단위로 사므로 한 단위 0.016. 마젤란 1519 장부로는 약 0.024(1인·일) — docs/sources.md",
+      "1493년 비스카야 함대 계약: 'un ducado cada mes ... que sale á doce maravedís una persona cada dia'(Navarrete, Colección t. II, Núm. LV, p. 93) — 한 사람 하루 12마라베디 = 0.032두카트(문서의 환산 360으로는 0.033). 연안 함대 병사가 현물 대신 받던 식비 수당이다. 총액은 사료의 값이고, 식량·물 두 단위로 반씩 나눈 것은 게임의 가정이다(물 자체는 공짜였고 통이 마젤란 보급비의 약 25%) — docs/sources.md",
   },
   hireWage: {
     value: 11,
