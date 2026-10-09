@@ -620,7 +620,11 @@ function repair(run: RunState, events: RunEvent[]): boolean {
   if (wanted <= 0) {
     return reject('선체가 멀쩡하다')
   }
-  const points = Math.min(wanted, Math.floor(run.supplies.gold / REPAIR.repairGoldPerPoint))
+  let points = Math.min(wanted, Math.floor(run.supplies.gold / REPAIR.repairGoldPerPoint))
+  // 값을 올림하므로 낼 수 있는 점수를 한 번 더 깎을 수 있다 — 가진 금화보다 더 내지 않는다.
+  while (points > 0 && Math.ceil(points * REPAIR.repairGoldPerPoint) > run.supplies.gold) {
+    points -= 1
+  }
   if (points <= 0) {
     return reject(`금화가 모자라다 (한 점 ${REPAIR.repairGoldPerPoint}두카트)`)
   }

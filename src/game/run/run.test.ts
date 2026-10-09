@@ -584,9 +584,11 @@ describe('선체 수리 — 조선소가 있는 항구에서만 고친다 (R84)'
   it('금화가 모자라면 낼 수 있는 만큼만 고친다', () => {
     const run = createRun(CONFIG, grid)
     run.supplies.hull -= 10
-    run.supplies.gold = REPAIR.repairGoldPerPoint * 3
+    run.supplies.gold = Math.ceil(REPAIR.repairGoldPerPoint * 3)
     expect(eventsOf(applyCommand(run, { type: 'repair' }), 'repair')[0]?.points).toBe(3)
     expect(run.supplies.hull).toBe(run.supplies.hullMax - 7)
+    expect(run.supplies.gold).toBeGreaterThanOrEqual(0)
+    expect(eventsOf(applyCommand(run, { type: 'repair' }), 'rejected')).toHaveLength(1)
   })
 
   it('조선소가 없는 항구와 바다에서는 고칠 수 없다', () => {
@@ -597,6 +599,18 @@ describe('선체 수리 — 조선소가 있는 항구에서만 고친다 (R84)'
     atSea.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell
     atSea.supplies.hull -= 10
     expect(eventsOf(applyCommand(atSea, { type: 'repair' }), 'rejected')).toHaveLength(1)
+    const ashore = createRun(CONFIG, grid)
+    ashore.supplies.hull -= 10
+    applyCommand(ashore, { type: 'disembark', mount: 'horse', crew: 5 })
+    expect(eventsOf(applyCommand(ashore, { type: 'repair' }), 'rejected')).toHaveLength(1)
+  })
+
+  it('금화가 정수가 아니어도 가진 것보다 더 내지 않는다', () => {
+    const run = createRun(CONFIG, grid)
+    run.supplies.hull -= 10
+    run.supplies.gold = REPAIR.repairGoldPerPoint * 3 + 0.1
+    applyCommand(run, { type: 'repair' })
+    expect(run.supplies.gold).toBeGreaterThanOrEqual(0)
   })
 })
 
