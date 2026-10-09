@@ -30,8 +30,9 @@ import { RULES_VERSION } from './rules-version'
 import { submissionOf } from '../../game/daily/submission'
 import { renderExpeditionPanel } from './expedition-panel'
 import { drawRegion } from './region-renderer'
-import { motionOf, poseAt, snapshotOf } from './motion'
+import { WAVE_MS, motionOf, poseAt, snapshotOf } from './motion'
 import type { Motion } from './motion.types'
+import type { WavePhase } from './map-art/map-art.types'
 import { renderMarket } from './market-panel'
 import { canEnter } from '../../game/travel/travel'
 import { knownLanguages, speaksAt } from '../../game/trade/trade'
@@ -139,16 +140,27 @@ export function mountGame(root: HTMLElement): void {
   let frameId = 0
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
+  // 물결은 화면 시계로 두 장을 번갈아 그린다. 연출 중이면 연출 프레임이 같은 장을 쓴다.
+  let wavePhase: WavePhase = 0
+
   const animate = (now: number): void => {
     const pose = motion === null ? null : poseAt(motion, session.run, now)
     if (pose === null) {
       motion = null
-      drawRegion(ctx, canvas, session.run)
+      drawRegion(ctx, canvas, session.run, undefined, wavePhase)
       return
     }
-    drawRegion(ctx, canvas, session.run, pose)
+    drawRegion(ctx, canvas, session.run, pose, wavePhase)
     frameId = requestAnimationFrame(animate)
   }
+
+  window.setInterval(() => {
+    if (motion !== null || reducedMotion.matches || document.hidden) {
+      return
+    }
+    wavePhase = wavePhase === 0 ? 1 : 0
+    drawRegion(ctx, canvas, session.run, undefined, wavePhase)
+  }, WAVE_MS)
 
   const stopMotion = (): void => {
     cancelAnimationFrame(frameId)
@@ -158,7 +170,7 @@ export function mountGame(root: HTMLElement): void {
   const draw = (): void => {
     const { run } = session
     stopMotion()
-    drawRegion(ctx, canvas, run)
+    drawRegion(ctx, canvas, run, undefined, wavePhase)
     expeditionRoot.innerHTML = renderExpeditionPanel(run, session.daily, meta, dailyKey(new Date()))
     statusRoot.innerHTML = renderStatus(run)
     marketRoot.innerHTML = renderMarket(run)

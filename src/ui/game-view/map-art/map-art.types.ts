@@ -18,6 +18,9 @@ export interface TileKey {
   coast: CoastSides
 }
 
+/** 물결 무늬 두 장 가운데 하나. 화면 시계로 번갈아 그린다 — 게임 상태와 무관하다 (R52). */
+export type WavePhase = 0 | 1
+
 /** 픽셀 스프라이트 정의. 행마다 글자 하나가 한 픽셀이고 `.`은 투명이다. */
 export interface PixelSprite {
   rows: readonly string[]

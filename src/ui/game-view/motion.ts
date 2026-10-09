@@ -1,5 +1,7 @@
+import { GRID } from '../../content/game/grid.tuning'
+import type { RegionId } from '../../game/region/region.types'
 import type { RunEvent, RunState } from '../../game/run/run.types'
-import type { Floater, Motion, Point, Pose, Snapshot } from './motion.types'
+import type { Floater, Motion, Point, Pose, Slide, Snapshot, Vanishing } from './motion.types'
 
 /** 칸 사이를 미끄러지는 시간(ms). 키를 누르고 있어도 따라올 만큼 짧게 둔다. */
 export const MOVE_MS = 140
@@ -7,6 +9,14 @@ export const MOVE_MS = 140
 export const SHAKE_MS = 220
 /** 손실 숫자가 떠올라 사라지는 시간(ms). */
 export const FLOAT_MS = 700
+/** 물결 무늬 두 장을 번갈아 그리는 간격(ms). 2편 바다처럼 느리게 반짝인다. */
+export const WAVE_MS = 600
+/** 영역이 바뀔 때 옛 영역이 밀려나는 시간(ms). */
+export const SLIDE_MS = 250
+/** 쓰러진 조우가 흐려지며 사라지는 시간(ms). */
+export const VANISH_MS = 400
+/** 사라지는 조우가 가라앉는 깊이(칸). */
+const VANISH_SINK = 0.25
 /** 흔들림의 폭(칸 비율). */
 const SHAKE_AMPLITUDE = 0.12
 /** 흔들림이 한 번 오가는 각속도(rad/ms). 220ms에 서너 번 흔들린다. */
@@ -25,11 +35,14 @@ export function snapshotOf(run: RunState): Snapshot {
     region: run.region,
     player: { ...run.player.cell },
     encounters: new Map(run.encounters.map((encounter) => [encounter.id, { ...encounter.cell }])),
+    kinds: new Map(run.encounters.map((encounter) => [encounter.id, encounter.kind])),
   }
 }
 
 /**
- * 명령 하나가 만든 연출. 영역이 바뀌었으면 미끄러지지 않는다 — 화면 전체가 다음 영역으로 바뀐다.
+ * 명령 하나가 만든 연출. 영역이 바뀌었으면 미끄러지지 않고 화면 전체를 나간 쪽으로 밀어낸다.
+ *
+ * 같은 영역에서 사라진 조우는 있던 칸에서 흐려진다 — 무너져 달아났든 전멸했든 같다. 보이던 것인지는 그릴 때 가린다.
  *
  * 떠오르는 숫자는 한 합(`combat`)마다 하나씩이다. 잃은 선원과 선체는 플레이어 칸에, 상대가 잃은 머릿수는 상대 칸에 띄운다.
  */
@@ -75,7 +88,22 @@ export function motionOf(
         const before = from.encounters.get(encounter.id)
         return before !== undefined && glides(before, encounter.cell)
       }))
-  if (!moved && floaters.length === 0) {
+  // 사라진 자리는 명령 중에 마지막으로 옮겨 간 칸이다 — 쫓아와 붙은 뒤 무너진 무리는 출발 칸에 있지 않다.
+  const remaining = new Set(run.encounters.map((encounter) => encounter.id))
+  const lastCell = new Map<string, Point>()
+  for (const event of events) {
+    if (event.type === 'move') {
+      lastCell.set(event.actorId, event.to)
+    }
+  }
+  const vanishing: Vanishing[] = sameRegion
+    ? [...from.encounters].flatMap(([id, at]) => {
+        const kind = from.kinds.get(id)
+        return remaining.has(id) || kind === undefined ? [] : [{ kind, at: lastCell.get(id) ?? at }]
+      })
+    : []
+  const slide = sameRegion ? null : slideOf(from.region, run.region, run.grid.width)
+  if (!moved && floaters.length === 0 && vanishing.length === 0 && slide === null) {
     return null
   }
   return {
@@ -83,7 +111,26 @@ export function motionOf(
     startedAt: now,
     floaters,
     shake: floaters.length > 0,
+    vanishing,
+    slide,
   }
+}
+
+/**
+ * 나간 쪽. 경도는 한 바퀴 돌므로 맨 동쪽 영역에서 맨 서쪽으로 넘어가도 동쪽으로 친다.
+ * 격자 폭(1,440칸)이 영역 폭(60칸)으로 나누어떨어져 영역 열 수가 정수다.
+ */
+function slideOf(from: RegionId, to: RegionId, gridWidth: number): Slide | null {
+  const columns = Math.ceil(gridWidth / GRID.regionCols)
+  let dx = to.rx - from.rx
+  if (Math.abs(dx) > columns / 2) {
+    dx -= Math.sign(dx) * columns
+  }
+  const dy = to.ry - from.ry
+  if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+    return null
+  }
+  return { from, dx, dy }
 }
 
 /** 시각 `now`의 자세. 연출이 끝났으면 `null`이다 — 그때는 런 상태 그대로 그린다. */
@@ -94,6 +141,8 @@ export function poseAt(motion: Motion, run: RunState, now: number): Pose | null 
     MOVE_MS,
     motion.shake ? SHAKE_MS : 0,
     motion.floaters.length > 0 ? FLOAT_MS : 0,
+    motion.vanishing.length > 0 ? VANISH_MS : 0,
+    motion.slide === null ? 0 : SLIDE_MS,
   )
   if (elapsed >= total) {
     return null
@@ -108,6 +157,7 @@ export function poseAt(motion: Motion, run: RunState, now: number): Pose | null 
   const decay = 1 - elapsed / SHAKE_MS
   const float = Math.min(1, elapsed / FLOAT_MS)
   const player = between(motion.from.player, run.player.cell, t)
+  const vanish = Math.min(1, elapsed / VANISH_MS)
   return {
     player,
     encounters,
@@ -124,6 +174,15 @@ export function poseAt(motion: Motion, run: RunState, now: number): Pose | null 
       rise: float * FLOAT_RISE,
       alpha: 1 - float * float,
     })),
+    vanishing: motion.vanishing.map((gone) => ({
+      ...gone,
+      alpha: 1 - vanish,
+      sink: vanish * VANISH_SINK,
+    })),
+    slide:
+      motion.slide === null || elapsed >= SLIDE_MS
+        ? null
+        : { ...motion.slide, t: easeOut(elapsed / SLIDE_MS) },
   }
 }
 
