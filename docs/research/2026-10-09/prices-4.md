@@ -53,7 +53,7 @@ So: **cattle hide 100 rs each**, calf hide 50 rs, goat skin 30 rs (Santiago, 151
 Conversion: 100 rs ÷ 390 = **0.256 cruzado per hide**.
 The kg per hide is still **not in any source**. At my assumed 10-15 kg for a dry hide this is 17-26 d/t at the producer, so base = ÷0.8 = **21-32**. At 20 kg (green-salted) it would be 13 → base 16.
 
-Compared with round 2: Portuguese hides in 1464-65 cost 0.61 cruzado each (Sequeira 2018), 2.4× the Cape Verde valuation. So island hides were cheap, or the customs valuation was low. Either way the game's 45 depends on an assumed weight and on which origin is meant (Maghreb/Ceuta in the game).
+Compared with round 2: Portuguese hides in 1464-65 cost 0.61 cruzado each (Sequeira 2018), 2.4× the Cape Verde valuation in cruzados (0.61 vs 0.256; in nominal reais 175 vs 100 the ratio is only 1.75 because the 1464 real was a different unit). So island hides were cheap, or the customs valuation was low. Either way the game's 45 depends on an assumed weight and on which origin is meant (Maghreb/Ceuta in the game).
 
 **Recommendation: keep 45 `unverified`.** Both price points are per piece. The 1514 valuation suggests 45 is at the high end if the game's hides are the cheap Atlantic kind. That is a reason to keep the range 20-45 in mind, not to change the value.
 
@@ -69,7 +69,7 @@ The band 25-50 from round 3 stands.
 
 ## 3. Cotton cloth (pano) — current 100 → **keep 100, `unverified`; new opened floor from raw cotton**
 
-**Still no pano price before 1624.** But the Santiago records give the price of the **raw material**, so they bound cloth from below without assuming a pano weight. All [opened]:
+**Still no pano price before 1624.** But the Santiago records give the price of the **raw material**, so they bound cloth from below without assuming a pano weight. All [opened], except that the 1508 row converts through round 1's Madeira sugar price, which carries round 1's grade:
 
 | Date                                                                                                                                  | Original (HGCV)                                                                                                                                                                                                    | → d/t                                                                                                                                                                                                                            |
 | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -82,11 +82,11 @@ The band 25-50 from round 3 stands.
 Reading:
 
 - Seed (dirty) cotton is ~7-18 d/t at Santiago. Clean (ginned) cotton is ~85 at Santiago, or ~55 in the 1508 Madeira contract. That is a factor of ~5 by weight, as expected from ginning plus labour.
-- The game's cotton cloth means hand-spun, hand-woven Santiago panos. **Cloth must cost more per kg than clean cotton**, so the opened floor is **≥ 55-87 d/t**.
+- The game's cotton cloth means hand-spun, hand-woven Santiago panos. **Cloth must cost more per kg than clean cotton**, so the opened floor is **≥ 55-87 d/t** (assuming spinning and weaving lose little weight).
 - The current 100 is only 1.15-1.8× clean cotton. Spinning and weaving would normally add much more, so 100 is if anything low.
 - Round 2's ≥100 guess (from Lisbon tow cloth) and round 3's ≥250 (from 1624 pano prices with an assumed weight) both stand as context.
 
-**Grade: keep `unverified`.** No source prices a pano in the window. The floor is real and opened, but it is a bound, not a price. If a reviewer accepts a "floor" grade, **`qualitative` is possible only as "≥ 90"** (= clean cotton at Santiago, 87). It would not justify the specific value 100.
+**Grade: keep `unverified`.** No source prices a pano in the window. The floor is real and opened, but it is a bound, not a price. If a reviewer accepts a "floor" grade, **`qualitative` is possible only as "≥ 87"** (= clean cotton at Santiago). It would not justify the specific value 100.
 
 ## 4. Cork — current 15 → **keep 15, `unverified`**
 
@@ -113,7 +113,7 @@ No Lisbon, Seville or Valencia price was found.
 | ------------ | ------- | ----------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | hides        | 45      | **keep 45** (plausible 20-45) | unverified                                                 | Santiago 1514: 100 rs per cattle hide, valued at the producing port [opened]. Still per piece; the kg per hide is still unsourced.                             |
 | raisins      | 50      | **keep 50** (band 25-50)      | unverified                                                 | Nothing priced 1480-1530.                                                                                                                                      |
-| cotton cloth | 100     | **keep 100**                  | unverified (`qualitative` possible only as a floor "≥ 90") | Clean cotton 500 rs/arroba (Santiago 1513-16) = 87 d/t. In 1508, clean cotton = sugar weight for weight at Madeira (≈ 55). Seed cotton 7-18 d/t. All [opened]. |
+| cotton cloth | 100     | **keep 100**                  | unverified (`qualitative` possible only as a floor "≥ 87") | Clean cotton 500 rs/arroba (Santiago 1513-16) = 87 d/t. In 1508, clean cotton = sugar weight for weight at Madeira (≈ 55). Seed cotton 7-18 d/t. All [opened]. |
 | cork         | 15      | **keep 15**                   | unverified                                                 | Nothing                                                                                                                                                        |
 | gum arabic   | 38      | **keep 38**                   | unverified                                                 | Nothing                                                                                                                                                        |
 
