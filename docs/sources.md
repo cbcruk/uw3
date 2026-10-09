@@ -61,6 +61,12 @@ Andrews · Tenenti)은 읽지 못했다.
 
 카디스 1485–86 장부로 보면 포도주 18은 높은 쪽일 수 있다(카디스 7.5).
 
+## 전투 — 구조가 어긋나 값을 두었다(#36)
+
+승선전 8건과 기마전 13건을 원문으로 견줬다([boarding](research/2026-10-09/boarding.md), [raids](research/2026-10-09/raids.md)).
+바다의 방어 측 손실은 맞지만, 퇴각(사료는 10–20% 손실이나 지휘관의 죽음에 무너진다)과 뭍의 살상률(몇 시간에 0–1명)이 모델의 모양과
+다르다. 값을 고쳐서는 나오지 않아 흐름을 다시 설계하기로 했다 — 그때까지 살상률·`routRatio`·`boardingFrontage`는 `unverified`다.
+
 ## 근거를 찾지 못한 것
 
 살상률(`playerLethality` `pirateLethality` `banditLethality` `beastLethality`) — 값보다 구조가 먼저다(#29). `tributeDays` — 늑대는
