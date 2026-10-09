@@ -130,12 +130,24 @@ export type RunEvent =
   | { type: 'surrender'; gold: number; cargo: Cargo }
   | { type: 'ended'; reason: ExpeditionEnd }
   | { type: 'sighted'; encounterId: string; kind: Encounter['kind']; crew: number }
+  /** 말이 통하는 항구에서 그 해역의 조우를 소문으로 들었다 (R74). 0이면 조용한 바다라는 소문이다. */
+  | { type: 'rumor'; portId: string; count: number }
   | PursuitEvent
 
 /** 하선한 뭍 무리. 먹고 마시는 무리이고, 내릴 때의 몫을 기억한다. */
 export interface ShoreParty extends Provisioned {
   /** 내릴 때의 인원·식량·물. 화면의 막대가 이것을 가득으로 친다 — 배의 정원·상한이 아니다. 규칙에는 쓰지 않는다. */
   landed: Provisioned
+}
+
+/** 항구에서 들은 조우 하나. 들은 때의 자리와 머릿수다. */
+export interface Rumor {
+  encounterId: string
+  kind: Encounter['kind']
+  crew: number
+  cell: Cell
+  /** 어느 항구에서 들었나. */
+  portId: string
 }
 
 /** 하선 중 항구에 남겨 둔 배. */
@@ -177,6 +189,11 @@ export interface RunState {
   encounters: Encounter[]
   /** 한 번이라도 시야에 들어온 조우. 처음 보일 때만 알린다. */
   sighted: Set<string>
+  /**
+   * 말이 통하는 항구에서 들은 조우의 소문 (R74). 위치는 들은 때의 것이라 조우가 움직여도 따라가지 않는다.
+   * 그 조우를 직접 보거나 조우가 격자에서 빠지면 지운다.
+   */
+  rumors: Rumor[]
   /** 들어가 본 영역. 던전에서 내려가 본 층에 해당한다. */
   visitedRegions: Set<string>
   /** `seed + 명령 로그 = 완전 재현` (R8). */

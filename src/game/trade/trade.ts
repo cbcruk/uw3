@@ -20,6 +20,12 @@ export function knownLanguages(config: RunConfig): ReadonlySet<LanguageId> {
   return new Set([NATIVE_LANGUAGE, ...(config.languages ?? [])])
 }
 
+/** 이 항구의 말을 아는가. 선원 고용(R73)과 소문(R74)이 이것을 본다. 통역료(R58)도 같은 조건이다. */
+export function speaksAt(portId: string, languages: ReadonlySet<LanguageId>): boolean {
+  const language = findPort(portId)?.language
+  return language === undefined || languages.has(language)
+}
+
 /** 시장이 있는 항구인가. 시장이 없으면 사지도 팔지도 못한다. */
 function hasMarket(portId: string): boolean {
   return findPort(portId)?.facilities.includes('market') ?? false
@@ -70,7 +76,7 @@ export function priceAt(
 export function portFee(portId: string, languages: ReadonlySet<LanguageId>): PortFee {
   const port = findPort(portId)
   const customs = port !== undefined && port.nation !== NATIVE_NATION ? TRADE.customsDuty : 0
-  const interpreter = port !== undefined && !languages.has(port.language) ? FAME.interpreterFee : 0
+  const interpreter = speaksAt(portId, languages) ? 0 : FAME.interpreterFee
   return { customs, interpreter, total: customs + interpreter }
 }
 

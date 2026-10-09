@@ -200,7 +200,7 @@ export function mountGame(root: HTMLElement): void {
       pushLines([
         { text: `명성 +${meta.records.at(-1)?.fame ?? 0} — ${fameTitle(meta.fame)}`, tone: 'good' },
         ...newlyLearned.map((language) => ({
-          text: `${LANGUAGE_LABELS[language]}를 익혔다. 그 말을 쓰는 항구에서는 통역료를 내지 않는다`,
+          text: `${LANGUAGE_LABELS[language]}를 익혔다. 그 말을 쓰는 항구에서는 선원을 모으고 소문을 듣는다`,
           tone: 'good' as const,
         })),
       ])

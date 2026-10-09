@@ -213,6 +213,14 @@ export function describeEvent(event: RunEvent): LogLine | null {
         text: `원정이 끝났다 — ${END_LABEL[event.reason]}`,
         tone: event.reason === 'arrived' ? 'good' : 'bad',
       }
+    case 'rumor':
+      return {
+        text:
+          event.count === 0
+            ? `${portName(event.portId)}에서 이 바다가 조용하다는 소문을 들었다`
+            : `${portName(event.portId)}에서 이 바다의 무리 ${event.count}에 대한 소문을 들었다`,
+        tone: 'info',
+      }
     case 'sighted':
       return { text: `${subject(event.kind)} 보인다 (약 ${event.crew}명)`, tone: 'warn' }
     case 'chase':
