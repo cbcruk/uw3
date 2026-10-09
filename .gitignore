@@ -30,3 +30,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# 스크린샷 (vp run shot)
+.shots

@@ -46,6 +46,9 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 수치를 낼 뿐이고, 읽는 것은 사람이다. 물리나 표를 건드렸으면 전후로 돌려
 무엇이 움직였는지 본다 (`-- --json`으로 diff 뜨기 좋은 형태).
 
+`vp run shot`도 같은 성격이다 — 게임 화면을 `scripts/shots/`의 장면대로 찍어 `.shots/`에 낸다.
+화면을 고쳤으면 전후로 찍어 견준다.
+
 단일 시드로 충실도를 판단하지 않는다. SPEC 3.3의 표가 한 번 그렇게 틀렸다.
 
 수치를 새로 넣을 때:
