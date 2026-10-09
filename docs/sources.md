@@ -94,6 +94,17 @@ Ladero(1999), Melis를 열었다. 다섯 품목 모두 1480–1530의 무게당 
 [repair](research/2026-10-09/repair.md)에서 마젤란 함대 장부(Navarrete t. IV)와 콜럼버스 항해일지(t. I)를 열었다. 선체 정비비는 배 값의 33–58%(두 해 원정 전 정비),
 수리 날수는 최악의 상한(핀타호 24일 안쪽, 트리니다드호 석 달)뿐이다. 선체 점수가 추상이라 `repairGoldPerPoint` 2.5·`repairHoursPerPoint` 1은 `unverified`다.
 
+### 다섯 번째 조사 — 바꾼 값 없음
+
+[round-5](research/2026-10-10/round-5.md)에서 한 번씩만 찾아본 여섯 값(`holingChance` `holingShare` `captiveRansom` `chaseOdds` `repairGoldPerPoint` `repairHoursPerPoint`)을 다시 봤다.
+Fernández Duro 『La Armada Invencible』, Laughton 『State Papers … Spanish Armada』, Suárez Montañés의 오랑 연대기, Haedo를 열었다. 여섯 값 모두 `unverified`로 둔다.
+
+- `holingChance` — 그라블린(1588) 스페인 쪽은 배·합당 약 0.02–0.05이고, 영국 왕실 함선은 0이었다(채텀 점검). 0.03은 그 사이다. 다만 분모는 노트가 짐작한 것이고, 600–1,000톤 함대의 포격전이다
+- `holingShare` — 큰 배는 흘수선 아래를 네 번 이상 맞고도 버텼다(로사호). 산타아나호(1587)는 두세 번 맞고 삭구까지 부서져 항복했다. 그대로 읽으면 큰 배에는 0.4가 세다. 100–300톤 배의 사례는 없다
+- `captiveRansom` — 오랑 1570의 경매가 처음 연 경매값이다. 192명과 짐승 85마리가 66,670레알로, 한 명 31.5두카트 이하다. 다만 남녀노소였고 1570년 값이며, 판 돈은 두 달 뒤에 들어왔다
+- `chaseOdds` — 무라드 레이스(1594)가 갤리엇 둘을 숨기고 2 대 2로 보이게 했다는 기록뿐이다. 배 수의 비라 머릿수 비가 아니다
+- 수리 둘 — 리븐지호의 좌초 수리 40파운드, 블라베의 갤리 목수 열흘. 둘 다 손상의 양이 없다
+
 ## 근거를 찾지 못한 것
 
 살상률(`playerLethality` `pirateLethality` `beastLethality`) — 승선전 기록은 공격 측 사망자를 세지 않았다. `skirmishLethality` — 기마전 사례는 몇 시간에 0–1명이라 0.001보다 낮을 수도 있다. `chargeShock` `surpriseFactor` — 무너짐의 계기(돌격·매복)는 서술뿐이다. `beastBreakLoss` — 늑대 무리의 기록이 없다. `captiveRansom` — 평범한 포로를 그 자리에서 넘긴 거래 기록이 없다. `repairGoldPerPoint` `repairHoursPerPoint` — 전투 손상 수리의 값·날수 기록이 없다. `holingChance` `holingShare` — 흘수선 아래를 맞은 사례만 기록에 남아 비율이 없다. `defenderBreakLoss` — 방어 측이 무너진 손실 비율의 기록이 없다. `tributeDays` — 늑대는
