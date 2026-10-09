@@ -100,6 +100,39 @@ describe('연출 — 그림만 따라잡는다 (R52)', () => {
     expect(motionOf(before, run, [], 0)?.slide).toMatchObject({ dx: 1, dy: 0 })
   })
 
+  it('반대로 맨 서쪽에서 맨 동쪽 영역으로 넘어가면 서쪽으로 민다', () => {
+    const run = freshRun()
+    const columns = Math.ceil(run.grid.width / GRID.regionCols)
+    run.region = { rx: columns - 1, ry: run.region.ry }
+    const before = { ...snapshotOf(run), region: { rx: 0, ry: run.region.ry } }
+    expect(motionOf(before, run, [], 0)?.slide).toMatchObject({ dx: -1, dy: 0 })
+  })
+
+  it('대각선으로 넘어가면 두 축으로 민다', () => {
+    const run = freshRun()
+    const before = { ...snapshotOf(run), region: { rx: run.region.rx + 1, ry: run.region.ry + 1 } }
+    expect(motionOf(before, run, [], 0)?.slide).toMatchObject({ dx: -1, dy: -1 })
+  })
+
+  it('이웃하지 않은 영역으로 옮겨졌으면 밀지 않는다', () => {
+    const run = freshRun()
+    const before = { ...snapshotOf(run), region: { rx: run.region.rx + 3, ry: run.region.ry } }
+    expect(motionOf(before, run, [], 0)).toBeNull()
+  })
+
+  it('쫓아와 붙은 뒤 사라진 조우는 마지막으로 옮겨 간 칸에서 흐려진다', () => {
+    const run = freshRun()
+    const start = { x: run.player.cell.x + 3, y: run.player.cell.y }
+    const end = { x: run.player.cell.x + 1, y: run.player.cell.y }
+    const before = {
+      ...snapshotOf(run),
+      encounters: new Map([['pirate-test', start]]),
+      kinds: new Map([['pirate-test', 'pirate' as const]]),
+    }
+    const moved: RunEvent = { type: 'move', actorId: 'pirate-test', from: start, to: end, hours: 1 }
+    expect(motionOf(before, run, [moved], 0)?.vanishing).toEqual([{ kind: 'pirate', at: end }])
+  })
+
   it('같은 영역에서 사라진 조우는 있던 칸에서 흐려지며 가라앉는다', () => {
     const run = freshRun()
     const foeCell = { x: run.player.cell.x + 1, y: run.player.cell.y }

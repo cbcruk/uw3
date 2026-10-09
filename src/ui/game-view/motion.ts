@@ -88,11 +88,18 @@ export function motionOf(
         const before = from.encounters.get(encounter.id)
         return before !== undefined && glides(before, encounter.cell)
       }))
+  // 사라진 자리는 명령 중에 마지막으로 옮겨 간 칸이다 — 쫓아와 붙은 뒤 무너진 무리는 출발 칸에 있지 않다.
   const remaining = new Set(run.encounters.map((encounter) => encounter.id))
+  const lastCell = new Map<string, Point>()
+  for (const event of events) {
+    if (event.type === 'move') {
+      lastCell.set(event.actorId, event.to)
+    }
+  }
   const vanishing: Vanishing[] = sameRegion
     ? [...from.encounters].flatMap(([id, at]) => {
         const kind = from.kinds.get(id)
-        return remaining.has(id) || kind === undefined ? [] : [{ kind, at }]
+        return remaining.has(id) || kind === undefined ? [] : [{ kind, at: lastCell.get(id) ?? at }]
       })
     : []
   const slide = sameRegion ? null : slideOf(from.region, run.region, run.grid.width)
@@ -109,7 +116,10 @@ export function motionOf(
   }
 }
 
-/** 나간 쪽. 경도는 한 바퀴 돌므로 맨 동쪽 영역에서 맨 서쪽으로 넘어가도 동쪽으로 친다. */
+/**
+ * 나간 쪽. 경도는 한 바퀴 돌므로 맨 동쪽 영역에서 맨 서쪽으로 넘어가도 동쪽으로 친다.
+ * 격자 폭(1,440칸)이 영역 폭(60칸)으로 나누어떨어져 영역 열 수가 정수다.
+ */
 function slideOf(from: RegionId, to: RegionId, gridWidth: number): Slide | null {
   const columns = Math.ceil(gridWidth / GRID.regionCols)
   let dx = to.rx - from.rx

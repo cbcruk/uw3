@@ -79,7 +79,8 @@ export function drawRegion(
       ctx,
       tile,
       originX: Math.floor((box.width - tile * cols) / 2) + shiftX,
-      originY: Math.floor((box.height - tile * rows) / 2) + shiftY,
+      // 영역마다 제 행 수로 가운데에 둔다 — 마지막 영역 줄은 행이 적어 옛 영역이 첫 프레임에 튀지 않게.
+      originY: Math.floor((box.height - tile * shownRows) / 2) + shiftY,
       x0: shown.rx * GRID.regionCols,
       y0: shown.ry * GRID.regionRows,
       rows: shownRows,
@@ -97,8 +98,15 @@ export function drawRegion(
   const height = tile * GRID.regionRows
   const pushX = Math.round(slide.dx * slide.t * width)
   const pushY = Math.round(slide.dy * slide.t * height)
+  // 지금 영역의 자리 밖으로 그리지 않는다. 남는 가장자리에 옆 영역이 비치지 않게.
+  const home = frameOf(region, 0, 0)
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(home.originX, home.originY, width, tile * home.rows)
+  ctx.clip()
   drawArea(frameOf(slide.from, -pushX, -pushY), run, undefined, false)
   drawArea(frameOf(region, slide.dx * width - pushX, slide.dy * height - pushY), run, pose)
+  ctx.restore()
 }
 
 /** 영역 한 장의 타일·조우·플레이어. 밀어내기 중에는 옛 영역을 플레이어 없이 한 번 더 그린다. */
