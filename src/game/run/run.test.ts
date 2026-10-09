@@ -12,6 +12,7 @@ import { dailyRangeNm, passageToward, waterRatio } from '../travel/travel'
 import { applyCommand, createRun, createWorld, currentDay, rangeTowardNm, replayRun } from './run'
 import type { Cell } from '../grid/world-grid.types'
 import type { Command, RunConfig, RunEvent } from './run.types'
+import type { Provisioned } from '../supplies/supplies.types'
 
 const grid = createWorld()
 
@@ -196,9 +197,10 @@ describe('런 — 방향키 한 번이 한 칸', () => {
       const run = createRun({ ...CONFIG, startPortId: 'arguim' }, grid)
       applyCommand(run, { type: 'disembark', mount })
       expect(grid.terrainAt(run.player.cell)).toBe('desert')
-      const { food, water, crew } = run.supplies
+      const party = run.party as Provisioned
+      const { food, water, crew } = party
       applyCommand(run, { type: 'wait' })
-      return { food: food - run.supplies.food, water: water - run.supplies.water, crew }
+      return { food: food - party.food, water: water - party.water, crew }
     }
     const camel = atArguim('camel')
     const horse = atArguim('horse')
@@ -286,7 +288,7 @@ describe('원정의 보급 — 날이 바뀔 때 먹고, 항구에서 채운다'
     Object.assign(run.supplies, { crew: 1, food: 0, water: 0 })
     const events = applyCommand(run, { type: 'wait' })
     expect(eventsOf(events, 'ration')).toEqual([
-      { type: 'ration', lost: 1, starving: true, thirsty: true },
+      { type: 'ration', ashore: false, lost: 1, starving: true, thirsty: true },
     ])
     expect(eventsOf(events, 'ended')).toEqual([{ type: 'ended', reason: 'crew-lost' }])
     expect(run.ended).toBe('crew-lost')
@@ -593,6 +595,101 @@ describe('내주기 — 몸값을 주고 붙은 조우에게서 놓여난다', (
     run.encounters = []
     expect(eventsOf(applyCommand(run, { type: 'surrender' }), 'rejected')).toHaveLength(1)
     expect(run.ended).toBeNull()
+  })
+})
+
+describe('뭍 무리 — 하선한 인원만 뭍에서 먹고 싸운다', () => {
+  function ashore(crew?: number) {
+    const run = createRun(CONFIG, grid)
+    const before = { ...run.supplies }
+    const events = applyCommand(run, { type: 'disembark', mount: 'horse', crew })
+    return { run, before, events }
+  }
+
+  it('내린 인원이 머릿수만큼 식량·물을 나눠 들고, 나머지는 배를 지킨다', () => {
+    const { run, before, events } = ashore(10)
+    const food = Math.floor((before.food * 10) / before.crew)
+    expect(eventsOf(events, 'disembark')[0]?.crew).toBe(10)
+    expect(run.party).toEqual({ crew: 10, food, water: food })
+    expect(run.supplies).toMatchObject({ crew: before.crew - 10, food: before.food - food })
+  })
+
+  it('인원이 없는 옛 하선 명령은 전원 하선으로 읽힌다', () => {
+    const { run, before } = ashore()
+    expect(run.party?.crew).toBe(before.crew)
+    expect(run.supplies.crew).toBe(0)
+    expect(run.ended).toBeNull()
+    const gold = run.supplies.gold
+    applyCommand(run, { type: 'wait' })
+    expect(run.supplies.gold).toBe(gold)
+  })
+
+  it('맞지 않는 인원은 거절하고 시간도 흐르지 않는다', () => {
+    for (const crew of [0, 1.5, 999]) {
+      const { run, events } = ashore(crew)
+      expect(eventsOf(events, 'rejected')).toHaveLength(1)
+      expect(run.party).toBeNull()
+      expect(run.commands).toHaveLength(0)
+    }
+  })
+
+  it('날이 바뀌면 뭍 무리는 들고 간 것을 먹고, 배는 항구에서 다시 채운다', () => {
+    const { run } = ashore(10)
+    const party = run.party as Provisioned
+    const partyFood = party.food
+    applyCommand(run, { type: 'wait' })
+    expect(party.food).toBe(partyFood - 10)
+    expect(run.supplies.food).toBe(run.supplies.capacity)
+  })
+
+  it('배에 오르면 뭍 무리가 합쳐지고, 넘치는 식량·물은 날이 바뀔 때 되판다', () => {
+    const { run, before } = ashore(10)
+    applyCommand(run, { type: 'wait' })
+    applyCommand(run, { type: 'embark' })
+    expect(run.party).toBeNull()
+    expect(run.supplies.crew).toBe(before.crew)
+    expect(run.supplies.food).toBeGreaterThan(run.supplies.capacity)
+    const events = applyCommand(run, { type: 'wait' })
+    expect(run.supplies.food).toBe(run.supplies.capacity)
+    expect(eventsOf(events, 'resupply')[0]?.gold).toBeGreaterThan(0)
+  })
+
+  it('뭍에서 싸우는 것은 뭍 무리뿐이다', () => {
+    const { run } = ashore(10)
+    const keepers = run.supplies.crew
+    run.encounters = [
+      {
+        id: 'bandit-test',
+        kind: 'bandit',
+        cell: { x: run.player.cell.x + 1, y: run.player.cell.y },
+        crew: 30,
+        crewAtStart: 30,
+        conveyance: 'horse',
+        nextActHours: 0,
+        rounds: 0,
+        chasing: true,
+      },
+    ]
+    applyCommand(run, { type: 'wait' })
+    expect(run.party?.crew).toBeLessThan(10)
+    expect(run.supplies.crew).toBe(keepers)
+  })
+
+  it('뭍 무리가 전멸하면 지킴이가 배에서 원정을 잇고, 지킴이가 없으면 끝난다', () => {
+    const { run } = ashore(10)
+    const port = grid.cellOfPort('lisboa') as Cell
+    const party = run.party as Provisioned
+    Object.assign(party, { crew: 1, food: 0, water: 0 })
+    const events = applyCommand(run, { type: 'wait' })
+    expect(eventsOf(events, 'party-lost')).toEqual([{ type: 'party-lost', portId: 'lisboa' }])
+    expect(run.ended).toBeNull()
+    expect(run.player).toMatchObject({ cell: port, conveyance: 'ship' })
+    expect(run.party).toBeNull()
+
+    const alone = ashore().run
+    Object.assign(alone.party as Provisioned, { crew: 1, food: 0, water: 0 })
+    applyCommand(alone, { type: 'wait' })
+    expect(alone.ended).toBe('crew-lost')
   })
 })
 

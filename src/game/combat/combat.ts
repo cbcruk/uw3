@@ -3,7 +3,7 @@ import type { EncounterKindId } from '../../content/game/game-content.types'
 import { createRng, hashString, mixSeed } from '../../sim/rng/rng'
 import type { Rng } from '../../sim/rng/rng.types'
 import type { Encounter } from '../encounter/encounter.types'
-import type { Supplies } from '../supplies/supplies.types'
+import type { Provisioned } from '../supplies/supplies.types'
 import type { Conveyance } from '../travel/travel.types'
 import type { CombatEvent } from './combat.types'
 
@@ -26,7 +26,8 @@ const FOE_LETHALITY: Readonly<Record<EncounterKindId, number>> = {
  */
 export function fightRound(options: {
   seed: number
-  supplies: Supplies
+  /** 싸우는 무리. 배라면 선체도 깎인다 — 뭍 무리에는 선체가 없다. */
+  supplies: Provisioned & { hull?: number }
   conveyance: Conveyance
   foe: Encounter
   initiated: boolean
@@ -38,12 +39,14 @@ export function fightRound(options: {
   const crewLost = Math.min(supplies.crew, casualties(foe.crew * FOE_LETHALITY[foe.kind], rng))
   const foeLost = Math.min(foe.crew, casualties(supplies.crew * COMBAT.playerLethality, rng))
   const hullLost =
-    foe.kind === 'pirate' && conveyance === 'ship'
+    foe.kind === 'pirate' && conveyance === 'ship' && supplies.hull !== undefined
       ? Math.min(supplies.hull, casualties(foe.crew * COMBAT.pirateHullDamage, rng))
       : 0
 
   supplies.crew -= crewLost
-  supplies.hull -= hullLost
+  if (supplies.hull !== undefined) {
+    supplies.hull -= hullLost
+  }
   foe.crew -= foeLost
 
   const events: CombatEvent[] = [

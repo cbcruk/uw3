@@ -6,6 +6,7 @@ import type {
   Cargo,
   ExpeditionEnd,
   ProvisionSettlement,
+  Provisioned,
   RationReport,
   Supplies,
 } from './supplies.types'
@@ -37,7 +38,7 @@ export function createSupplies(shipClass: ShipClass, patronGold = 0): Supplies {
  *
  * @param waterRatio 한 사람의 하루 물 소모 배율. 사막의 말은 3, 낙타는 1.5다 (R68). 올림으로 떠낸다.
  */
-export function consumeDay(supplies: Supplies, waterRatio = 1): RationReport {
+export function consumeDay(supplies: Provisioned, waterRatio = 1): Omit<RationReport, 'ashore'> {
   const need = supplies.crew
   const waterNeed = Math.ceil(need * waterRatio)
   const foodServed = Math.min(supplies.food, need)
@@ -107,7 +108,7 @@ export function settleProvisions(supplies: Supplies): ProvisionSettlement {
  *
  * @param waterRatio 지금 자리의 물 소모 배율. 사막에서는 물이 먼저 떨어진다.
  */
-export function daysOfSupply(supplies: Supplies, waterRatio = 1): number {
+export function daysOfSupply(supplies: Provisioned, waterRatio = 1): number {
   if (supplies.crew <= 0) {
     return 0
   }

@@ -28,7 +28,8 @@ import {
   resolveDrift,
 } from '../travel/drift'
 import type { EastNorth } from '../travel/drift.types'
-import { consumeDay, createSupplies, expeditionEndOf, settleProvisions } from '../supplies/supplies'
+import { consumeDay, createSupplies, settleProvisions } from '../supplies/supplies'
+import type { Provisioned } from '../supplies/supplies.types'
 import { buyGoods, knownLanguages, sellGoods } from '../trade/trade'
 import type { Mount, Passage } from '../travel/travel.types'
 import type { Direction } from '../grid/direction.types'
@@ -82,6 +83,7 @@ export function createRun(config: RunConfig, grid: WorldGrid = createWorld()): R
     defeated: 0,
     dockedPorts: new Set([config.startPortId]),
     berth: null,
+    party: null,
     region,
     explored: createExploredMap(grid),
     encounters: spawnEncounters(grid, config.seed, region),
@@ -129,7 +131,7 @@ export function applyCommand(run: RunState, command: Command): RunEvent[] {
           toDayNumber(run.config.startDate) + Math.floor(hours / HOURS_PER_DAY),
         fallbackShip: run.shipClass,
         engage: (foe) =>
-          run.ended === null && expeditionEndOf(run.supplies) === null
+          run.ended === null && force(run).crew > 0 && run.supplies.hull > 0
             ? { hours: COMBAT.roundHours, events: fight(run, foe, false) }
             : null,
       },
@@ -154,11 +156,23 @@ export function applyCommand(run: RunState, command: Command): RunEvent[] {
  */
 function passDay(run: RunState, day: number, events: RunEvent[]): void {
   events.push({ type: 'day-start', day })
-  const ration = consumeDay(run.supplies, waterRatioOf(run))
-  if (ration.starving || ration.thirsty) {
-    events.push({ type: 'ration', ...ration })
+  const { party } = run
+  const groups: [Provisioned, number, boolean][] =
+    party === null
+      ? [[run.supplies, waterRatioOf(run), false]]
+      : [
+          [party, waterRatioOf(run), true],
+          [run.supplies, 1, false],
+        ]
+  for (const [group, ratio, ashore] of groups) {
+    const ration = consumeDay(group, ratio)
+    if (ration.starving || ration.thirsty) {
+      events.push({ type: 'ration', ashore, ...ration })
+    }
   }
-  const portId = dockedPortId(run)
+  // 하선 중에는 지킴이가 있을 때만 배를 채운다. 아무도 없는 배에 날마다 금화를 쓰지 않는다.
+  const keptBerth = run.supplies.crew > 0 ? (run.berth?.portId ?? null) : null
+  const portId = dockedPortId(run) ?? keptBerth
   if (portId !== null) {
     restock(run, portId, events)
   }
@@ -176,13 +190,39 @@ function restock(run: RunState, portId: string, events: RunEvent[]): void {
   }
 }
 
-/** 선원이나 선체가 바닥났으면 원정을 끝낸다. 이미 끝났으면 아무것도 하지 않는다. */
+/**
+ * 선원이나 선체가 바닥났으면 원정을 끝낸다. 이미 끝났으면 아무것도 하지 않는다.
+ *
+ * 뭍 무리만 전멸했고 배에 선원이 남았으면 끝이 아니다 — 지킴이가 배에서 원정을 잇는다 (R70).
+ */
 function concludeIfEnded(run: RunState, events: RunEvent[]): void {
-  const end = run.ended === null ? expeditionEndOf(run.supplies) : null
+  if (run.ended !== null) {
+    return
+  }
+  const { party, berth } = run
+  if (party !== null && party.crew <= 0 && berth !== null && run.supplies.crew > 0) {
+    run.party = null
+    run.berth = null
+    run.player.cell = berth.cell
+    run.player.conveyance = 'ship'
+    run.player.driftNm = NO_DRIFT
+    events.push({ type: 'party-lost', portId: berth.portId })
+  }
+  const end = run.supplies.hull <= 0 ? 'hull-lost' : totalCrew(run) <= 0 ? 'crew-lost' : null
   if (end !== null) {
     run.ended = end
     events.push({ type: 'ended', reason: end })
   }
+}
+
+/** 원정의 선원 전체. 배를 지키는 선원과 뭍 무리를 더한다. */
+export function totalCrew(run: RunState): number {
+  return run.supplies.crew + (run.party?.crew ?? 0)
+}
+
+/** 플레이어가 이끄는 무리. 뭍에 있으면 뭍 무리, 배에 있으면 배의 선원이다. 싸우고 내주는 것은 이 무리다. */
+export function force(run: RunState): Provisioned & { hull?: number } {
+  return run.party ?? run.supplies
 }
 
 /**
@@ -194,7 +234,7 @@ function concludeIfEnded(run: RunState, events: RunEvent[]): void {
 function fight(run: RunState, foe: Encounter, initiated: boolean): CombatEvent[] {
   const events = fightRound({
     seed: run.config.seed,
-    supplies: run.supplies,
+    supplies: force(run),
     conveyance: run.player.conveyance,
     foe,
     initiated,
@@ -312,7 +352,7 @@ function resolveCommand(run: RunState, command: Command, events: RunEvent[]): bo
       return true
     }
     case 'disembark':
-      return disembark(run, command.mount, events)
+      return disembark(run, command.mount, command.crew, events)
     case 'embark':
       return embark(run, events)
     case 'hire':
@@ -416,7 +456,16 @@ function enterCell(run: RunState, next: Cell, events: RunEvent[]): void {
   }
 }
 
-function disembark(run: RunState, mount: Mount, events: RunEvent[]): boolean {
+/**
+ * 항구에서 뭍 무리를 내린다. 식량·물은 머릿수만큼 나눠 들고 간다(내림) — 나머지는 배를 지키는 선원의 몫이고
+ * 배는 항구에서 보급받는다 (R69). 인원이 없으면 전원이다 (R71).
+ */
+function disembark(
+  run: RunState,
+  mount: Mount,
+  crew: number | undefined,
+  events: RunEvent[],
+): boolean {
   const { grid, player } = run
   const portId = grid.portAt(player.cell)
   if (player.conveyance !== 'ship' || portId === null) {
@@ -436,11 +485,27 @@ function disembark(run: RunState, mount: Mount, events: RunEvent[]): boolean {
     })
     return false
   }
+  const { supplies } = run
+  const size = crew ?? supplies.crew
+  if (!Number.isInteger(size) || size < 1 || size > supplies.crew) {
+    events.push({
+      type: 'rejected',
+      command: 'disembark',
+      reason: `내릴 인원이 맞지 않다 (1~${supplies.crew}명)`,
+    })
+    return false
+  }
+  const food = Math.floor((supplies.food * size) / supplies.crew)
+  const water = Math.floor((supplies.water * size) / supplies.crew)
+  supplies.crew -= size
+  supplies.food -= food
+  supplies.water -= water
+  run.party = { crew: size, food, water }
   run.berth = { portId, cell: player.cell }
   player.driftNm = NO_DRIFT
   player.cell = landing
   player.conveyance = mount
-  events.push({ type: 'disembark', mount, portId })
+  events.push({ type: 'disembark', mount, portId, crew: size })
   return true
 }
 
@@ -501,7 +566,8 @@ function tribute(run: RunState, events: RunEvent[]): boolean {
   )
   const food = demands.reduce((sum, demand) => sum + demand.food, 0)
   const gold = demands.reduce((sum, demand) => sum + demand.gold, 0)
-  if (food > run.supplies.food) {
+  const party = force(run)
+  if (food > party.food) {
     events.push({
       type: 'rejected',
       command: 'tribute',
@@ -518,7 +584,7 @@ function tribute(run: RunState, events: RunEvent[]): boolean {
     })
     return false
   }
-  run.supplies.food -= food
+  party.food -= food
   run.elapsedHours += COMBAT.roundHours
   for (const demand of demands) {
     demand.foe.crew = 0
@@ -628,6 +694,15 @@ function embark(run: RunState, events: RunEvent[]): boolean {
   player.conveyance = 'ship'
   player.driftNm = NO_DRIFT
   run.berth = null
+  const { party } = run
+  if (party !== null) {
+    run.supplies.crew += party.crew
+    run.supplies.food += party.food
+    run.supplies.water += party.water
+    run.party = null
+  }
+  // 합친 식량·물이 상한을 넘어도 여기서 맞추지 않는다. 정박한 채 날이 바뀔 때 되판다(R21) —
+  // 오를 때 맞추면 올림이 한 번 더 생겨, 뭍 무리를 나누기 전의 로그가 금화 한 닢 다르게 되살아난다 (R71).
   events.push({ type: 'embark', portId: berth.portId })
   return true
 }

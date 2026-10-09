@@ -62,6 +62,22 @@ export function commandForKey(key: string, code: string): Command | null {
   }
 }
 
+/** 하선 키(h·c)가 내리는 몫. Shift를 누르면 전원이다. 나머지는 배를 지킨다. */
+export const SHORE_PARTY_SHARE = 0.5
+
+/**
+ * 하선 명령에 인원을 붙인다. 하선이 아니면 그대로 돌려준다.
+ *
+ * 인원은 키를 누른 순간의 선원으로 정해 명령에 적는다 — 명령 로그만으로 재현되어야 한다 (R8).
+ */
+export function withShoreParty(command: Command, allHands: boolean, run: RunState): Command {
+  if (command.type !== 'disembark') {
+    return command
+  }
+  const crew = run.supplies.crew
+  return { ...command, crew: allHands ? crew : Math.max(1, Math.ceil(crew * SHORE_PARTY_SHARE)) }
+}
+
 /** 숫자키 한 번에 오가는 화물. 한 톤씩이면 배 한 척을 채우는 데 키를 백 번 눌러야 한다. */
 export const TRADE_LOT_TONS = 10
 
@@ -169,8 +185,13 @@ export function describeEvent(event: RunEvent): LogLine | null {
       return { text: `${portName(event.portId)}에 입항했다`, tone: 'good' }
     case 'disembark':
       return {
-        text: `${portName(event.portId)}에 배를 두고 ${CONVEYANCE_LABEL[event.mount]}을 탔다`,
+        text: `${portName(event.portId)}에 배를 두고 ${event.crew}명이 ${CONVEYANCE_LABEL[event.mount]}을 탔다`,
         tone: 'info',
+      }
+    case 'party-lost':
+      return {
+        text: `뭍 무리를 모두 잃었다. ${portName(event.portId)}에서 배를 지키던 선원이 원정을 잇는다`,
+        tone: 'bad',
       }
     case 'embark':
       return { text: `${portName(event.portId)}에서 배에 올랐다`, tone: 'info' }
@@ -277,7 +298,8 @@ function describeRation(event: Extract<RunEvent, { type: 'ration' }>): string {
   const lacking = [event.starving ? '식량' : null, event.thirsty ? '물' : null]
     .filter((item) => item !== null)
     .join('과 ')
-  return `${lacking}이 떨어졌다. 선원 ${event.lost}명을 잃었다`
+  const who = event.ashore ? '뭍 무리' : '배'
+  return `${who}의 ${lacking}이 떨어졌다. 선원 ${event.lost}명을 잃었다`
 }
 
 /** 한 명령 동안 해류에 밀린 칸 수를 한 줄로. 칸마다 남기면 로그가 해류로 뒤덮인다. */
