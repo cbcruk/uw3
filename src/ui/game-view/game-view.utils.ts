@@ -159,6 +159,21 @@ export const END_LABEL: Readonly<Record<ExpeditionEnd, string>> = {
   'crew-lost': '선원을 모두 잃었다',
   'hull-lost': '배가 가라앉았다',
   surrendered: '배를 넘기고 항복했다',
+  captured: '무너져 배를 빼앗겼다',
+}
+
+/**
+ * 추격에서 잃은 머릿수와 그중 포로. 잃은 것이 없으면 빈 문자열이다.
+ *
+ * @param verb 포로가 어느 쪽으로 갔는가. 원정이 잡았으면 "사로잡았다", 잡혀 갔으면 "붙잡혀 갔다".
+ */
+function describePursuit(lost: number, captured: number, verb: string): string {
+  if (lost === 0) {
+    return ''
+  }
+  return captured === 0
+    ? ` — 추격에서 ${lost}명을 잃었다`
+    : ` — 추격에서 ${lost}명을 잃고, 그중 ${captured}명은 ${verb}`
 }
 
 function portName(portId: string): string {
@@ -236,8 +251,15 @@ export function describeEvent(event: RunEvent): LogLine | null {
       return { text: describeCombat(event), tone: event.crewLost > event.foeLost ? 'bad' : 'warn' }
     case 'routed':
       return {
-        text: `${withParticle(encounterName(event.kind), '이', '가')} ${event.fled}명을 남기고 물러났다`,
+        text: `${withParticle(encounterName(event.kind), '이', '가')} 무너져 ${event.fled}${event.kind === 'beast' ? '마리' : '명'}이 달아났다${describePursuit(event.lost, event.captured, '사로잡았다')}`,
         tone: 'good',
+      }
+    case 'broken':
+      return {
+        text: event.atSea
+          ? `${subject(event.kind)} 뱃전을 넘어왔다. 선원이 무너져 배를 빼앗겼다`
+          : `무리가 무너져 흩어졌다${describePursuit(event.lost, event.captured, '붙잡혀 갔다')}`,
+        tone: 'bad',
       }
     case 'hire':
       return {

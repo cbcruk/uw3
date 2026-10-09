@@ -17,7 +17,6 @@ import { DIRECTIONS } from '../grid/direction'
 import { createWorldGrid } from '../grid/world-grid'
 import type { Cell, WorldGrid } from '../grid/world-grid.types'
 import type { Encounter } from '../encounter/encounter.types'
-import type { CombatEvent } from '../combat/combat.types'
 import { regionKey, regionOf, sameRegion } from '../region/region'
 import { canEnter, passageToward, waterRatio } from '../travel/travel'
 import {
@@ -268,10 +267,12 @@ export function force(run: RunState): Provisioned & { hull?: number } {
  * 조우 하나와 한 합을 치른다. 사람 무리가 쓰러지거나 물러나면 노획을 거둔다 (R64).
  *
  * 노획은 처음 머릿수에 비례한다 — 물러난 무리도 짐을 버리고 달아난다. 쓰러뜨릴 때만 주면
- * 퇴각(R46)이 먼저 오는 탓에 노획은 거의 일어나지 않는다.
+ * 무너짐(R76)이 먼저 오는 탓에 노획은 거의 일어나지 않는다.
+ *
+ * 바다에서 플레이어가 무너지면 배를 빼앗긴다. 배·화물·금화를 잃고 원정은 `captured`로 끝난다 (R76).
  */
-function fight(run: RunState, foe: Encounter, initiated: boolean): CombatEvent[] {
-  const events = fightRound({
+function fight(run: RunState, foe: Encounter, initiated: boolean): RunEvent[] {
+  const events: RunEvent[] = fightRound({
     seed: run.config.seed,
     supplies: force(run),
     conveyance: run.player.conveyance,
@@ -287,7 +288,24 @@ function fight(run: RunState, foe: Encounter, initiated: boolean): CombatEvent[]
       events.push({ type: 'plunder', encounterId: foe.id, kind: foe.kind, gold })
     }
   }
+  if (events.some((event) => event.type === 'broken' && event.atSea)) {
+    run.supplies.gold = 0
+    run.supplies.cargo = {}
+    run.ended = 'captured'
+    events.push({ type: 'ended', reason: 'captured' })
+  }
   return events
+}
+
+/**
+ * 싸우는 무리가 바뀌었으니 조우마다 견주던 머릿수를 지운다 (R77). 다음 합의 머릿수가 새 분모가 된다.
+ *
+ * 지우지 않으면 20명과 붙었던 조우가 5명만 내린 무리를 처음부터 75% 잃은 것으로 본다.
+ */
+function forgetOpposition(run: RunState): void {
+  for (const encounter of run.encounters) {
+    delete encounter.opposedCrew
+  }
 }
 
 /** 플레이어에게 바로 덤빌 수 있는 조우가 옆에 있는가. */
@@ -542,6 +560,7 @@ function disembark(
   supplies.food -= food
   supplies.water -= water
   run.party = { crew: size, food, water, landed: { crew: size, food, water } }
+  forgetOpposition(run)
   run.berth = { portId, cell: player.cell }
   player.driftNm = NO_DRIFT
   player.cell = landing
@@ -751,6 +770,7 @@ function embark(run: RunState, events: RunEvent[]): boolean {
     run.supplies.water += party.water
     run.party = null
   }
+  forgetOpposition(run)
   events.push({ type: 'embark', portId: berth.portId })
   // 넘치는 몫만 되판다. 모자란 몫까지 사면 올림이 한 번 더 생겨 뭍 무리를 나누기 전의 로그가
   // 금화 한 닢 다르게 되살아난다 (R71). 전원 하선이었으면 배가 비어 있어 넘칠 일이 없다.

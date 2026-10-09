@@ -9,8 +9,13 @@ export interface Encounter {
   kind: EncounterKindId
   cell: Cell
   crew: number
-  /** 태어날 때의 머릿수. 이것의 일정 비율 아래로 줄면 물러난다 (R46). */
+  /** 태어날 때의 머릿수. 잃은 몫이 여기서 나와 무너짐을 정한다 (R76). */
   crewAtStart: number
+  /**
+   * 이 조우와 첫 합을 치를 때 플레이어 무리의 머릿수. 플레이어가 잃은 몫을 여기에 견준다 (R77).
+   * 아직 맞붙지 않았거나 내리고 오르며 싸우는 무리가 바뀌었으면 없다.
+   */
+  opposedCrew?: number
   /** 지금 타고 있는 것. 시야 반경과 하루 행정이 여기서 나온다. */
   conveyance: Conveyance
   /**
