@@ -34,16 +34,19 @@ export function createSupplies(shipClass: ShipClass, patronGold = 0): Supplies {
  * 하루치를 먹고 마신다. 모자라면 모자란 몫에 비례해 선원을 잃는다.
  *
  * 한 명이라도 모자라면 최소 한 명은 잃는다. 비율만 쓰면 작은 배는 영영 죽지 않는다.
+ *
+ * @param waterRatio 한 사람의 하루 물 소모 배율. 사막의 말은 3, 낙타는 1.5다 (R68). 올림으로 떠낸다.
  */
-export function consumeDay(supplies: Supplies): RationReport {
+export function consumeDay(supplies: Supplies, waterRatio = 1): RationReport {
   const need = supplies.crew
+  const waterNeed = Math.ceil(need * waterRatio)
   const foodServed = Math.min(supplies.food, need)
-  const waterServed = Math.min(supplies.water, need)
+  const waterServed = Math.min(supplies.water, waterNeed)
   supplies.food -= foodServed
   supplies.water -= waterServed
 
   const foodShort = shortfall(need, foodServed)
-  const waterShort = shortfall(need, waterServed)
+  const waterShort = shortfall(waterNeed, waterServed)
   const lossRatio =
     foodShort * PROVISION.starvationLossRatio + waterShort * PROVISION.thirstLossRatio
   const lost = lossRatio > 0 ? Math.min(supplies.crew, Math.max(1, Math.ceil(need * lossRatio))) : 0
@@ -99,12 +102,18 @@ export function settleProvisions(supplies: Supplies): ProvisionSettlement {
   }
 }
 
-/** 식량과 물 중 먼저 떨어지는 쪽으로 며칠을 버티는가. 선원이 없으면 0. */
-export function daysOfSupply(supplies: Supplies): number {
+/**
+ * 식량과 물 중 먼저 떨어지는 쪽으로 며칠을 버티는가. 선원이 없으면 0.
+ *
+ * @param waterRatio 지금 자리의 물 소모 배율. 사막에서는 물이 먼저 떨어진다.
+ */
+export function daysOfSupply(supplies: Supplies, waterRatio = 1): number {
   if (supplies.crew <= 0) {
     return 0
   }
-  return Math.floor(Math.min(supplies.food, supplies.water) / supplies.crew)
+  return Math.floor(
+    Math.min(supplies.food / supplies.crew, supplies.water / Math.ceil(supplies.crew * waterRatio)),
+  )
 }
 
 /** 원정이 끝났는가. 선원이 없거나 선체가 무너지면 끝이다. */

@@ -11,6 +11,8 @@ import {
   settleProvisions,
 } from './supplies'
 import type { Supplies } from './supplies.types'
+import { MOUNT } from '../../content/game/mounts.tuning'
+import { waterRatio } from '../travel/travel'
 
 const shipClass = findShipClass('caravela-redonda') as ShipClass
 
@@ -88,5 +90,46 @@ describe('보급 — 하루치를 먹고, 모자라면 선원을 잃는다', () 
     const s = supplies({ cargo: { salt: s0().holdTons / 2 } })
     expect(provisionLimit(s)).toBe(Math.floor(s.capacity / 2))
     expect(provisionLimit(supplies({ cargo: { salt: s0().holdTons } }))).toBe(0)
+  })
+})
+
+describe('사막의 물 — 낙타를 고를 이유', () => {
+  /** 사막을 이만큼 건너는 동안 날마다 먹고 마신다. 남은 선원을 돌려준다. */
+  function cross(distanceNm: number, mount: 'horse' | 'camel'): number {
+    const s = s0()
+    const speed = mount === 'horse' ? MOUNT.horseDesert : MOUNT.camelDesert
+    const days = Math.ceil(distanceNm / speed)
+    for (let day = 0; day < days; day += 1) {
+      consumeDay(s, waterRatio(mount, 'desert'))
+    }
+    return s.crew
+  }
+
+  it('말은 사막에서 물을 더 마시고 낙타는 덜 마신다. 바다와 초지는 평소대로다', () => {
+    expect(waterRatio('horse', 'desert')).toBeGreaterThan(waterRatio('camel', 'desert'))
+    expect(waterRatio('camel', 'desert')).toBeGreaterThan(1)
+    expect(waterRatio('horse', 'grassland')).toBe(1)
+    expect(waterRatio('ship', 'sea')).toBe(1)
+  })
+
+  it('물 배율은 물에만 걸린다. 식량은 평소대로 줄고, 물은 올림으로 떠낸다', () => {
+    const s = supplies({ crew: 10, food: 100, water: 100 })
+    consumeDay(s, waterRatio('horse', 'desert'))
+    expect(s).toMatchObject({
+      food: 90,
+      water: 100 - Math.ceil(10 * waterRatio('horse', 'desert')),
+    })
+  })
+
+  it('사막 300해리를 건너면 낙타는 모두 살아남고 말은 물이 떨어져 선원을 잃는다', () => {
+    const crew = s0().crew
+    expect(cross(300, 'camel')).toBe(crew)
+    expect(cross(300, 'horse')).toBeLessThan(crew / 2)
+  })
+
+  it('버틸 날은 물 배율만큼 줄어든다', () => {
+    const s = supplies({ crew: 10, food: 300, water: 300 })
+    expect(daysOfSupply(s)).toBe(30)
+    expect(daysOfSupply(s, waterRatio('horse', 'desert'))).toBe(10)
   })
 })

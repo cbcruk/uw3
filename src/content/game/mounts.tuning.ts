@@ -34,5 +34,29 @@ const MOUNT_SCALARS = {
   },
 } as const satisfies Record<string, Tuned>
 
-export const MOUNT_TABLES = [MOUNT_SCALARS] as const
+/**
+ * 뭍의 하루 물 소모 배율. 바다·초지는 1이다 — 한 사람의 하루치가 1인 시뮬의 단위를 그대로 쓴다.
+ *
+ * 사막에서는 사람도 더 마시고 탈것도 마신다. 그 몫을 원정의 물에서 함께 떠낸다 — 탈것의 물을
+ * 따로 세지 않는다. 낙타가 덜 드는 것은 낙타가 거의 마시지 않기 때문이다 (SPEC-roguelike §25).
+ */
+const MOUNT_WATER_SCALARS = {
+  horseDesertWater: {
+    value: 3,
+    unit: '배',
+    grade: 'unverified',
+    source:
+      '감으로 정함. 사막의 말은 사람보다 몇 배를 마셔 물이 원정을 묶는다는 방향만 둔 값. 사막 기병·대상의 물 소비 기록 필요',
+  },
+  camelDesertWater: {
+    value: 1.5,
+    unit: '배',
+    grade: 'unverified',
+    source:
+      '감으로 정함. 낙타는 며칠씩 마시지 않고 사람만 더위에 더 마신다는 방향만 둔 값. 사하라 대상의 물 부대 기록 필요',
+  },
+} as const satisfies Record<string, Tuned>
+
+export const MOUNT_TABLES = [MOUNT_SCALARS, MOUNT_WATER_SCALARS] as const
 export const MOUNT = tunedValues(MOUNT_SCALARS)
+export const MOUNT_WATER = tunedValues(MOUNT_WATER_SCALARS)

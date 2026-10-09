@@ -1,4 +1,4 @@
-import { MOUNT } from '../../content/game/mounts.tuning'
+import { MOUNT, MOUNT_WATER } from '../../content/game/mounts.tuning'
 import { HOURS_PER_DAY } from '../../sim/calendar/calendar'
 import type { LatLon } from '../../sim/geo/geo.types'
 import {
@@ -32,6 +32,21 @@ const HEADING_STEP_DEG = 5
 const MOUNT_RANGE_NM: Readonly<Record<Mount, Readonly<Record<LandTerrain, number>>>> = {
   horse: { grassland: MOUNT.horseGrassland, desert: MOUNT.horseDesert },
   camel: { grassland: MOUNT.camelGrassland, desert: MOUNT.camelDesert },
+}
+
+/** 바다·초지의 물 소모. 한 사람의 하루치가 1이다. */
+const BASE_WATER_RATIO = 1
+
+/**
+ * 이 탈것으로 이 지형에 있을 때 한 사람의 하루 물 소모 배율 (R68). 사막의 말·낙타만 1이 아니다.
+ *
+ * 탈것이 마시는 몫까지 사람 머릿수에 얹은 배율이다 — 말과 낙타의 물을 따로 세지 않는다.
+ */
+export function waterRatio(conveyance: Conveyance, terrain: Terrain | null): number {
+  if (terrain !== 'desert' || conveyance === 'ship') {
+    return BASE_WATER_RATIO
+  }
+  return conveyance === 'horse' ? MOUNT_WATER.horseDesertWater : MOUNT_WATER.camelDesertWater
 }
 
 export function canEnter(conveyance: Conveyance, terrain: Terrain): boolean {
