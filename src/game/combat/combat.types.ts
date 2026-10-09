@@ -43,6 +43,14 @@ export type CombatEvent =
     }
   /** 물러나거나 쓰러진 사람 무리에게서 거둔 금화 (R64). */
   | { type: 'plunder'; encounterId: string; kind: EncounterKindId; gold: number }
+  /** 추격에서 잡은 포로를 중개인을 거쳐 그 자리에서 몸값을 받고 풀어 줬다 (R81). */
+  | {
+      type: 'captives-ransomed'
+      encounterId: string
+      kind: EncounterKindId
+      captives: number
+      gold: number
+    }
 
 /** 몸값으로 실제로 낸 것. 금화가 먼저고, 모자란 몫을 화물이 채운다 (R63). */
 export interface Ransom {

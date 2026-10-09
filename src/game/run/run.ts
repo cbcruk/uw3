@@ -267,7 +267,8 @@ export function force(run: RunState): Provisioned & { hull?: number; hullMax?: n
  * 조우 하나와 한 합을 치른다. 사람 무리가 쓰러지거나 물러나면 노획을 거둔다 (R64).
  *
  * 노획은 처음 머릿수에 비례한다 — 물러난 무리도 짐을 버리고 달아난다. 쓰러뜨릴 때만 주면
- * 무너짐(R76)이 먼저 오는 탓에 노획은 거의 일어나지 않는다.
+ * 무너짐(R76)이 먼저 오는 탓에 노획은 거의 일어나지 않는다. 뭍의 추격에서 잡은 포로는
+ * 중개인을 거쳐 그 자리에서 한 명 `captiveRansom`의 몸값을 받고 풀어 준다 (R81).
  *
  * 바다에서 플레이어가 무너지면 배를 빼앗긴다. 배·화물·금화를 잃고 원정은 `captured`로 끝난다 (R76).
  */
@@ -286,6 +287,20 @@ function fight(run: RunState, foe: Encounter, initiated: boolean): RunEvent[] {
       const gold = foe.crewAtStart * COMBAT.plunderGold
       run.supplies.gold += gold
       events.push({ type: 'plunder', encounterId: foe.id, kind: foe.kind, gold })
+    }
+  }
+  for (const event of events) {
+    if (event.type === 'routed' && event.captured > 0 && kindOf(foe).carriesGold) {
+      const gold = event.captured * COMBAT.captiveRansom
+      run.supplies.gold += gold
+      events.push({
+        type: 'captives-ransomed',
+        encounterId: foe.id,
+        kind: foe.kind,
+        captives: event.captured,
+        gold,
+      })
+      break
     }
   }
   if (events.some((event) => event.type === 'broken' && event.atSea)) {

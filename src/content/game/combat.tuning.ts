@@ -99,8 +99,15 @@ const COMBAT_SCALARS = {
   plunderGold: guess(
     10,
     '두카트/명',
-    '물리친 해적·도적의 처음 머릿수 한 명당 거두는 노획. 약탈대가 지닌 금품을 뭉뚱그린 값. 사로잡은 해적을 노예로 팔면 한 명 약 75–100두카트(나폴리 1575·1585 갤리 노예 평가, Filioli Uranio 2020)이지만 사로잡는 비율이 가정이라 쓰지 않았다 — 나포 기록의 노획액 필요',
+    '물리친 해적·도적의 처음 머릿수 한 명당 거두는 노획. 약탈대가 지닌 금품을 뭉뚱그린 값. 사로잡은 해적을 노예로 팔면 한 명 약 75–100두카트(나폴리 1575·1585 갤리 노예 평가, Filioli Uranio 2020)이지만 사로잡는 비율이 가정이라 쓰지 않았다. 뭍의 포로는 따로 captiveRansom으로 받는다(R81) — 나포 기록의 노획액 필요',
   ),
+  captiveRansom: {
+    value: 30,
+    unit: '두카트/명',
+    grade: 'qualitative',
+    source:
+      "뭍의 추격에서 잡은 평범한 약탈대원 한 명을 그 자리에서 넘기고 받는 값(R81). 아르실라 수비대는 잡은 무어인을 곧바로 경매에 부쳤고('em leilão, como sempre foi costume'), 평범한 포로는 'um bárbaro que custa dez ou doze mil reais' — 약 26–31두카트였다(Anais de Arzila I, ch. XXI, 1516). 말라가 1487의 머릿수당 몸값 30도블라(약 36두카트, Bernáldez ch. LXXXVII)와 자릿수가 같다. 산 사람이 중개인(알파케케)을 거쳐 몇 달 뒤 받는 몸값은 그 세 배쯤이다(Anais II ch. VII 1525의 보초 한 명 100크루자두, 레스카노 1498의 24명 중앙값 약 120두카트) — 게임은 그 자리에서 받으므로 경매 값을 쓴다. 이름난 자의 몸값(600–2,000+)은 넣지 않는다 — docs/research/2026-10-09/ransom-3.md",
+  },
   boardingFrontage: guess(
     12,
     '명',

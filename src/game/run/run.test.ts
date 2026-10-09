@@ -756,6 +756,46 @@ describe('뭍 무리 — 하선한 인원만 뭍에서 먹고 싸운다', () => 
     expect(both?.ended).toBe('crew-lost')
   })
 
+  it('뭍의 추격에서 잡은 포로는 그 자리에서 몸값을 받고 풀어 준다 (R81)', () => {
+    // 도적이 들이받혀 무너지고 포로가 생기는 조우 id를 찾는다 — 무너짐과 추격은 운이다.
+    const found = Array.from({ length: 200 }, (_, i) => {
+      const { run } = ashore()
+      run.encounters = [
+        {
+          id: `bandit-${i}`,
+          kind: 'bandit',
+          cell: { x: run.player.cell.x + 1, y: run.player.cell.y },
+          crew: 12,
+          crewAtStart: 12,
+          conveyance: 'horse',
+          nextActHours: 0,
+          rounds: 0,
+          chasing: false,
+        },
+      ]
+      const gold = run.supplies.gold
+      const events = applyCommand(run, { type: 'move', dir: 'e' })
+      return { run, gold, events }
+    }).find(({ events }) => eventsOf(events, 'routed').some((e) => e.captured > 0))
+    const routed = eventsOf(found?.events ?? [], 'routed')[0]
+    const ransomed = eventsOf(found?.events ?? [], 'captives-ransomed')
+    const captives = routed?.captured ?? 0
+    expect(captives).toBeGreaterThan(0)
+    expect(ransomed).toEqual([
+      {
+        type: 'captives-ransomed',
+        encounterId: routed?.encounterId,
+        kind: 'bandit',
+        captives,
+        gold: captives * COMBAT.captiveRansom,
+      },
+    ])
+    const plunder = 12 * COMBAT.plunderGold
+    expect(found?.run.supplies.gold).toBe(
+      (found?.gold ?? 0) + plunder + captives * COMBAT.captiveRansom,
+    )
+  })
+
   it('뭍에서 싸우는 것은 뭍 무리뿐이다', () => {
     const { run } = ashore(10)
     const keepers = run.supplies.crew
