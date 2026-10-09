@@ -1,6 +1,11 @@
 import { defineConfig } from 'vite-plus'
+import { rulesVersion } from './scripts/rules-version.mjs'
 
 export default defineConfig({
+  // 데일리 기록에 붙는 규칙 버전 (SPEC-roguelike R86). 화면만 고친 배포는 바뀌지 않는다.
+  define: {
+    __RULES_VERSION__: JSON.stringify(rulesVersion()),
+  },
   test: {
     include: ['src/**/*.test.ts'],
   },
@@ -23,6 +28,12 @@ export default defineConfig({
       // harness처럼 통과/실패가 없다 — 화면을 고친 전후를 사람이 견준다. 결과는 `.shots/`.
       shot: {
         command: 'node scripts/shot.mjs',
+        cache: false,
+      },
+      // 데일리 기록을 다시 돌려 검증한다. 서버가 할 일을 손으로 해 본다.
+      // `vp run verify -- 기록.json …` — 제출 형식(`Submission`) 하나 또는 그 배열.
+      verify: {
+        command: 'node scripts/verify.mjs',
         cache: false,
       },
     },

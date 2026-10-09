@@ -1,9 +1,11 @@
 import { createMeta, migrateMeta } from '../../game/expedition/expedition'
 import type { MetaState, MetaStateV1 } from '../../game/expedition/expedition.types'
+import type { Submission } from '../../game/daily/submission.types'
 import type { SavedRun } from './game-view.types'
 
 const META_KEY = 'uw3.roguelike.meta'
 const ACTIVE_KEY = 'uw3.roguelike.active'
+const SUBMISSION_KEY = 'uw3.roguelike.daily-submission'
 
 /**
  * 메타를 읽는다. 저장소가 막혔거나 비었거나 깨졌으면 새 메타다. 옛 형식(버전 1)은 올려서 읽는다.
@@ -45,6 +47,15 @@ export function saveActive(saved: SavedRun | null): void {
     return
   }
   writeJson(ACTIVE_KEY, saved)
+}
+
+/**
+ * 마지막으로 끝낸 데일리의 제출 형식을 남긴다. 서버에 낼 때 이것을 보낸다 (§39).
+ *
+ * 하나만 둔다. 명령 로그는 원정마다 수백 줄이라 날마다 쌓으면 저장소가 찬다.
+ */
+export function saveSubmission(submission: Submission): void {
+  writeJson(SUBMISSION_KEY, submission)
 }
 
 function readJson(key: string): unknown {
