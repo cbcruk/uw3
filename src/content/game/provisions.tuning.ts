@@ -23,11 +23,11 @@ const PROVISION_SCALARS = {
       '물 없이 보통 3~4일, 쉬어도 길어야 일주일(Packer 2002, Scientific American). 0.1/일은 중앙값 약 7일로 긴 쪽이다. 0.15면 4~5일 — docs/sources.md',
   },
   provisionPrice: {
-    value: 0.4,
-    unit: '두카트/인·일',
-    grade: 'unverified',
+    value: 0.016,
+    unit: '두카트/단위',
+    grade: 'measured',
     source:
-      "감으로 정함 — 사료와 크게 어긋난다. 1493년 비스카야 함대 계약 'doce maravedís una persona cada dia'(Navarrete t. II, Núm. LV) = 0.032두카트, 마젤란 1519 장부로 약 0.024. 이 값을 바꾸면 경제의 크기가 함께 바뀌어(화물이 밀어내는 보급의 값, R53) 품목 값과 같이 다시 맞추기로 보류했다. 시뮬(`world.ts`)의 단가도 같은 값이다 — docs/sources.md",
+      "1493년 비스카야 함대 계약: 'un ducado cada mes ... que sale á doce maravedís una persona cada dia'(Navarrete, Colección t. II, Núm. LV, p. 93) — 한 사람 하루 12마라베디 = 0.032두카트. 게임은 하루치를 식량·물 두 단위로 사므로 한 단위 0.016. 마젤란 1519 장부로는 약 0.024(1인·일) — docs/sources.md",
   },
   hireWage: {
     value: 11,
