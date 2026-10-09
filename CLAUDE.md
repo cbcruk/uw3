@@ -21,7 +21,8 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 - `SHAPE.md` — **표로 바꿀 수 없는 것들.** 결과가 안 맞을 때 여기를 먼저 본다
 - `SPEC-roguelike.md` — 시뮬 위에 얹는 로그라이크 레이어(`src/game/`). 메르카토르 격자·영역·배/말/낙타
 - `SPEC-uw3-game.md` — 보류된 게임 노선. 기록용
-- `docs/egress-request.md` — 사료 원문이 막혀 있다. `measured`가 0인 이유
+- `docs/egress-request.md` — 사료 원문이 막혀 있던 기록. 2026-10-09에 열렸다
+- `docs/sources.md` — 게임 표의 출처와, 찾았지만 결정이 필요해 바꾸지 않은 값
 - `db/` — 원작 도시·발견물·도서 표. 항구·발견물을 늘릴 때 **고르는** 목록이다. 좌표는 옮기지 않는다 (`db/README.md`)
 
 ### 결과가 안 맞을 때의 순서

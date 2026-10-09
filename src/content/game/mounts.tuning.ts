@@ -11,26 +11,30 @@ const MOUNT_SCALARS = {
   horseGrassland: {
     value: 25,
     unit: '해리/일',
-    grade: 'unverified',
-    source: '감으로 정함 (약 46km). 짐을 실은 말의 장거리 하루 행정 사료 필요',
+    grade: 'qualitative',
+    source:
+      '14세기 프랑스 도로 여행 하루 24~29해리(Boyer 1951, Speculum; Hall 2026, European Review of Economic History, Table 2). 원정 기병의 행군이 아니라 서두르지 않는 여행이라 값은 그 범위 안에서 저작했다 — docs/sources.md',
   },
   horseDesert: {
     value: 10,
     unit: '해리/일',
-    grade: 'unverified',
-    source: '감으로 정함. 물이 말을 묶는다는 방향만 둔 값. 사막 횡단 기병 기록 필요',
+    grade: 'qualitative',
+    source:
+      "카다모스토(c.1455): 타가자 → 팀북투 'forty days journey on horseback' — 약 788km(현대 지명 간 대권)/40일 ≈ 10.6해리. 일수는 사료, 거리는 현대 지리라 qualitative — docs/sources.md",
   },
   camelGrassland: {
     value: 18,
     unit: '해리/일',
-    grade: 'unverified',
-    source: '감으로 정함. 낙타가 초지에서 말보다 느리다는 방향만 둔 값. 사료 필요',
+    grade: 'qualitative',
+    source:
+      '짐 실은 낙타 하루 13~19해리(일반 수치). 이븐 바투타 왈라타 → 말리 약 15해리. 사료상 낙타 속도는 지형을 크게 타지 않는다 — 초지 18 < 사막 20의 차이는 게임 쪽 선택이다 — docs/sources.md',
   },
   camelDesert: {
     value: 20,
     unit: '해리/일',
-    grade: 'unverified',
-    source: '감으로 정함 (약 37km). 사하라·아라비아 대상의 하루 행정 기록 필요',
+    grade: 'qualitative',
+    source:
+      '이븐 바투타 1352년 시질마사 → 왈라타: 체류를 빼면 약 47일에 약 1,580km — 직선 18, 경로 20~22해리(Gibb 역 1929, pp. 317–323). 일수는 사료, 거리는 현대 지리라 qualitative — docs/sources.md',
   },
 } as const satisfies Record<string, Tuned>
 
@@ -46,14 +50,14 @@ const MOUNT_WATER_SCALARS = {
     unit: '배',
     grade: 'unverified',
     source:
-      '감으로 정함. 사막의 말은 사람보다 몇 배를 마셔 물이 원정을 묶는다는 방향만 둔 값. 사막 기병·대상의 물 소비 기록 필요',
+      '사료와 크게 어긋난다 — 더운 날 일하는 말은 하루 70L 넘게 마신다(MSD 수의학 매뉴얼, NRC 2007). 말의 물까지 실어 나르면 사람 배급(1.5~2L) 대비 15~60배다. 3배는 말이 날마다 우물에서 마신다는 가정이어야 맞는다 — 어느 쪽인지 정하기 전까지 감으로 정함으로 둔다 — docs/sources.md',
   },
   camelDesertWater: {
     value: 1.5,
     unit: '배',
-    grade: 'unverified',
+    grade: 'qualitative',
     source:
-      '감으로 정함. 낙타는 며칠씩 마시지 않고 사람만 더위에 더 마신다는 방향만 둔 값. 사하라 대상의 물 부대 기록 필요',
+      "레오 아프리카누스: 낙타는 'once in fiue or nine daies'만 마신다(Pory/Brown 1896, vol. 3, pp. 941–942) — 실어 나르는 물은 사람 몫이다. 더위 속 사람 4~5L ÷ 배급 1.5~2L ≈ 2~3배. 1.5는 겨울 횡단의 하한 — docs/sources.md",
   },
 } as const satisfies Record<string, Tuned>
 
