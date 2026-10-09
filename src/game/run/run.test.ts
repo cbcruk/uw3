@@ -577,7 +577,7 @@ describe('내주기 — 몸값을 주고 붙은 조우에게서 놓여난다', (
     expect(eventsOf(events, 'combat')).toHaveLength(0)
   })
 
-  it('금화가 모자라면 비싼 화물부터 기준값으로 쳐서 채운다', () => {
+  it('금화가 모자라면 비싼 화물부터 모자라지 않을 만큼 기준값으로 쳐서 채운다', () => {
     const run = seaRunNextTo(STRONG_PIRATE)
     run.supplies.gold = 100
     run.supplies.cargo = { salt: 30, sugar: 10 }
@@ -585,10 +585,12 @@ describe('내주기 — 몸값을 주고 붙은 조우에게서 놓여난다', (
     const ransom = eventsOf(events, 'ransom')[0]
     expect(ransom?.gold).toBe(100)
     const owed = STRONG_PIRATE * COMBAT.tributeGold - 100
-    const sugarTons = Math.ceil(owed / GOOD_BASE_PRICE.sugar)
-    expect(ransom?.cargo).toEqual({ sugar: sugarTons })
+    // 설탕을 모자라지 않을 만큼 통째로, 남은 몫은 소금으로 (R63)
+    const sugarTons = Math.floor(owed / GOOD_BASE_PRICE.sugar)
+    const saltTons = Math.ceil((owed - sugarTons * GOOD_BASE_PRICE.sugar) / GOOD_BASE_PRICE.salt)
+    expect(ransom?.cargo).toEqual({ sugar: sugarTons, salt: saltTons })
     expect(run.supplies.gold).toBe(0)
-    expect(run.supplies.cargo).toEqual({ salt: 30, sugar: 10 - sugarTons })
+    expect(run.supplies.cargo).toEqual({ salt: 30 - saltTons, sugar: 10 - sugarTons })
   })
 
   it('늑대는 금화가 아니라 식량을 가져간다', () => {
