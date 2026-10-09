@@ -247,6 +247,8 @@ export function describeEvent(event: RunEvent): LogLine | null {
         text: `${withParticle(encounterName(event.kind), '을', '를')} 따돌렸다`,
         tone: 'good',
       }
+    case 'gave-up':
+      return { text: `${subject(event.kind)} 수가 밀려 쫓기를 그만뒀다`, tone: 'good' }
     case 'combat':
       return { text: describeCombat(event), tone: event.crewLost > event.foeLost ? 'bad' : 'warn' }
     case 'routed':

@@ -24,6 +24,9 @@ const CONFIG: RunConfig = {
   shipClassId: 'caravela-redonda',
 }
 
+/** 출항한 배를 쫓을 만큼 우세한 가장 작은 해적 (R80). 이보다 작으면 덤비지 않는다. */
+const STRONG_PIRATE = Math.ceil(createRun(CONFIG, grid).supplies.crew * COMBAT.chaseOdds)
+
 function eventsOf<T extends RunEvent['type']>(
   events: readonly RunEvent[],
   type: T,
@@ -351,8 +354,8 @@ describe('런의 추격 — 플레이어의 명령이 흘린 시간만큼 조우
         id: 'pirate-test',
         kind: 'pirate',
         cell: { x: run.player.cell.x + dx, y: run.player.cell.y },
-        crew: 30,
-        crewAtStart: 30,
+        crew: STRONG_PIRATE,
+        crewAtStart: STRONG_PIRATE,
         conveyance: 'ship',
         nextActHours: 0,
         rounds: 0,
@@ -403,7 +406,7 @@ describe('전투 — 붙으면 양쪽이 머릿수를 잃는다', () => {
   }
 
   it('적이 붙어 있으면 기다리기는 하루가 아니라 한 합이다', () => {
-    const run = seaRunNextTo(30)
+    const run = seaRunNextTo(STRONG_PIRATE)
     const before = run.elapsedHours
     const events = applyCommand(run, { type: 'wait' })
     expect(run.elapsedHours - before).toBe(COMBAT.roundHours)
@@ -452,6 +455,39 @@ describe('전투 — 붙으면 양쪽이 머릿수를 잃는다', () => {
     expect(run.supplies.gold).toBe(0)
     expect(run.supplies.cargo).toEqual({})
     expect(eventsOf(applyCommand(run, { type: 'wait' }), 'rejected')).toHaveLength(1)
+  })
+
+  it('우세하지 않은 해적은 옆에 있어도 덤비지 않는다 — 기다리면 하루가 가고 내줄 상대도 없다 (R80)', () => {
+    const weak = STRONG_PIRATE - 1
+    const run = seaRunNextTo(weak)
+    const before = run.elapsedHours
+    const events = applyCommand(run, { type: 'wait' })
+    expect(eventsOf(events, 'combat')).toHaveLength(0)
+    expect(eventsOf(events, 'chase')).toHaveLength(0)
+    expect(run.elapsedHours - before).toBe(24)
+    expect(
+      eventsOf(applyCommand(seaRunNextTo(weak), { type: 'tribute' }), 'rejected'),
+    ).toHaveLength(1)
+    expect(
+      eventsOf(applyCommand(seaRunNextTo(weak), { type: 'surrender' }), 'rejected'),
+    ).toHaveLength(1)
+  })
+
+  it('우세한 해적은 덤비고, 약한 해적도 들이받히면 끝까지 싸운다 (R80)', () => {
+    const strong = STRONG_PIRATE
+    expect(
+      eventsOf(applyCommand(seaRunNextTo(strong), { type: 'wait' }), 'combat'),
+    ).not.toHaveLength(0)
+
+    const bumped = seaRunNextTo(strong - 1)
+    const [round] = eventsOf(applyCommand(bumped, { type: 'move', dir: 'e' }), 'combat')
+    expect(round?.initiated).toBe(true)
+
+    // 들이받힌 약한 무리는 첫 합에 무너지기 쉽다. 한 합을 치른 상태를 직접 만들어 다음 차례를 본다.
+    const run = seaRunNextTo(strong - 1)
+    Object.assign(run.encounters[0] ?? {}, { rounds: 1, chasing: true })
+    const events = applyCommand(run, { type: 'wait' })
+    expect(eventsOf(events, 'combat').some((e) => !e.initiated)).toBe(true)
   })
 
   it('같은 시드·같은 명령이면 같은 전투 결과다', () => {
@@ -515,11 +551,11 @@ describe('내주기 — 몸값을 주고 붙은 조우에게서 놓여난다', (
   }
 
   it('해적은 머릿수만큼 금화를 받고 사라지며, 물리친 수에는 들지 않는다', () => {
-    const run = seaRunNextTo(40)
+    const run = seaRunNextTo(STRONG_PIRATE)
     const { gold, food, water, crew } = run.supplies
     const hours = run.elapsedHours
     const events = applyCommand(run, { type: 'tribute' })
-    const ransom = 40 * COMBAT.tributeGold
+    const ransom = STRONG_PIRATE * COMBAT.tributeGold
     expect(eventsOf(events, 'tribute')).toEqual([
       { type: 'tribute', encounterId: 'pirate-test', kind: 'pirate', food: 0, gold: ransom },
     ])
@@ -532,13 +568,13 @@ describe('내주기 — 몸값을 주고 붙은 조우에게서 놓여난다', (
   })
 
   it('금화가 모자라면 비싼 화물부터 기준값으로 쳐서 채운다', () => {
-    const run = seaRunNextTo(40)
+    const run = seaRunNextTo(STRONG_PIRATE)
     run.supplies.gold = 100
     run.supplies.cargo = { salt: 30, sugar: 10 }
     const events = applyCommand(run, { type: 'tribute' })
     const ransom = eventsOf(events, 'ransom')[0]
     expect(ransom?.gold).toBe(100)
-    const owed = 40 * COMBAT.tributeGold - 100
+    const owed = STRONG_PIRATE * COMBAT.tributeGold - 100
     const sugarTons = Math.ceil(owed / GOOD_BASE_PRICE.sugar)
     expect(ransom?.cargo).toEqual({ sugar: sugarTons })
     expect(run.supplies.gold).toBe(0)

@@ -106,6 +106,11 @@ const COMBAT_SCALARS = {
     '명',
     '배와 배가 맞붙을 때 한 합에 싸우는 한쪽의 머릿수 상한. 뱃전이 좁아 나머지는 뒤에 선다. Centurion호(1591) 48명이 갤리(약 150명, 추정)와 세 합에 4명을 잃은 기록에 지금의 살상률로 맞춘 값이라 따로 근거를 댈 수 없다. 승선전 기록의 교전 폭 필요',
   ),
+  chaseOdds: guess(
+    1.5,
+    '배',
+    '사람 무리(해적·도적)는 머릿수가 플레이어 무리의 이만큼 이상일 때만 쫓고 덮친다(R80). 피에르 당(1649)은 알제 해적이 "deux ou trois vaisseaux contre vn, ou du moins quelque grand nauire contre vn fort petit"로만 덮쳤다고 썼다(boarding.md) — 배의 수·크기를 머릿수 비로 느슨하게 옮긴 값이다. 2로 하면 지금 해적(20–60명)은 혼합 카라벨 32명을 쫓지 않는다. 머릿수 비로 공격을 고른 기록 필요',
+  ),
   noticeRatio: internal(
     0.5,
     '배',

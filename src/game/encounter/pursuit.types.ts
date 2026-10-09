@@ -12,8 +12,11 @@ import type { Conveyance } from '../travel/travel.types'
  */
 export interface PursuitContext<E = CombatEvent> {
   grid: WorldGrid
-  /** 쫓기는 쪽(플레이어)의 칸과 탈것. 탈것은 시야가 아니라 조우가 볼 대상일 뿐이다. */
-  target: { cell: Cell; conveyance: Conveyance }
+  /**
+   * 쫓기는 쪽(플레이어)의 칸과 탈것, 그리고 싸울 무리의 머릿수. 탈것은 시야가 아니라 조우가 볼 대상일 뿐이다.
+   * 머릿수를 모르면 사람 무리도 모두 덤빈다 — 우세를 따지지 않는다 (R80).
+   */
+  target: { cell: Cell; conveyance: Conveyance; crew?: number }
   /** 플레이어의 명령이 시작된 시각. 쫓지 않던 조우는 이 시각부터 깨어난다. */
   startHours: number
   /** 플레이어의 명령이 끝난 시각. 조우는 이 시각까지 따라잡는다. */
@@ -35,5 +38,7 @@ export type PursuitEvent =
   | { type: 'chase'; encounterId: string; kind: EncounterKindId }
   | { type: 'engaged'; encounterId: string; kind: EncounterKindId }
   | { type: 'evaded'; encounterId: string; kind: EncounterKindId }
+  /** 보이는 채로 쫓기를 그만뒀다. 플레이어 무리가 커져 우세가 깨졌다 (R80). */
+  | { type: 'gave-up'; encounterId: string; kind: EncounterKindId }
   | { type: 'encounter-move'; encounterId: string; from: Cell; to: Cell; hours: number }
   | CombatEvent
