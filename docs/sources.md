@@ -70,6 +70,18 @@ Andrews · Tenenti)은 읽지 못했다.
 `pursuitLoss` 0.5, `captureShare` 0.4(15–54%). 모두 사례 몇 건의 범위라 `measured`는 아니다. `defenderBreakLoss` 0.5는 Dolphin·Revenge가
 버틴 하한일 뿐이고(끝은 화약·선체가 정했다), 무너짐을 확률로 옮기는 `chargeShock`·`surpriseFactor`는 사료에 대응하는 수가 없어 셋 다 `unverified`다.
 
+### 네 번째 조사 — 바꾼 값 없음
+
+전투([combat-3](research/2026-10-09/combat-3.md))는 Haedo(1612), 아르실라 연대기, Zurara의 『기네 연대기』, Hasleton(1595)을 더 열고, Hakluyt 전권과 Dan을 검색해 해당 대목을 읽었다.
+다섯 값(`defenderBreakLoss` `pirateHullDamage` `tributeGold` `chargeShock` `surpriseFactor`) 모두 사료가 재는 양이 게임 값과 같지 않아 `unverified`로 둔다.
+대신 구조 문제가 둘 나왔다 — 원정 쪽은 뭍에서 약탈대처럼 일찍 무너졌고, 바다에서 노예가 될 처지의 선원은 머릿수 손실로는 잘 무너지지 않았다(지휘관이나
+선체를 잃을 때 무너졌다). 선체 피해는 포에서 와서 "수십 발을 버팀 / 흘수선 아래를 맞아 침몰"로 갈렸다. #39로 남겼다.
+
+품목([prices-4](research/2026-10-09/prices-4.md))은 『카보베르데 통사 — 문서집』 1–2권(산티아구 1513–16 회계), Godinho, 『발렌팅 페르난드스 코덱스』,
+Ladero(1999), Melis를 열었다. 다섯 품목 모두 1480–1530의 무게당 값이 없다. 산티아구 1514 관세 평가의 소가죽 한 장 100헤이스(무게 없음)와
+씨 뺀 목화 아로바 500헤이스(면포의 하한 약 87)를 노트에 적었다 — 1508 마데이라 계약의 약 55는 마데이라 설탕 값에 기댄다. Hamilton 1934는 archive.org 전문 검색으로도 표 칸이 나오지 않았다.
+건포도의 다음 후보는 López de Coca(1997, 말라가)인데 온라인에 없다.
+
 ## 근거를 찾지 못한 것
 
 살상률(`playerLethality` `pirateLethality` `beastLethality`) — 승선전 기록은 공격 측 사망자를 세지 않았다. `skirmishLethality` — 기마전 사례는 몇 시간에 0–1명이라 0.001보다 낮을 수도 있다. `chargeShock` `surpriseFactor` — 무너짐의 계기(돌격·매복)는 서술뿐이다. `beastBreakLoss` — 늑대 무리의 기록이 없다. `defenderBreakLoss` — 방어 측이 무너진 손실 비율의 기록이 없다. `tributeDays` — 늑대는
