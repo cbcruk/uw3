@@ -82,9 +82,16 @@ Ladero(1999), Melis를 열었다. 다섯 품목 모두 1480–1530의 무게당 
 씨 뺀 목화 아로바 500헤이스(면포의 하한 약 87)를 노트에 적었다 — 1508 마데이라 계약의 약 55는 마데이라 설탕 값에 기댄다. Hamilton 1934는 archive.org 전문 검색으로도 표 칸이 나오지 않았다.
 건포도의 다음 후보는 López de Coca(1997, 말라가)인데 온라인에 없다.
 
+## 포로의 몸값 — 그 자리의 값은 실마리 하나뿐이다(#43)
+
+[ransom-3](research/2026-10-09/ransom-3.md)에서 아르실라 연대기(I ch. XXI 1516, II ch. VII 1525), 베르날데스(말라가 1487), 레스카노 1498(González Arévalo 2005)을 열었다.
+중개인을 거쳐 몇 달 뒤 받는 평범한 포로의 몸값은 약 70–120두카트다(아르실라 1525 하나, 스물네 명 명단 하나). 게임은 그 자리에서 받으므로
+더 낮아야 하는데, 그 값은 1516년 잡힌 무어인의 말 한마디(일꾼 노예 약 26–31두카트)뿐이다. 그래서 `captiveRansom` 30은 `unverified`다.
+말라가 1487의 30도블라(약 36두카트)는 도시 전체의 머릿수 세금이라 견주지 않았다.
+
 ## 근거를 찾지 못한 것
 
-살상률(`playerLethality` `pirateLethality` `beastLethality`) — 승선전 기록은 공격 측 사망자를 세지 않았다. `skirmishLethality` — 기마전 사례는 몇 시간에 0–1명이라 0.001보다 낮을 수도 있다. `chargeShock` `surpriseFactor` — 무너짐의 계기(돌격·매복)는 서술뿐이다. `beastBreakLoss` — 늑대 무리의 기록이 없다. `holingChance` `holingShare` — 흘수선 아래를 맞은 사례만 기록에 남아 비율이 없다. `defenderBreakLoss` — 방어 측이 무너진 손실 비율의 기록이 없다. `tributeDays` — 늑대는
+살상률(`playerLethality` `pirateLethality` `beastLethality`) — 승선전 기록은 공격 측 사망자를 세지 않았다. `skirmishLethality` — 기마전 사례는 몇 시간에 0–1명이라 0.001보다 낮을 수도 있다. `chargeShock` `surpriseFactor` — 무너짐의 계기(돌격·매복)는 서술뿐이다. `beastBreakLoss` — 늑대 무리의 기록이 없다. `captiveRansom` — 평범한 포로를 그 자리에서 넘긴 거래 기록이 없다. `holingChance` `holingShare` — 흘수선 아래를 맞은 사례만 기록에 남아 비율이 없다. `defenderBreakLoss` — 방어 측이 무너진 손실 비율의 기록이 없다. `tributeDays` — 늑대는
 보급을 가져가지 않아 대응물이 없을 수 있다.
 
 ## 사료와 크게 어긋나 결정한 것

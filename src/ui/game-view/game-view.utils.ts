@@ -280,6 +280,11 @@ export function describeEvent(event: RunEvent): LogLine | null {
         text: `${withParticle(encounterName(event.kind), '이', '가')} 남긴 금품 ${signed(event.gold)}두카트를 거뒀다`,
         tone: 'good',
       }
+    case 'captives-ransomed':
+      return {
+        text: `포로 ${event.captives}명을 넘기고 ${signed(event.gold)}두카트를 받았다`,
+        tone: 'good',
+      }
     case 'surrender':
       return {
         text: `항복했다. ${describeLoss(event.gold, event.cargo)}과 배를 넘기고 선원은 살았다`,
