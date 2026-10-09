@@ -267,11 +267,12 @@ describe('원정 쪽의 문턱 — 뭍은 일찍, 바다는 선원이나 선체�
   function brokeAt(
     conveyance: 'ship' | 'horse',
     setup: (supplies: ReturnType<typeof createSupplies>) => void,
+    opposedHull?: number,
   ) {
     return trials(100, (seed) => {
       const supplies = createSupplies(shipClass)
       const kind = conveyance === 'ship' ? 'pirate' : 'bandit'
-      const enemy = { ...foe(kind, 200), id: `${kind}-${seed}`, opposedCrew: 40 }
+      const enemy = { ...foe(kind, 200), id: `${kind}-${seed}`, opposedCrew: 400, opposedHull }
       setup(supplies)
       // 조우가 들이받는 합이라 조우는 손실로만 무너진다. 조우가 먼저 무너지는 몇 시드만 원정 쪽 판정을 가린다.
       return fightRound({ seed, supplies, conveyance, foe: enemy, initiated: false }).some(
@@ -282,18 +283,26 @@ describe('원정 쪽의 문턱 — 뭍은 일찍, 바다는 선원이나 선체�
 
   it('뭍에서 약탈대 문턱만큼 잃은 무리는 무너진다. 바다에서는 대개 버틴다', () => {
     const lost = (supplies: ReturnType<typeof createSupplies>) => {
-      supplies.crew = Math.floor(40 * (1 - COMBAT.raiderBreakLoss)) - 1
+      supplies.crew = Math.floor(400 * (1 - COMBAT.raiderBreakLoss)) - 1
     }
     expect(brokeAt('horse', lost)).toBeGreaterThan(90)
-    expect(brokeAt('ship', lost)).toBeLessThan(100)
+    expect(brokeAt('ship', lost)).toBeLessThan(60)
   })
 
-  it('바다에서는 선체를 문턱만큼 잃어도 무너진다', () => {
+  it('바다에서는 이 싸움에서 선체를 문턱만큼 잃어도 무너진다', () => {
     const holed = (supplies: ReturnType<typeof createSupplies>) => {
-      supplies.crew = 40
+      supplies.crew = 400
       supplies.hull = Math.floor(supplies.hullMax * (1 - COMBAT.defenderBreakLoss)) - 1
     }
-    expect(brokeAt('ship', holed)).toBeGreaterThan(90)
-    expect(brokeAt('ship', (supplies) => (supplies.crew = 40))).toBeLessThan(100)
+    expect(brokeAt('ship', holed, shipClass.hullPoints)).toBeGreaterThan(90)
+    expect(brokeAt('ship', (supplies) => (supplies.crew = 400))).toBeLessThan(60)
+  })
+
+  it('앞선 싸움에서 맞은 구멍은 이번 싸움의 선원을 흔들지 않는다', () => {
+    const scarred = (supplies: ReturnType<typeof createSupplies>) => {
+      supplies.crew = 400
+      supplies.hull = Math.floor(supplies.hullMax * (1 - COMBAT.defenderBreakLoss)) - 1
+    }
+    expect(brokeAt('ship', scarred)).toBeLessThan(60)
   })
 })

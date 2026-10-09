@@ -298,13 +298,14 @@ function fight(run: RunState, foe: Encounter, initiated: boolean): RunEvent[] {
 }
 
 /**
- * 싸우는 무리가 바뀌었으니 조우마다 견주던 머릿수를 지운다 (R77). 다음 합의 머릿수가 새 분모가 된다.
+ * 싸우는 무리가 바뀌었으니 조우마다 견주던 머릿수·선체를 지운다 (R77·R79). 다음 합의 값이 새 분모가 된다.
  *
  * 지우지 않으면 20명과 붙었던 조우가 5명만 내린 무리를 처음부터 75% 잃은 것으로 본다.
  */
 function forgetOpposition(run: RunState): void {
   for (const encounter of run.encounters) {
     delete encounter.opposedCrew
+    delete encounter.opposedHull
   }
 }
 

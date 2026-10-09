@@ -72,7 +72,7 @@ Andrews · Tenenti)은 읽지 못했다.
 ### 네 번째 조사 — 바꾼 값 없음
 
 전투([combat-3](research/2026-10-09/combat-3.md))는 Haedo(1612), 아르실라 연대기, Zurara의 『기네 연대기』, Hasleton(1595)을 더 열고, Hakluyt 전권과 Dan을 검색해 해당 대목을 읽었다.
-다섯 값(`defenderBreakLoss` `pirateHullDamage` `tributeGold` `chargeShock` `surpriseFactor`) 모두 사료가 재는 양이 게임 값과 같지 않아 `unverified`로 둔다.
+다섯 값(`defenderBreakLoss` `pirateHullDamage`(지금은 `holingChance`·`holingShare`) `tributeGold` `chargeShock` `surpriseFactor`) 모두 사료가 재는 양이 게임 값과 같지 않아 `unverified`로 둔다.
 대신 구조 문제가 둘 나왔다 — 원정 쪽은 뭍에서 약탈대처럼 일찍 무너졌고, 바다에서 노예가 될 처지의 선원은 머릿수 손실로는 잘 무너지지 않았다(지휘관이나
 선체를 잃을 때 무너졌다). 선체 피해는 포에서 와서 "수십 발을 버팀 / 흘수선 아래를 맞아 침몰"로 갈렸다. #39로 남겼고 SPEC-roguelike §32(R79)에서 넣었다 —
 `pirateHullDamage`는 `holingChance`·`holingShare`로 바뀌었다.

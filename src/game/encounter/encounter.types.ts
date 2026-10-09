@@ -16,6 +16,11 @@ export interface Encounter {
    * 아직 맞붙지 않았거나 내리고 오르며 싸우는 무리가 바뀌었으면 없다.
    */
   opposedCrew?: number
+  /**
+   * 이 조우와 첫 합을 치를 때 플레이어 배의 선체. 바다에서 잃은 선체의 몫을 여기에 견준다 (R79) —
+   * 앞선 싸움에서 맞은 구멍은 이번 싸움의 선원을 흔들지 않는다. 뭍 무리이거나 아직 맞붙지 않았으면 없다.
+   */
+  opposedHull?: number
   /** 지금 타고 있는 것. 시야 반경과 하루 행정이 여기서 나온다. */
   conveyance: Conveyance
   /**

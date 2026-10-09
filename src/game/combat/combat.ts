@@ -50,6 +50,7 @@ export function fightRound(options: {
   const surprised = initiated && foe.rounds === 0 && !foe.chasing
   foe.rounds += 1
   foe.opposedCrew ??= supplies.crew
+  foe.opposedHull ??= supplies.hull
 
   const atSea = foe.conveyance === 'ship' && conveyance === 'ship'
   const skirmish = foe.kind !== 'beast' && foe.conveyance !== 'ship' && conveyance !== 'ship'
@@ -60,10 +61,11 @@ export function fightRound(options: {
   const crewLost = Math.min(supplies.crew, casualties(foeFighting * FOE_LETHALITY[foe.kind], rng))
   const foeLost = Math.min(foe.crew, casualties(playerFighting * playerLethality, rng))
   const { hull, hullMax } = supplies
-  const shelled = foe.kind === 'pirate' && conveyance === 'ship' && hull !== undefined
-  const holed = shelled && rng.chance(COMBAT.holingChance)
+  const shelled = foe.kind === 'pirate' && atSea && hull !== undefined && hullMax !== undefined
   const hullLost =
-    holed && hullMax !== undefined ? Math.min(hull, Math.ceil(hullMax * COMBAT.holingShare)) : 0
+    shelled && rng.chance(COMBAT.holingChance)
+      ? Math.min(hull, Math.ceil(hullMax * COMBAT.holingShare))
+      : 0
 
   supplies.crew -= crewLost
   if (supplies.hull !== undefined) {
@@ -108,7 +110,7 @@ export function fightRound(options: {
       breakChance({
         crew: supplies.crew,
         crewAtStart: foe.opposedCrew,
-        hullShare: atSea && hullMax !== undefined ? 1 - (supplies.hull ?? hullMax) / hullMax : 0,
+        hullShare: atSea ? lostShare(foe.opposedHull, supplies.hull) : 0,
         breakLoss: conveyance === 'ship' ? COMBAT.defenderBreakLoss : COMBAT.raiderBreakLoss,
         charger: initiated || atSea ? null : foeFighting / playerFighting,
         surprised: false,
@@ -169,6 +171,13 @@ function breakChance(side: {
   const shock = side.charger === null ? 0 : COMBAT.chargeShock * side.charger ** 2
   const chance = (lossRatio / side.breakLoss + shock) * (side.surprised ? COMBAT.surpriseFactor : 1)
   return Math.min(1, chance)
+}
+
+/** 싸움을 시작할 때보다 잃은 선체의 몫. 선체가 없거나 처음부터 0이면 0이다 (R79). */
+function lostShare(atStart: number | undefined, now: number | undefined): number {
+  return atStart === undefined || now === undefined || atStart <= 0
+    ? 0
+    : Math.max(0, atStart - now) / atStart
 }
 
 /** 기댓값을 운으로 흔들고 정수로 만든다. 소수 몫은 확률로 올린다 — 작은 무리도 피해를 낸다. */
