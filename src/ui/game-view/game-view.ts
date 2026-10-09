@@ -28,6 +28,8 @@ import { bearingDeg, haversineNm } from '../../sim/geo/geo.utils'
 import { loadActive, loadMeta, saveActive, saveMeta } from './game-storage'
 import { renderExpeditionPanel } from './expedition-panel'
 import { drawRegion } from './region-renderer'
+import { motionOf, poseAt, snapshotOf } from './motion'
+import type { Motion } from './motion.types'
 import { renderMarket } from './market-panel'
 import { canEnter } from '../../game/travel/travel'
 import { knownLanguages, speaksAt } from '../../game/trade/trade'
@@ -130,8 +132,30 @@ export function mountGame(root: HTMLElement): void {
     throw new Error('2d context unavailable')
   }
 
+  // 연출 중이면 다음 프레임을 예약해 둔다. 키가 들어오면 끊고 끝 자세로 건너뛴다 — 게임 상태는 이미 끝에 있다 (R52).
+  let motion: Motion | null = null
+  let frameId = 0
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+
+  const animate = (now: number): void => {
+    const pose = motion === null ? null : poseAt(motion, session.run, now)
+    if (pose === null) {
+      motion = null
+      drawRegion(ctx, canvas, session.run)
+      return
+    }
+    drawRegion(ctx, canvas, session.run, pose)
+    frameId = requestAnimationFrame(animate)
+  }
+
+  const stopMotion = (): void => {
+    cancelAnimationFrame(frameId)
+    motion = null
+  }
+
   const draw = (): void => {
     const { run } = session
+    stopMotion()
     drawRegion(ctx, canvas, run)
     expeditionRoot.innerHTML = renderExpeditionPanel(run, session.daily, meta, dailyKey(new Date()))
     statusRoot.innerHTML = renderStatus(run)
@@ -195,6 +219,7 @@ export function mountGame(root: HTMLElement): void {
     event.preventDefault()
     const { run, daily } = session
     const wasRunning = run.ended === null
+    const before = snapshotOf(run)
     const events = applyCommand(run, command)
     pushLines([...events.map(describeEvent), describeDrift(events)])
     const record = wasRunning ? recordOf(run, daily) : null
@@ -217,6 +242,10 @@ export function mountGame(root: HTMLElement): void {
       saveActive({ config: run.config, commands: run.commands, daily })
     }
     draw()
+    motion = reducedMotion.matches ? null : motionOf(before, run, events, performance.now())
+    if (motion !== null) {
+      frameId = requestAnimationFrame(animate)
+    }
   })
   window.addEventListener('resize', draw)
   draw()

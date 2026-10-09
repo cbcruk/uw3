@@ -9,6 +9,7 @@ import { PIRATE_SHIP, PLAYER_SHIP, drawShip } from './map-art/ship-art'
 import { SPRITES } from './map-art/sprites'
 import { terrainTile } from './map-art/terrain-tiles'
 import { directionToward, facingOf, tileKeyOf } from './map-art/map-art.utils'
+import type { Point, Pose } from './motion.types'
 
 /** 소문으로만 아는 조우의 불투명도. 보이는 조우와 갈라 보이게 흐리게 둔다. */
 const RUMOR_ALPHA = 0.45
@@ -37,11 +38,15 @@ interface Frame {
  *
  * 안개 규칙은 그대로다: 탐사하지 않은 칸은 비우고, 본 적만 있는 칸은 어둡게 덮고,
  * 조우는 지금 보이는 것만 그린다.
+ *
+ * @param pose 연출 중의 자세(`motion.ts`). 플레이어와 조우를 칸 사이에 그리고, 화면을 흔들고, 손실 숫자를 띄운다.
+ *   없으면 런 상태 그대로 그린다. 무엇을 그릴지(안개·시야)는 언제나 런 상태가 정한다.
  */
 export function drawRegion(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   run: RunState,
+  pose?: Pose,
 ): void {
   const { grid, region, player, berth } = run
   const x0 = region.rx * GRID.regionCols
@@ -58,6 +63,9 @@ export function drawRegion(
   ctx.imageSmoothingEnabled = false
   ctx.fillStyle = VOID
   ctx.fillRect(0, 0, box.width, box.height)
+  if (pose !== undefined) {
+    ctx.translate(pose.shake.x * tile, pose.shake.y * tile)
+  }
 
   const frame: Frame = {
     ctx,
@@ -122,7 +130,8 @@ export function drawRegion(
     if (!inFrame(frame, cell, cols, rows) || !seen(cell)) {
       continue
     }
-    const [cx, cy] = center(frame, cell)
+    const shown = pose?.encounters.get(encounter.id) ?? cell
+    const [cx, cy] = at(frame, shown)
     const toward = directionToward(cell, player.cell) ?? 'e'
     if (sailsKind(encounter.kind)) {
       drawShip(ctx, cx, cy, tile, headingOf(toward), PIRATE_SHIP)
@@ -131,7 +140,7 @@ export function drawRegion(
       drawSprite(ctx, sprite, cx, cy, tile, SPRITE_SCALE)
     }
     if (tile >= BADGE_MIN_TILE) {
-      drawBadge(frame, cell, String(encounter.crew))
+      drawBadge(frame, shown, String(encounter.crew))
     }
   }
 
@@ -142,8 +151,9 @@ export function drawRegion(
 
   // 칸 안 위치(해류가 쌓은 편류)만큼 어긋나게 그린다. 칸 경계를 넘기 전에 밀리는 것이 보인다.
   const side = grid.stepNm(player.cell, 'e')
-  const px = frame.originX + (player.cell.x - x0 + 0.5 + player.driftNm.east / side) * tile
-  const py = frame.originY + (player.cell.y - y0 + 0.5 - player.driftNm.north / side) * tile
+  const body = pose?.player ?? player.cell
+  const px = frame.originX + (body.x - x0 + 0.5 + player.driftNm.east / side) * tile
+  const py = frame.originY + (body.y - y0 + 0.5 - player.driftNm.north / side) * tile
   if (player.conveyance === 'ship' && grid.portAt(player.cell) !== null) {
     drawDocked(ctx, px, py, tile)
   } else if (player.conveyance === 'ship') {
@@ -159,6 +169,44 @@ export function drawRegion(
       SPRITE_SCALE,
     )
   }
+
+  for (const floater of pose?.floaters ?? []) {
+    drawFloater(frame, floater.at, floater.text, floater.tone, floater.rise, floater.alpha)
+  }
+}
+
+/** 손실 숫자를 칸 위로 띄운다. 나쁜 숫자는 붉게, 좋은 숫자는 노랗게. */
+function drawFloater(
+  frame: Frame,
+  cell: Point,
+  text: string,
+  tone: 'bad' | 'good',
+  rise: number,
+  alpha: number,
+): void {
+  const { ctx, tile } = frame
+  const [cx, cy] = at(frame, cell)
+  const size = Math.max(10, Math.floor(tile * 0.55))
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.font = `bold ${size}px ui-monospace, Menlo, monospace`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'bottom'
+  ctx.lineWidth = 3
+  ctx.strokeStyle = 'rgba(8, 12, 18, 0.9)'
+  const y = cy - tile * (0.4 + rise)
+  ctx.strokeText(text, cx, y)
+  ctx.fillStyle = tone === 'bad' ? '#ff7a6a' : '#ffd36a'
+  ctx.fillText(text, cx, y)
+  ctx.restore()
+}
+
+/** 소수 칸 좌표의 화면 위치. 연출 중에는 칸 사이에 있다. */
+function at(frame: Frame, point: Point): [number, number] {
+  return [
+    frame.originX + (point.x - frame.x0 + 0.5) * frame.tile,
+    frame.originY + (point.y - frame.y0 + 0.5) * frame.tile,
+  ]
 }
 
 /** 정박한 배는 작게 잔교 옆에 둔다. 항구 그림을 덮으면 어디에 들어왔는지 안 보인다. */
@@ -181,7 +229,7 @@ function inFrame(frame: Frame, cell: Cell, cols: number, rows: number): boolean 
 }
 
 /** 칸 오른쪽 위에 머릿수를 붙인다. 붙기 전에 싸울지 피할지 정하라고 보여 준다. */
-function drawBadge(frame: Frame, cell: Cell, text: string): void {
+function drawBadge(frame: Frame, cell: Point, text: string): void {
   const { ctx, tile } = frame
   const size = Math.max(8, Math.floor(tile * 0.42))
   ctx.font = `bold ${size}px ui-monospace, Menlo, monospace`
