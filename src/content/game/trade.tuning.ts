@@ -32,6 +32,13 @@ const TRADE_SCALARS = {
     source:
       '마젤란 함대(1519) 비용 장부: 배를 뺀 운영비가 한 척에 약 1,690두카트(교역품 제외, 2년). 콜럼버스 1492년 세 척 약 200만 마라베디 — 한 척 약 1,780두카트. 한 척·한 해 원정의 크기는 맞는다 — docs/sources.md',
   },
+  customsDuty: {
+    value: 0.1,
+    unit: '비',
+    grade: 'qualitative',
+    source:
+      "다른 나라 항구에서 외국 상인이 내는 관세 — 사는 값과 파는 값 양쪽. 카스티야가 차지한 오랑(1508–18)에서 베네치아 상인은 '10 pour 100 à l'entrée et 10 pour 100 à la sortie'를 냈다(Mas Latrie 1866, pp. 108–109). 하프스 튀니스는 수입에만 10%였다(Brunschvig 1947 II, pp. 241–242). 카스티야 본토 항구의 포르투갈 상인 몫은 찾지 못했다 — docs/sources.md",
+  },
   localPriceRatio: {
     value: 0.8,
     unit: '배',

@@ -32,7 +32,7 @@ export interface RunConfig {
   patronGold?: number
   /**
    * 메타에서 배운 말. 원정의 모국어(포르투갈어)는 늘 안다 — 여기에는 그 밖의 말만 둔다.
-   * 그 말을 쓰는 항구에서는 통역 없이 거래한다 (R58). 데일리에서는 비운다.
+   * 그 말을 쓰는 항구에서는 통역료를 내지 않는다 (R58). 관세는 말과 상관없이 남는다 (R72). 데일리에서는 비운다.
    */
   languages?: readonly LanguageId[]
 }

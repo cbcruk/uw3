@@ -12,3 +12,12 @@ export type TradeResult = { ok: true; tons: number; gold: number } | { ok: false
 
 /** 거래의 방향. 말을 모르는 항구에서는 방향마다 값이 갈린다. */
 export type TradeSide = 'buy' | 'sell'
+
+/** 항구에서 외국 상인이 떼이는 몫. 사는 값에 더하고 파는 값에서 뺀다. */
+export interface PortFee {
+  /** 다른 나라 항구의 관세 (R72). */
+  customs: number
+  /** 말을 모르는 항구의 통역료 (R58). */
+  interpreter: number
+  total: number
+}

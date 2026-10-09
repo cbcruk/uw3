@@ -6,7 +6,7 @@ const FAME_IS_GAME = '명성은 게임이 만든 점수라 사료에 대응물�
 /**
  * 명성과 어학 (SPEC-roguelike §20). 둘 다 끝난 원정에서만 메타에 쌓인다 (R39).
  *
- * 명성 점수와 그 환산은 게임 속도 값이다. 통역 수수료만 현실에 대응물이 있다.
+ * 명성 점수와 그 환산은 게임 속도 값이다. 통역료만 현실에 대응물이 있다 — 외국 상인의 큰 몫인 관세는 교역 표(`customsDuty`)에 있다.
  */
 const FAME_SCALARS = {
   fameArrived: internal(50, '점', `${FAME_IS_GAME}. 계약을 끝까지 해낸 몫`),
@@ -38,11 +38,11 @@ const FAME_SCALARS = {
     '그 말을 쓰는 항구에 들른 횟수(원정마다 항구 하나에 한 번)가 이만큼이면 배운다. 게임 속도 값',
   ),
   interpreterFee: {
-    value: 0.1,
+    value: 0.005,
     unit: '비',
-    grade: 'unverified',
+    grade: 'qualitative',
     source:
-      '감으로 정함. 말을 모르는 항구에서 떼이는 몫. 크기 10%는 하프스 튀니스에서 기독교 상인이 낸 수입 관세와 같다(Brunschvig 1947 II, pp. 241–242; 제노바–튀니스 1445 조약, Mas Latrie 1866) — 그러나 그것은 말이 아니라 신앙·국적에 걸린 수입 관세이고 수출은 면세였다. 통역료 자체는 0.5%. 게임의 뜻(말에 묶이고 사고팔기 양쪽)에 맞는 사료가 필요하다 — docs/sources.md',
+      "말을 모르는 항구에서 통역(드라고만)에게 떼이는 몫. 피렌체–튀니스 1421 조약: 통역료 'cinque miliaresi per cento bisanti' = 0.5%(Mas Latrie, Traités de paix et de commerce, 1866, pp. 199–200). 하프스 튀니스의 사료라 1500년 이베리아 항구에는 방향만 댄다. 외국 상인의 큰 몫은 관세(customsDuty)다 — docs/sources.md",
   },
 } as const satisfies Record<string, Tuned>
 

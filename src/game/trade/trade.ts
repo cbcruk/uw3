@@ -7,10 +7,13 @@ import type { RunConfig } from '../run/run.types'
 import { findPort } from '../../content/ports'
 import { cargoTons } from '../supplies/supplies'
 import type { Supplies } from '../supplies/supplies.types'
-import type { MarketLine, TradeResult, TradeSide } from './trade.types'
+import type { MarketLine, PortFee, TradeResult, TradeSide } from './trade.types'
 
 /** 원정의 모국어. 계약은 포르투갈 왕실의 원정이라 이 말은 처음부터 안다. */
 export const NATIVE_LANGUAGE: LanguageId = 'portuguese'
+
+/** 원정의 나라. 이 나라가 아닌 항구에서는 관세를 낸다 (R72). 항구 자료(`Port.nation`)와 같은 이름이다. */
+export const NATIVE_NATION = '포르투갈'
 
 /** 이 원정이 아는 말. 모국어와 메타에서 넘어온 말이다 (R40). */
 export function knownLanguages(config: RunConfig): ReadonlySet<LanguageId> {
@@ -39,7 +42,8 @@ function producedAt(portId: string): Set<GoodId> {
  * 산지는 기준값 × `localPriceRatio`에 사고팔고, 산지가 아니면 기준값 × `foreignPriceRatio`에 사들인다.
  * 거리도 재고도 보지 않는다 — 값은 항구와 품목에서만 정해진다 (R54).
  *
- * 항구의 말을 모르면 통역이 `interpreterFee`만큼 뗀다 — 사는 값은 오르고 파는 값은 내린다 (R58).
+ * 다른 나라 항구에서는 관세(`customsDuty`)를, 말을 모르는 항구에서는 통역료(`interpreterFee`)를 더해 뗀다 —
+ * 사는 값은 오르고 파는 값은 내린다 (R58·R72). 관세는 말과 상관없다. 말을 배워도 카스티야 항구의 관세는 남는다.
  */
 export function priceAt(
   portId: string,
@@ -53,10 +57,21 @@ export function priceAt(
     return null
   }
   const ratio = producedAt(portId).has(goodId) ? TRADE.localPriceRatio : TRADE.foreignPriceRatio
-  const language = findPort(portId)?.language
-  const fee = language === undefined || languages.has(language) ? 0 : FAME.interpreterFee
+  const fee = portFee(portId, languages).total
   const markup = side === 'buy' ? 1 + fee : 1 - fee
   return Math.round(base * ratio * markup)
+}
+
+/**
+ * 이 항구에서 외국 상인이 떼이는 몫. 관세는 항구의 나라, 통역료는 항구의 말에서 정해진다.
+ *
+ * 둘은 더한다. 원정의 나라·말인 항구는 0이다.
+ */
+export function portFee(portId: string, languages: ReadonlySet<LanguageId>): PortFee {
+  const port = findPort(portId)
+  const customs = port !== undefined && port.nation !== NATIVE_NATION ? TRADE.customsDuty : 0
+  const interpreter = port !== undefined && !languages.has(port.language) ? FAME.interpreterFee : 0
+  return { customs, interpreter, total: customs + interpreter }
 }
 
 /** 이 항구에서 살 수 있는 품목과 값. 산지인 품목만 판다. */
