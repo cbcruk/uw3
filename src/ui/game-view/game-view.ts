@@ -9,6 +9,7 @@ import {
   dayNumberOf,
   passageFrom,
   replayRun,
+  waterRatioOf,
 } from '../../game/run/run'
 import {
   applyRunToMeta,
@@ -240,7 +241,7 @@ function renderStatus(run: RunState): string {
       ${renderGauge('물', supplies.water, supplies.capacity, supplies.water.toLocaleString())}
     </div>
     <dl class="readout">
-      <div class="readout__wide"><dt>보급</dt><dd>${daysOfSupply(supplies)}일분 · ${CONVEYANCE_LABEL[run.player.conveyance]}</dd></div>
+      <div class="readout__wide"><dt>보급</dt><dd>${daysOfSupply(supplies, waterRatioOf(run))}일분 · ${CONVEYANCE_LABEL[run.player.conveyance]}${describeWaterRatio(waterRatioOf(run))}</dd></div>
       <div class="readout__wide"><dt>바람</dt><dd>${describeWindDirection(wind.fromDeg)} ${wind.speedKnots.toFixed(1)}kn · ${WIND_REGIME_LABELS[wind.regime]}</dd></div>
       <div class="readout__wide"><dt>해류</dt><dd>${describeCurrent(position)}</dd></div>
       <div class="readout__wide"><dt>위치</dt><dd>${lat} ${lon}</dd></div>
@@ -275,6 +276,11 @@ function describeGoal(run: RunState, position: { lat: number; lon: number }): st
   const distance = haversineNm(position, goal.anchorage)
   const toward = describeCurrentDirection(bearingDeg(position, goal.anchorage))
   return `${goal.name} · ${toward} ${Math.round(distance).toLocaleString()}해리`
+}
+
+/** 물이 평소보다 빨리 줄면 그 배율. 바다·초지에서는 아무것도 붙이지 않는다. */
+function describeWaterRatio(ratio: number): string {
+  return ratio === 1 ? '' : ` · 물 ×${ratio}`
 }
 
 function describeCurrent(position: { lat: number; lon: number }): string {

@@ -8,7 +8,7 @@ import { toDayNumber } from '../../sim/calendar/calendar'
 import type { ShipClass } from '../../sim/ship/ship.types'
 import { regionKey, regionOf } from '../region/region'
 import { DIRECTIONS } from '../grid/direction'
-import { dailyRangeNm, passageToward } from '../travel/travel'
+import { dailyRangeNm, passageToward, waterRatio } from '../travel/travel'
 import { applyCommand, createRun, createWorld, currentDay, rangeTowardNm, replayRun } from './run'
 import type { Cell } from '../grid/world-grid.types'
 import type { Command, RunConfig, RunEvent } from './run.types'
@@ -189,6 +189,23 @@ describe('런 — 방향키 한 번이 한 칸', () => {
     expect(eventsOf(applyCommand(run, { type: 'embark' }), 'embark')[0]?.portId).toBe('lisboa')
     expect(run.player.cell).toEqual(port)
     expect(run.berth).toBeNull()
+  })
+
+  it('사막에 내린 원정은 날이 바뀔 때 탈것에 따라 물을 더 마신다', () => {
+    const atArguim = (mount: 'horse' | 'camel') => {
+      const run = createRun({ ...CONFIG, startPortId: 'arguim' }, grid)
+      applyCommand(run, { type: 'disembark', mount })
+      expect(grid.terrainAt(run.player.cell)).toBe('desert')
+      const { food, water, crew } = run.supplies
+      applyCommand(run, { type: 'wait' })
+      return { food: food - run.supplies.food, water: water - run.supplies.water, crew }
+    }
+    const camel = atArguim('camel')
+    const horse = atArguim('horse')
+    expect(camel.food).toBe(camel.crew)
+    expect(camel.water).toBe(Math.ceil(camel.crew * waterRatio('camel', 'desert')))
+    expect(horse.water).toBe(Math.ceil(horse.crew * waterRatio('horse', 'desert')))
+    expect(horse.water).toBeGreaterThan(camel.water)
   })
 
   it('말은 바다로 못 간다', () => {

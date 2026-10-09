@@ -18,7 +18,7 @@ import type { Cell, WorldGrid } from '../grid/world-grid.types'
 import type { Encounter } from '../encounter/encounter.types'
 import type { CombatEvent } from '../combat/combat.types'
 import { regionKey, regionOf, sameRegion } from '../region/region'
-import { canEnter, passageToward } from '../travel/travel'
+import { canEnter, passageToward, waterRatio } from '../travel/travel'
 import {
   NO_DRIFT,
   addDrift,
@@ -154,7 +154,7 @@ export function applyCommand(run: RunState, command: Command): RunEvent[] {
  */
 function passDay(run: RunState, day: number, events: RunEvent[]): void {
   events.push({ type: 'day-start', day })
-  const ration = consumeDay(run.supplies)
+  const ration = consumeDay(run.supplies, waterRatioOf(run))
   if (ration.starving || ration.thirsty) {
     events.push({ type: 'ration', ...ration })
   }
@@ -214,6 +214,14 @@ function fight(run: RunState, foe: Encounter, initiated: boolean): CombatEvent[]
 /** 플레이어에게 바로 덤빌 수 있는 조우가 옆에 있는가. */
 function engaged(run: RunState): boolean {
   return run.encounters.some((encounter) => canStrike(run.grid, encounter, run.player.cell))
+}
+
+/**
+ * 지금 자리의 물 소모 배율. 날이 바뀌는 순간 선 지형과 탈것으로 정한다 — 그날 어디를 지났는지는 보지 않는다.
+ * 소모가 날 경계에서만 일어나는 것(T1)과 같은 축이다.
+ */
+export function waterRatioOf(run: RunState): number {
+  return waterRatio(run.player.conveyance, run.grid.terrainAt(run.player.cell))
 }
 
 /** 배에 탄 채 항구 칸에 있으면 그 항구. */
