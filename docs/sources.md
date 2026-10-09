@@ -55,21 +55,24 @@ Andrews · Tenenti)은 읽지 못했다.
 | `cork` · `gum-arabic` | 코르크는 세 번 찾았으나 1566·1574 잉글랜드 값뿐이다. 아라비아고무는 런던 세관 1567–68 값(검색 요약)뿐이다                                                                | prices-2 · prices-3                         |
 | `tributeGold`         | 배 위에서 몸값을 치르고 놓여나는 관행은 확인했다(Lambert 2023) — 금액 기록이 없다                                                                                        | [ransom-2](research/2026-10-09/ransom-2.md) |
 | `plunderGold`         | 사로잡은 해적을 팔면 한 명 약 75–100두카트(나폴리 1575·1585 갤리 노예 평가, Filioli Uranio 2020). 사로잡는 비율이 가정이라 쓰지 않았다                                   | ransom-2                                    |
-| `routRatio`           | 근세 습격의 퇴각 기록이 없다. 현대 교리(미 육군 FM 105-5)뿐이고 그것도 0.5와 어긋난다                                                                                    | [combat](research/2026-10-09/combat.md) §3  |
 | `pirateHullDamage`    | Centurion호(1591)의 피해는 스페인 갤리의 포에서 왔다. 승원 수에 비례하는 피해의 근거가 없다                                                                              | combat                                      |
 | `horseDesertWater`    | 설계 가정 — 아래 2번                                                                                                                                                     | mounts §5                                   |
 
 카디스 1485–86 장부로 보면 포도주 18은 높은 쪽일 수 있다(카디스 7.5).
 
-## 전투 — 구조가 어긋나 값을 두었다(#36)
+## 전투 — 값이 아니라 흐름을 다시 설계했다(#36)
 
 승선전 기록(원문 열 건, 2차 자료 두 건)과 기마전 열세 건(원문)을 견줬다([boarding](research/2026-10-09/boarding.md), [raids](research/2026-10-09/raids.md)).
 바다의 방어 측 손실은 자릿수가 같지만(상선 방어 다섯 건, 포격 섞임), 퇴각(사료는 0–20% 손실이나 지휘관의 죽음에 무너진다)과 뭍의 살상률(몇 시간에 0–1명)이 모델의 모양과
-다르다. 값을 고쳐서는 나오지 않아 흐름을 다시 설계하기로 했다 — 그때까지 살상률·`routRatio`·`boardingFrontage`는 `unverified`다.
+달랐다. 값을 고쳐서는 나오지 않아 한 합을 견제 → 무너짐 → 추격으로 나눴다(SPEC-roguelike §31, R76–R78).
+
+그 흐름 위에서 사료의 범위를 옮길 수 있게 된 값이 `qualitative`가 됐다 — `raiderBreakLoss` 0.15, `defenderBreakLoss` 0.5,
+`pursuitLoss` 0.5, `captureShare` 0.4. 모두 사례 몇 건의 범위라 `measured`는 아니다. 무너짐을 확률로 옮기는 `chargeShock`·`surpriseFactor`는
+사료에 대응하는 수가 없어 `unverified`로 새로 늘었다.
 
 ## 근거를 찾지 못한 것
 
-살상률(`playerLethality` `pirateLethality` `banditLethality` `beastLethality`) — 값보다 구조가 먼저다(#29). `tributeDays` — 늑대는
+살상률(`playerLethality` `pirateLethality` `beastLethality`) — 승선전 기록은 공격 측 사망자를 세지 않았다. `skirmishLethality` — 기마전 사례는 몇 시간에 0–1명이라 0.001보다 낮을 수도 있다. `chargeShock` `surpriseFactor` — 무너짐의 계기(돌격·매복)는 서술뿐이다. `beastBreakLoss` — 늑대 무리의 기록이 없다. `tributeDays` — 늑대는
 보급을 가져가지 않아 대응물이 없을 수 있다.
 
 ## 사료와 크게 어긋나 결정한 것

@@ -5,8 +5,12 @@ import type { ShipClass } from '../../sim/ship/ship.types'
 import type { Cell, WorldGrid } from '../grid/world-grid.types'
 import type { Conveyance } from '../travel/travel.types'
 
-/** 조우가 한 차례 움직이는 데 필요한 바깥 상태. 런 전체를 넘기지 않으려고 따로 둔다. */
-export interface PursuitContext {
+/**
+ * 조우가 한 차례 움직이는 데 필요한 바깥 상태. 런 전체를 넘기지 않으려고 따로 둔다.
+ *
+ * `E`는 한 합이 낼 수 있는 사건이다. 런은 전투 사건에 원정의 끝을 더해 넘긴다.
+ */
+export interface PursuitContext<E = CombatEvent> {
   grid: WorldGrid
   /** 쫓기는 쪽(플레이어)의 칸과 탈것. 탈것은 시야가 아니라 조우가 볼 대상일 뿐이다. */
   target: { cell: Cell; conveyance: Conveyance }
@@ -23,7 +27,7 @@ export interface PursuitContext {
    * 플레이어 쪽 원정이 끝났으면 `null`이다 — 그때 모든 조우가 멈춘다.
    * 없으면 붙은 조우는 그대로 멈춰 선다.
    */
-  engage?: (foe: Encounter) => { hours: number; events: CombatEvent[] } | null
+  engage?: (foe: Encounter) => { hours: number; events: E[] } | null
 }
 
 /** 조우의 한 차례 결과. 이벤트로 바뀌어 런 로그에 실린다. */

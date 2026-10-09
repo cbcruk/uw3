@@ -441,14 +441,15 @@ describe('전투 — 붙으면 양쪽이 머릿수를 잃는다', () => {
     expect(run.defeated).toBe(1)
   })
 
-  it('큰 해적에게 선원이나 선체를 다 잃으면 원정이 끝난다', () => {
+  it('큰 해적에게 무너지면 배를 빼앗겨 원정이 captured로 끝난다', () => {
     const run = seaRunNextTo(400)
+    run.supplies.cargo = { salt: 3 }
     let ended = false
     for (let i = 0; i < 100 && !ended; i += 1) {
       ended = eventsOf(applyCommand(run, { type: 'wait' }), 'ended').length > 0
     }
-    expect(ended).toBe(true)
-    expect(run.ended === 'crew-lost' || run.ended === 'hull-lost').toBe(true)
+    expect(run.ended).toBe('captured')
+    expect(run.supplies).toMatchObject({ gold: 0, cargo: {} })
     expect(eventsOf(applyCommand(run, { type: 'wait' }), 'rejected')).toHaveLength(1)
   })
 
@@ -723,15 +724,16 @@ describe('뭍 무리 — 하선한 인원만 뭍에서 먹고 싸운다', () => 
         id: 'bandit-test',
         kind: 'bandit',
         cell: { x: run.player.cell.x + 1, y: run.player.cell.y },
-        crew: 30,
-        crewAtStart: 30,
+        crew: 400,
+        crewAtStart: 400,
         conveyance: 'horse',
         nextActHours: 0,
         rounds: 0,
         chasing: true,
       },
     ]
-    applyCommand(run, { type: 'wait' })
+    const events = applyCommand(run, { type: 'wait' })
+    expect(eventsOf(events, 'broken')).toHaveLength(1)
     expect(run.party?.crew).toBeLessThan(10)
     expect(run.supplies.crew).toBe(keepers)
   })

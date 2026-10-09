@@ -5,6 +5,7 @@ import type { ShipClass } from '../../sim/ship/ship.types'
 import type { Encounter } from '../encounter/encounter.types'
 import { createSupplies } from '../supplies/supplies'
 import { fightRound } from './combat'
+import type { CombatEvent } from './combat.types'
 
 const shipClass = findShipClass('caravela-redonda') as ShipClass
 
@@ -36,6 +37,11 @@ function rounds(
   return { supplies, enemy }
 }
 
+/** 시드 1..`seeds`마다 새 무리끼리 붙여 `play`의 결과를 모은다. */
+function trials<T>(seeds: number, play: (seed: number) => T): T[] {
+  return Array.from({ length: seeds }, (_, i) => play(i + 1))
+}
+
 describe('한 합 — 머릿수가 곧 공격력이다', () => {
   it('양쪽이 동시에 잃고, 몇 번째 합인지 센다', () => {
     const supplies = createSupplies(shipClass)
@@ -53,14 +59,32 @@ describe('한 합 — 머릿수가 곧 공격력이다', () => {
   })
 
   it('해적만 배의 선체를 깎는다. 뭍에서는 선체가 그대로다', () => {
-    expect(rounds('pirate', 40, 'ship', 5).supplies.hull).toBeLessThan(shipClass.hullPoints)
-    expect(rounds('bandit', 40, 'horse', 5).supplies.hull).toBe(shipClass.hullPoints)
-    expect(rounds('pirate', 40, 'horse', 5).supplies.hull).toBe(shipClass.hullPoints)
+    const hullLost = (kind: Encounter['kind'], conveyance: 'ship' | 'horse') =>
+      trials(20, (seed) => {
+        const supplies = createSupplies(shipClass)
+        const enemy = { ...foe(kind, 40), id: `${kind}-${seed}` }
+        fightRound({ seed, supplies, conveyance, foe: enemy, initiated: false })
+        return shipClass.hullPoints - supplies.hull
+      }).reduce((sum, lost) => sum + lost, 0)
+    expect(hullLost('pirate', 'ship')).toBeGreaterThan(0)
+    expect(hullLost('bandit', 'horse')).toBe(0)
+    expect(hullLost('pirate', 'horse')).toBe(0)
   })
 
-  it('작은 무리는 지고 큰 무리는 이긴다', () => {
+  it('작은 무리는 무너지고, 큰 해적에게는 원정 쪽이 무너진다', () => {
     expect(rounds('beast', 6, 'horse', 50).enemy.crew).toBe(0)
-    expect(rounds('pirate', 200, 'ship', 50).supplies.crew).toBe(0)
+    const outcomes = trials(50, (seed) => {
+      const supplies = createSupplies(shipClass)
+      const enemy = { ...foe('pirate', 200), id: `pirate-${seed}` }
+      const events: CombatEvent[] = []
+      while (enemy.crew > 0 && supplies.crew > 0) {
+        events.push(
+          ...fightRound({ seed, supplies, conveyance: 'ship', foe: enemy, initiated: false }),
+        )
+      }
+      return events.some((e) => e.type === 'broken' && e.atSea)
+    })
+    expect(outcomes.filter(Boolean).length).toBeGreaterThan(25)
   })
 
   it('같은 시드·조우·합 번호면 같은 결과다', () => {
@@ -84,8 +108,8 @@ describe('한 합 — 머릿수가 곧 공격력이다', () => {
   })
 })
 
-describe('퇴각 — 절반을 잃으면 물러난다', () => {
-  it('처음 머릿수의 절반 아래로 줄면 routed를 내고 격자에서 빠진다', () => {
+describe('무너짐 — 약탈대는 일찍, 원정 쪽은 늦게 무너진다 (R76)', () => {
+  it('들이받힌 도적은 무너져 routed를 내고 격자에서 빠진다', () => {
     const supplies = createSupplies(shipClass)
     const enemy = foe('bandit', 20)
     let routed = false
@@ -122,10 +146,6 @@ describe('전면 폭 — 배끼리는 한 번에 붙는 인원이 묶인다', ()
     expect(losses('ship', 'pirate', 150)).toBeLessThan(8)
   })
 
-  it('뭍에서는 상한이 없어 150명의 도적에게 같은 세 합이면 훨씬 많이 잃는다', () => {
-    expect(losses('horse', 'bandit', 150)).toBeGreaterThan(30)
-  })
-
   it('상한보다 적으면 전원이 싸운다 — 작은 해적과의 손실은 상한 전과 같다', () => {
     const small = COMBAT.boardingFrontage - 2
     const supplies = { ...createSupplies(shipClass), crew: small }
@@ -147,5 +167,93 @@ describe('전면 폭 — 배끼리는 한 번에 붙는 인원이 묶인다', ()
       initiated: true,
     })
     expect(round).toEqual(ashore)
+  })
+})
+
+describe('사료의 사례 — 견제는 거의 죽이지 않고, 손실은 무너진 뒤에 난다', () => {
+  function horseFight(seed: number, crew: number, foeCrew: number, id: string) {
+    const supplies = { ...createSupplies(shipClass), crew }
+    const enemy = { ...foe('bandit', foeCrew), id: `${id}-${seed}` }
+    return { supplies, enemy }
+  }
+
+  it('Centurion호(1591) — 48명이 150명의 승선 공격을 세 합 받아도 대개 버틴다', () => {
+    const held = trials(100, (seed) => {
+      const supplies = { ...createSupplies(shipClass), crew: 48 }
+      const enemy = { ...foe('pirate', 150), id: `pirate-${seed}` }
+      const events = [0, 1, 2].flatMap(() =>
+        enemy.crew > 0
+          ? fightRound({ seed, supplies, conveyance: 'ship', foe: enemy, initiated: false })
+          : [],
+      )
+      return !events.some((e) => e.type === 'broken')
+    })
+    expect(held.filter(Boolean).length).toBeGreaterThan(60)
+  })
+
+  it('포르투 다스 페드라스(1514) — 144명과 900명의 투창 견제는 한 합에 한 명 남짓 죽인다', () => {
+    const lost = trials(100, (seed) => {
+      const { supplies, enemy } = horseFight(seed, 144, 900, 'pedras')
+      const [round] = fightRound({
+        seed,
+        supplies,
+        conveyance: 'horse',
+        foe: enemy,
+        initiated: true,
+      })
+      return round?.type === 'combat' ? round.crewLost : 0
+    })
+    expect(lost.reduce((sum, n) => sum + n, 0) / lost.length).toBeLessThan(2)
+  })
+
+  it('조르즈 비에이라(1510) — 100명에게 쫓긴 32명은 대개 무너지고, 손실은 추격에서 난다', () => {
+    const outcomes = trials(100, (seed) => {
+      const { supplies, enemy } = horseFight(seed, 32, 100, 'vieira')
+      for (let round = 0; round < 6 && enemy.crew > 0; round += 1) {
+        const events = fightRound({
+          seed,
+          supplies,
+          conveyance: 'horse',
+          foe: enemy,
+          initiated: false,
+        })
+        const broken = events.find((e) => e.type === 'broken')
+        if (broken?.type === 'broken') {
+          return broken
+        }
+      }
+      return null
+    })
+    const broken = outcomes.filter((e) => e !== null)
+    expect(broken.length).toBeGreaterThan(70)
+    expect(broken.every((e) => !e.atSea && e.lost > 0 && e.captured <= e.lost)).toBe(true)
+  })
+
+  it('알아채지 못한 무리를 들이받으면 첫 합에 더 자주 무너진다 (아르실라 1509 알가라파)', () => {
+    const breaks = (chasing: boolean) =>
+      trials(200, (seed) => {
+        const { supplies, enemy } = horseFight(seed, 80, 110, 'algarrafa')
+        const events = fightRound({
+          seed,
+          supplies,
+          conveyance: 'horse',
+          foe: { ...enemy, chasing },
+          initiated: true,
+        })
+        return events.some((e) => e.type === 'routed')
+      }).filter(Boolean).length
+    expect(breaks(false)).toBeGreaterThan(breaks(true))
+  })
+
+  it('바다에서 무너진 해적은 제 배로 물러날 뿐이라 추격 손실도 포로도 없다', () => {
+    const routs = trials(100, (seed) => {
+      const supplies = createSupplies(shipClass)
+      const enemy = { ...foe('pirate', 20), id: `pirate-${seed}` }
+      return fightRound({ seed, supplies, conveyance: 'ship', foe: enemy, initiated: true }).find(
+        (e) => e.type === 'routed',
+      )
+    }).filter((e): e is Extract<CombatEvent, { type: 'routed' }> => e?.type === 'routed')
+    expect(routs.length).toBeGreaterThan(0)
+    expect(routs.every((e) => e.lost === 0 && e.captured === 0)).toBe(true)
   })
 })

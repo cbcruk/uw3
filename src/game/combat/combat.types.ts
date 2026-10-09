@@ -15,8 +15,32 @@ export type CombatEvent =
       foeLeft: number
     }
   | { type: 'defeated'; encounterId: string; kind: EncounterKindId }
-  /** 절반을 잃고 물러났다. 격자에서 사라지는 것은 쓰러뜨린 것과 같다. */
-  | { type: 'routed'; encounterId: string; kind: EncounterKindId; fled: number }
+  /**
+   * 조우가 무너져 물러났다. 격자에서 사라지는 것은 쓰러뜨린 것과 같다 (R76).
+   *
+   * `lost`는 뭍의 추격에서 더 잃은 머릿수고, 그중 `captured`가 원정이 잡은 포로다. 바다에서는 둘 다 0이다.
+   */
+  | {
+      type: 'routed'
+      encounterId: string
+      kind: EncounterKindId
+      fled: number
+      lost: number
+      captured: number
+    }
+  /**
+   * 플레이어 무리가 무너졌다 (R76). 상대는 포로와 짐을 끌고 떠난다.
+   *
+   * 뭍에서는 추격에서 `lost`를 잃고 그중 `captured`가 잡혀 간다. 바다(`atSea`)에서는 배를 빼앗겨 원정이 끝난다.
+   */
+  | {
+      type: 'broken'
+      encounterId: string
+      kind: EncounterKindId
+      atSea: boolean
+      lost: number
+      captured: number
+    }
   /** 물러나거나 쓰러진 사람 무리에게서 거둔 금화 (R64). */
   | { type: 'plunder'; encounterId: string; kind: EncounterKindId; gold: number }
 

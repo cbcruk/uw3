@@ -17,7 +17,6 @@ import { DIRECTIONS } from '../grid/direction'
 import { createWorldGrid } from '../grid/world-grid'
 import type { Cell, WorldGrid } from '../grid/world-grid.types'
 import type { Encounter } from '../encounter/encounter.types'
-import type { CombatEvent } from '../combat/combat.types'
 import { regionKey, regionOf, sameRegion } from '../region/region'
 import { canEnter, passageToward, waterRatio } from '../travel/travel'
 import {
@@ -268,10 +267,12 @@ export function force(run: RunState): Provisioned & { hull?: number } {
  * 조우 하나와 한 합을 치른다. 사람 무리가 쓰러지거나 물러나면 노획을 거둔다 (R64).
  *
  * 노획은 처음 머릿수에 비례한다 — 물러난 무리도 짐을 버리고 달아난다. 쓰러뜨릴 때만 주면
- * 퇴각(R46)이 먼저 오는 탓에 노획은 거의 일어나지 않는다.
+ * 무너짐(R76)이 먼저 오는 탓에 노획은 거의 일어나지 않는다.
+ *
+ * 바다에서 플레이어가 무너지면 배를 빼앗긴다. 배·화물·금화를 잃고 원정은 `captured`로 끝난다 (R76).
  */
-function fight(run: RunState, foe: Encounter, initiated: boolean): CombatEvent[] {
-  const events = fightRound({
+function fight(run: RunState, foe: Encounter, initiated: boolean): RunEvent[] {
+  const events: RunEvent[] = fightRound({
     seed: run.config.seed,
     supplies: force(run),
     conveyance: run.player.conveyance,
@@ -286,6 +287,12 @@ function fight(run: RunState, foe: Encounter, initiated: boolean): CombatEvent[]
       run.supplies.gold += gold
       events.push({ type: 'plunder', encounterId: foe.id, kind: foe.kind, gold })
     }
+  }
+  if (events.some((event) => event.type === 'broken' && event.atSea)) {
+    run.supplies.gold = 0
+    run.supplies.cargo = {}
+    run.ended = 'captured'
+    events.push({ type: 'ended', reason: 'captured' })
   }
   return events
 }

@@ -12,6 +12,7 @@ import { passageToward } from '../travel/travel'
 import type { Conveyance } from '../travel/travel.types'
 import { fits, nearPort } from './encounter'
 import type { Encounter } from './encounter.types'
+import type { CombatEvent } from '../combat/combat.types'
 import type { PursuitContext, PursuitEvent } from './pursuit.types'
 
 interface Step {
@@ -32,8 +33,11 @@ interface Step {
  * 플레이어는 명령 하나를 통째로 먼저 마치고, 조우는 그 끝 위치를 겨눈다.
  * 한 칸 안에서의 동시 움직임은 없다 — 로그라이크의 차례 문법이다.
  */
-export function actEncounters(context: PursuitContext, encounters: Encounter[]): PursuitEvent[] {
-  const events: PursuitEvent[] = []
+export function actEncounters<E = CombatEvent>(
+  context: PursuitContext<E>,
+  encounters: Encounter[],
+): (PursuitEvent | E)[] {
+  const events: (PursuitEvent | E)[] = []
   for (const encounter of encounters) {
     if (!encounter.chasing) {
       encounter.nextActHours = Math.max(encounter.nextActHours, context.startHours)
@@ -122,7 +126,7 @@ export function kindOf(encounter: Encounter): EncounterKind {
  * 조우가 플레이어를 보는가. 알아채는 거리는 시야보다 짧고, 한 번 쫓기 시작하면 시야 끝까지 놓치지 않는다 (R45).
  * 그래서 먼저 본 쪽이 피할 수 있고, 붙잡힌 뒤에는 시야 밖으로 벗어나야 따돌린다.
  */
-function sees(context: PursuitContext, encounter: Encounter): boolean {
+function sees(context: PursuitContext<unknown>, encounter: Encounter): boolean {
   const sightNm = sightRadiusNm(encounter.conveyance)
   const radiusNm = encounter.chasing ? sightNm : sightNm * COMBAT.noticeRatio
   return isWithinNm(context.grid, encounter.cell, context.target.cell, radiusNm)
@@ -132,7 +136,10 @@ function sees(context: PursuitContext, encounter: Encounter): boolean {
  * 지금 시각까지 움직일 차례가 남은, 플레이어를 보는 조우 중 가장 이른 것.
  * 붙은 조우는 싸울 수 있을 때(`engage`)만 차례를 받는다. 쓰러진 조우는 받지 않는다.
  */
-function nextActor(context: PursuitContext, encounters: readonly Encounter[]): Encounter | null {
+function nextActor(
+  context: PursuitContext<unknown>,
+  encounters: readonly Encounter[],
+): Encounter | null {
   let best: Encounter | null = null
   for (const encounter of encounters) {
     if (
@@ -161,7 +168,7 @@ function nextActor(context: PursuitContext, encounters: readonly Encounter[]): E
  * 같은 거리면 더 빨리 닿는 칸, 그래도 같으면 방향 순서다.
  */
 function bestStep(
-  context: PursuitContext,
+  context: PursuitContext<unknown>,
   encounters: readonly Encounter[],
   actor: Encounter,
 ): Step | null {
@@ -207,7 +214,7 @@ function bestStep(
 }
 
 function fastestConveyance(
-  context: PursuitContext,
+  context: PursuitContext<unknown>,
   kind: EncounterKind,
   from: Cell,
   dir: Direction,
