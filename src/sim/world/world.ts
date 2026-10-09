@@ -8,15 +8,13 @@ import { createTileMap } from '../map/tile-map'
 import { ROUTE_CELLS_PER_DEGREE, WORLD_LAND_CELLS_PER_DEGREE } from '../map/land-mask.const'
 import { findSeaRoute } from '../map/sea-route'
 import { PASSAGE_TUNING } from '../../content/tuning/voyage.tuning'
+import { SUPPLY } from '../../content/tuning/supply.tuning'
 import { createRngSet } from '../rng/rng'
 import { createLogbook, recordVoyageDay } from '../voyage/logbook'
 import { runPassage } from '../voyage/passage'
 import { stepDay } from '../voyage/voyage'
 import type { DayReport, VoyageContext, VoyageState } from '../voyage/voyage.types'
 import type { ActionResult, Game, GameAction, GameConfig, JournalEntry } from './world.types'
-
-const SUPPLY_PER_TON = 18
-const RESUPPLY_COST_PER_UNIT = 0.4
 
 export const DEFAULT_CONFIG: GameConfig = {
   seed: 0x5ea1e55,
@@ -25,8 +23,9 @@ export const DEFAULT_CONFIG: GameConfig = {
   shipClassId: 'caravela-redonda',
 }
 
+/** 적재량이 이만한 배가 식량과 물을 각각 몇 인일까지 싣는가 (`supplyPerTon`). */
 export function supplyCapacity(capacityTons: number): number {
-  return Math.round(capacityTons * SUPPLY_PER_TON)
+  return Math.round(capacityTons * SUPPLY.supplyPerTon)
 }
 
 export function createGame(config: GameConfig = DEFAULT_CONFIG): Game {
@@ -126,7 +125,7 @@ function resupply(game: Game): JournalEntry[] {
   const capacity = supplyCapacity(game.shipClass.capacityTons)
   const needed =
     capacity - game.voyage.food + (capacity - game.voyage.water) + (120 - game.voyage.timber)
-  const cost = Math.ceil(Math.max(0, needed) * RESUPPLY_COST_PER_UNIT)
+  const cost = Math.ceil(Math.max(0, needed) * SUPPLY.resupplyCostPerUnit)
 
   if (cost > game.gold) {
     return [{ day: game.voyage.day, kind: 'system', text: '자금이 부족해 보급하지 못했다.' }]

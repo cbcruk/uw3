@@ -9,6 +9,7 @@ import { WIND_BANDS, WIND_SCALARS } from '../tuning/wind.tuning'
 import { HAZARD_TABLES } from '../tuning/hazards.tuning'
 import { LEEWAY_TABLES } from '../tuning/leeway.tuning'
 import { VOYAGE_TABLES } from '../tuning/voyage.tuning'
+import { SUPPLY_TABLES } from '../tuning/supply.tuning'
 import { GRID_TABLES } from '../game/grid.tuning'
 import { COMBAT_TABLES } from '../game/combat.tuning'
 import { ENCOUNTER_TABLES } from '../game/encounters.tuning'
@@ -38,6 +39,7 @@ const SCALAR_TABLES = [
   ...HAZARD_TABLES,
   ...VOYAGE_TABLES,
   ...LEEWAY_TABLES,
+  ...SUPPLY_TABLES,
 ]
 /** 곡선·구간처럼 값이 수가 아닌 항목. 유한성 검사만 빼고 같은 규칙을 받는다. */
 const CURVE_ENTRIES: readonly Tuned<unknown>[] = [...Object.values(SAIL_CURVES), WIND_BANDS]
