@@ -1,4 +1,5 @@
 import type { GameDate } from '../../sim/calendar/calendar.types'
+import type { ShipClass } from '../../sim/ship/ship.types'
 import type { ExpeditionEnd } from '../supplies/supplies.types'
 import type { RunConfig } from '../run/run.types'
 import type { LanguageDocks } from '../fame/fame.types'
@@ -8,6 +9,15 @@ export interface Contract {
   startPortId: string
   goalPortId: string
   startDate: GameDate
+}
+
+/** 출항 전에 고를 수 있는 선형 하나. 닫힌 것도 보여 주어 무엇을 향해 명성을 쌓는지 알게 한다. */
+export interface ShipChoice {
+  shipClass: ShipClass
+  /** 이 선형을 여는 명성. */
+  minFame: number
+  /** 지금 명성으로 고를 수 있는가. */
+  open: boolean
 }
 
 /** 끝난 원정 하나의 기록. 리더보드와 메타가 이것만 읽는다. */

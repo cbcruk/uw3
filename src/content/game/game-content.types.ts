@@ -66,3 +66,9 @@ export interface FameTitle {
   minFame: number
   title: string
 }
+
+/** 원정에 고를 수 있는 선형 하나. 명성이 문턱 이상이면 자유 원정에서 고를 수 있다. */
+export interface ExpeditionShip {
+  shipClassId: string
+  minFame: number
+}

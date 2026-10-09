@@ -14,6 +14,7 @@ import {
   freeConfig,
   migrateMeta,
   recordOf,
+  shipChoices,
 } from './expedition'
 import type { MetaStateV1, RunRecord } from './expedition.types'
 import { FAME } from '../../content/game/fame.tuning'
@@ -44,6 +45,33 @@ describe('계약 — 시드에서 출발·목표·달이 갈린다', () => {
     expect(config.knownPortIds).toEqual(['angra'])
     const run = createRun(config, grid)
     expect(run.explored.has(grid.cellOfPort('angra') as Cell)).toBe(true)
+  })
+})
+
+describe('배 고르기 — 명성이 선형을 연다', () => {
+  it('처음에는 두 카라벨만 열려 있고, 명성이 문턱을 넘으면 나우가 열린다', () => {
+    const open = (fame: number): string[] =>
+      shipChoices(fame)
+        .filter((choice) => choice.open)
+        .map((choice) => choice.shipClass.id)
+    expect(open(0)).toEqual(['caravela-latina', 'caravela-redonda'])
+    expect(open(FAME.nauFame)).toContain('nau')
+  })
+
+  it('고른 선형은 설정으로만 넘어가고, 그 배의 제원으로 출항한다', () => {
+    const meta = { ...createMeta(), fame: FAME.nauFame }
+    const config = freeConfig(3, meta, 'nau')
+    expect(config.shipClassId).toBe('nau')
+    expect(contractFor(3)).toMatchObject({ startPortId: config.startPortId })
+    const run = createRun(config, grid)
+    expect(run.supplies.holdTons).toBe(220)
+    expect(run.supplies.crew).toBe(55)
+  })
+
+  it('열리지 않은 선형은 고를 수 없고, 데일리는 명성과 무관하게 혼합 카라벨이다', () => {
+    expect(() => freeConfig(3, createMeta(), 'nau')).toThrow()
+    expect(() => freeConfig(3, createMeta(), 'galeao')).toThrow()
+    expect(dailyConfig('2026-10-08').shipClassId).toBe('caravela-redonda')
   })
 })
 

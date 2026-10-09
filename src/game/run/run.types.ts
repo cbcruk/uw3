@@ -16,6 +16,10 @@ export interface RunConfig {
   seed: number
   startDate: GameDate
   startPortId: string
+  /**
+   * 원정의 선형. 자유 원정에서는 출항 전에 고르고, 데일리는 늘 혼합 카라벨이다 (§21).
+   * 어느 선형이 열렸는지는 메타의 명성이 정하지만, 런은 고른 결과만 받는다.
+   */
   shipClassId: string
   /** 계약한 목표 항구. 배로 입항하면 원정이 성공으로 끝난다. 없으면 끝없는 항해다. */
   goalPortId?: string

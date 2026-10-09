@@ -1,6 +1,7 @@
 import { findPort } from '../../content/ports'
-import { compareRecords } from '../../game/expedition/expedition'
-import type { MetaState, RunRecord } from '../../game/expedition/expedition.types'
+import { findShipClass } from '../../content/ships'
+import { compareRecords, shipChoices } from '../../game/expedition/expedition'
+import type { MetaState, RunRecord, ShipChoice } from '../../game/expedition/expedition.types'
 import type { RunState } from '../../game/run/run.types'
 import { END_LABEL } from './game-view.utils'
 import { LANGUAGE_LABELS } from '../../content/content.types'
@@ -14,7 +15,8 @@ function portName(portId: string | undefined): string {
 }
 
 function recordLine(record: RunRecord): string {
-  const route = `${portName(record.config.startPortId)} → ${portName(record.config.goalPortId)}`
+  const ship = findShipClass(record.config.shipClassId)?.name ?? record.config.shipClassId
+  const route = `${portName(record.config.startPortId)} → ${portName(record.config.goalPortId)} · ${ship}`
   const result =
     record.outcome === 'arrived'
       ? `${record.days}일 · 선원 ${record.crewLeft}/${record.crewAtStart}`
@@ -25,10 +27,24 @@ function recordLine(record: RunRecord): string {
   return `<li class="rl-board__item rl-board__item--${record.outcome === 'arrived' ? 'good' : 'bad'}">${tag}${route} · ${result}${gold}${fame}</li>`
 }
 
+/** 선형 고르기 버튼. 닫힌 선형은 여는 명성을 달고 눌리지 않는다. */
+function shipButton(choice: ShipChoice, chosenId: string): string {
+  const { shipClass, minFame, open } = choice
+  const crew = Math.round((shipClass.crewMin + shipClass.crewMax) / 2)
+  const spec = open
+    ? `선원 ${crew}/${shipClass.crewMax} · ${shipClass.capacityTons}톤 · 선체 ${shipClass.hullPoints}`
+    : `명성 ${minFame.toLocaleString()}`
+  const pressed = shipClass.id === chosenId
+  return `<button type="button" data-ship="${shipClass.id}" aria-pressed="${pressed}" ${open ? '' : 'disabled'}>
+      <strong>${shipClass.name}</strong> <span>${spec}</span>
+    </button>`
+}
+
 /**
  * 원정 패널. 계약을 보여 주고, 원정이 끝났거나 아직 떠나지 않았으면 새 원정 버튼을 낸다.
  *
  * 진행 중인 원정은 버릴 수 없다 — 버튼은 첫 명령 전이나 끝난 뒤에만 나온다. 퍼머데스의 뜻이다.
+ * 선형은 자유 원정이 아직 떠나지 않았을 때만 고른다. 데일리는 늘 같은 배다 (§21).
  */
 export function renderExpeditionPanel(
   run: RunState,
@@ -48,13 +64,20 @@ export function renderExpeditionPanel(
         </button>
       </div>`
     : ''
+  const ships =
+    daily === null && run.commands.length === 0 && run.ended === null
+      ? `<div class="rl-expedition__actions rl-expedition__ships">${shipChoices(meta.fame)
+          .map((choice) => shipButton(choice, run.config.shipClassId))
+          .join('')}</div>`
+      : ''
   const board = [...meta.records].sort(compareRecords).slice(0, BOARD_LIMIT)
   const known = meta.knownPortIds.map(portName).join(', ') || '없음'
   const languages = [NATIVE_LANGUAGE, ...learnedLanguages(meta.languageDocks)]
     .map((language) => LANGUAGE_LABELS[language])
     .join(', ')
   return `
-    <p class="rl-expedition__contract">${mode} · ${contract}</p>
+    <p class="rl-expedition__contract">${mode} · ${contract} · ${run.shipClass.name}</p>
+    ${ships}
     ${buttons}
     <p class="rl-expedition__meta">${fameTitle(meta.fame)} · 명성 ${meta.fame.toLocaleString()} · 후원금 ${patronGoldFor(meta.fame).toLocaleString()}두카트</p>
     <p class="rl-expedition__meta">아는 말: ${languages} · 아는 항구: ${known} · 원정 ${meta.records.length}회</p>

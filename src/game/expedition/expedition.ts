@@ -1,4 +1,6 @@
 import { PORTS } from '../../content/ports'
+import { findShipClass } from '../../content/ships'
+import { DEFAULT_EXPEDITION_SHIP, EXPEDITION_SHIPS } from '../../content/game/expedition-ships'
 import { createRng, hashString } from '../../sim/rng/rng'
 import { currentDay } from '../run/run'
 import type { RunConfig, RunState } from '../run/run.types'
@@ -9,10 +11,8 @@ import {
   learnedLanguages,
   patronGoldFor,
 } from '../fame/fame'
-import type { Contract, MetaState, MetaStateV1, RunRecord } from './expedition.types'
+import type { Contract, MetaState, MetaStateV1, RunRecord, ShipChoice } from './expedition.types'
 
-/** 계약에 쓰는 선형. 원정마다 같은 배로 떠난다 — 배를 고르는 것은 교역이 들어온 뒤다. */
-const EXPEDITION_SHIP = 'caravela-redonda'
 /** 계약의 해. 바람 표가 이 해를 기준으로 짜여 있다 (시뮬 SPEC 9). */
 const EXPEDITION_YEAR = 1502
 const MONTHS_PER_YEAR = 12
@@ -48,6 +48,7 @@ export function dailyKey(date: Date): string {
  */
 export function dailyConfig(key: string): RunConfig {
   return configFor(hashString(`${DAILY_SALT}:${key}`), {
+    shipClassId: DEFAULT_EXPEDITION_SHIP,
     knownPortIds: [],
     patronGold: 0,
     languages: [],
@@ -57,18 +58,38 @@ export function dailyConfig(key: string): RunConfig {
 /**
  * 자유 원정. 메타가 주는 몫 셋을 들고 간다 — 아는 항구, 명성의 후원금, 배운 말.
  * 메타가 런을 바꾸는 통로는 이 설정뿐이다 (R40).
+ *
+ * 고른 선형도 여기서만 넘긴다. 명성이 아직 열지 않은 선형이면 예외다 — 런은 명성을 모른다 (R57).
  */
-export function freeConfig(seed: number, meta: MetaState): RunConfig {
+export function freeConfig(
+  seed: number,
+  meta: MetaState,
+  shipClassId: string = DEFAULT_EXPEDITION_SHIP,
+): RunConfig {
+  if (
+    !shipChoices(meta.fame).some((choice) => choice.open && choice.shipClass.id === shipClassId)
+  ) {
+    throw new Error(`ship class not open: ${shipClassId}`)
+  }
   return configFor(seed, {
+    shipClassId,
     knownPortIds: [...meta.knownPortIds],
     patronGold: patronGoldFor(meta.fame),
     languages: learnedLanguages(meta.languageDocks),
   })
 }
 
+/** 원정에 고를 수 있는 선형과, 이 명성으로 열렸는가. 표의 순서 그대로다. */
+export function shipChoices(fame: number): ShipChoice[] {
+  return EXPEDITION_SHIPS.flatMap(({ shipClassId, minFame }) => {
+    const shipClass = findShipClass(shipClassId)
+    return shipClass === undefined ? [] : [{ shipClass, minFame, open: fame >= minFame }]
+  })
+}
+
 function configFor(
   seed: number,
-  fromMeta: Required<Pick<RunConfig, 'knownPortIds' | 'patronGold' | 'languages'>>,
+  chosen: Required<Pick<RunConfig, 'shipClassId' | 'knownPortIds' | 'patronGold' | 'languages'>>,
 ): RunConfig {
   const contract = contractFor(seed)
   return {
@@ -76,8 +97,7 @@ function configFor(
     startDate: contract.startDate,
     startPortId: contract.startPortId,
     goalPortId: contract.goalPortId,
-    shipClassId: EXPEDITION_SHIP,
-    ...fromMeta,
+    ...chosen,
   }
 }
 

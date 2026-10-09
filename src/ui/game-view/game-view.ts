@@ -19,6 +19,7 @@ import {
 } from '../../game/expedition/expedition'
 import type { WorldGrid } from '../../game/grid/world-grid.types'
 import { findPort } from '../../content/ports'
+import { DEFAULT_EXPEDITION_SHIP } from '../../content/game/expedition-ships'
 import { LANGUAGE_LABELS } from '../../content/content.types'
 import { fameTitle, learnedLanguages } from '../../game/fame/fame'
 import { bearingDeg, haversineNm } from '../../sim/geo/geo.utils'
@@ -78,6 +79,8 @@ export function mountGame(root: HTMLElement): void {
     saved === null
       ? startSession(grid, freeConfig(freshSeed(), meta), null)
       : { run: replayRun(saved.config, saved.commands, grid), daily: saved.daily }
+  let chosenShip =
+    saved === null || saved.daily !== null ? DEFAULT_EXPEDITION_SHIP : saved.config.shipClassId
   const log: LogLine[] = [
     {
       text: saved === null ? '원정을 떠난다. 방향키로 한 칸씩 움직인다' : '원정을 이어 간다',
@@ -144,13 +147,24 @@ export function mountGame(root: HTMLElement): void {
   }
 
   expeditionRoot.addEventListener('click', (event) => {
-    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-start]')
+    const target = event.target as HTMLElement
+    const shipButton = target.closest<HTMLButtonElement>('button[data-ship]')
+    const shipClassId = shipButton?.dataset['ship']
+    if (shipButton !== null && shipClassId !== undefined) {
+      chosenShip = shipClassId
+      session = startSession(grid, freeConfig(session.run.config.seed, meta, chosenShip), null)
+      pushLines([{ text: `${session.run.shipClass.name}로 떠나기로 한다`, tone: 'info' }])
+      shipButton.blur()
+      draw()
+      return
+    }
+    const button = target.closest<HTMLButtonElement>('button[data-start]')
     if (button === null) {
       return
     }
     const today = dailyKey(new Date())
     const daily = button.dataset['start'] === 'daily' ? today : null
-    const config = daily === null ? freeConfig(freshSeed(), meta) : dailyConfig(daily)
+    const config = daily === null ? freeConfig(freshSeed(), meta, chosenShip) : dailyConfig(daily)
     session = startSession(grid, config, daily)
     log.length = 0
     pushLines([{ text: `${daily === null ? '자유 원정' : '오늘의 원정'}을 떠난다`, tone: 'info' }])
