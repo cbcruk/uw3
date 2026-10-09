@@ -54,6 +54,9 @@ export type GoodId =
   | 'silk'
   | 'woad'
   | 'wheat'
+  | 'orchil'
+  | 'gum-arabic'
+  | 'cotton-cloth'
 
 /** 교역 품목. 항구 자료(`Port.goods`)는 이름으로 이 표를 가리킨다. */
 export interface Good {
