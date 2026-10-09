@@ -6,7 +6,7 @@ const FAME_IS_GAME = '명성은 게임이 만든 점수라 사료에 대응물�
 /**
  * 명성과 어학 (SPEC-roguelike §20). 둘 다 끝난 원정에서만 메타에 쌓인다 (R39).
  *
- * 명성 점수와 그 환산은 게임 속도 값이다. 통역 수수료만 현실에 대응물이 있다.
+ * 명성 점수와 그 환산은 게임 속도 값이다. 통역료만 현실에 대응물이 있다 — 외국 상인의 큰 몫인 관세는 교역 표(`customsDuty`)에 있다.
  */
 const FAME_SCALARS = {
   fameArrived: internal(50, '점', `${FAME_IS_GAME}. 계약을 끝까지 해낸 몫`),

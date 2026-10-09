@@ -98,6 +98,15 @@ describe('시장 — 값은 항구와 품목에서만 정해진다', () => {
     })
   })
 
+  it('다른 나라 항구에서 사서 그 자리에서 되팔면 관세만큼 잃는다', () => {
+    const supplies = createSupplies(shipClass)
+    const before = supplies.gold
+    buyGoods(supplies, 'malaga', 'sugar', 10, FLUENT)
+    sellGoods(supplies, 'malaga', 'sugar', 10, FLUENT)
+    expect(supplies.gold).toBeLessThan(before)
+    expect(supplies.cargo).toEqual({})
+  })
+
   it('원정의 나라·말인 항구에서는 떼이는 몫이 없어 산지의 사는 값과 파는 값이 같다', () => {
     expect(portFee('lisboa', native).total).toBe(0)
     expect(priceAt('lisboa', 'salt', 'buy', native)).toBe(priceAt('lisboa', 'salt', 'sell', native))
