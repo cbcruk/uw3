@@ -80,10 +80,7 @@ export function settleProvisions(supplies: Supplies): ProvisionSettlement {
   const before = { food: supplies.food, water: supplies.water, gold: supplies.gold }
   const price = PROVISION.provisionPrice
   const limit = provisionLimit(supplies)
-  const surplus = Math.max(0, supplies.food - limit) + Math.max(0, supplies.water - limit)
-  supplies.food = Math.min(supplies.food, limit)
-  supplies.water = Math.min(supplies.water, limit)
-  supplies.gold += Math.floor(surplus * price)
+  trimProvisions(supplies)
 
   const foodNeed = limit - supplies.food
   const waterNeed = limit - supplies.water
@@ -100,6 +97,26 @@ export function settleProvisions(supplies: Supplies): ProvisionSettlement {
     water: supplies.water - before.water,
     gold: supplies.gold - before.gold,
     short: bought < need,
+  }
+}
+
+/**
+ * 상한을 넘는 식량·물만 되판다. 모자란 몫은 사지 않는다.
+ *
+ * 뭍 무리가 배에 합쳐질 때 쓴다 (R71). 사기까지 하면 올림이 한 번 더 생겨 옛 로그가 다르게 되살아난다.
+ */
+export function trimProvisions(supplies: Supplies): ProvisionSettlement {
+  const before = { food: supplies.food, water: supplies.water, gold: supplies.gold }
+  const limit = provisionLimit(supplies)
+  const surplus = Math.max(0, supplies.food - limit) + Math.max(0, supplies.water - limit)
+  supplies.food = Math.min(supplies.food, limit)
+  supplies.water = Math.min(supplies.water, limit)
+  supplies.gold += Math.floor(surplus * PROVISION.provisionPrice)
+  return {
+    food: supplies.food - before.food,
+    water: supplies.water - before.water,
+    gold: supplies.gold - before.gold,
+    short: false,
   }
 }
 

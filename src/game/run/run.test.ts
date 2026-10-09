@@ -642,16 +642,70 @@ describe('뭍 무리 — 하선한 인원만 뭍에서 먹고 싸운다', () => 
     expect(run.supplies.food).toBe(run.supplies.capacity)
   })
 
-  it('배에 오르면 뭍 무리가 합쳐지고, 넘치는 식량·물은 날이 바뀔 때 되판다', () => {
+  it('배에 오르면 뭍 무리가 합쳐지고, 넘치는 식량·물은 그 자리에서 되판다 — 곧바로 떠나도 상한 안이다', () => {
     const { run, before } = ashore(10)
     applyCommand(run, { type: 'wait' })
-    applyCommand(run, { type: 'embark' })
+    const gold = run.supplies.gold
+    const events = applyCommand(run, { type: 'embark' })
     expect(run.party).toBeNull()
     expect(run.supplies.crew).toBe(before.crew)
-    expect(run.supplies.food).toBeGreaterThan(run.supplies.capacity)
-    const events = applyCommand(run, { type: 'wait' })
     expect(run.supplies.food).toBe(run.supplies.capacity)
-    expect(eventsOf(events, 'resupply')[0]?.gold).toBeGreaterThan(0)
+    expect(run.supplies.water).toBe(run.supplies.capacity)
+    expect(eventsOf(events, 'resupply')[0]?.gold).toBe(run.supplies.gold - gold)
+    expect(run.supplies.gold).toBeGreaterThan(gold)
+  })
+
+  it('뭍에서 늑대에게 내주는 식량은 뭍 무리의 것이다', () => {
+    const { run } = ashore(10)
+    const party = run.party as Provisioned
+    const shipFood = run.supplies.food
+    const partyFood = party.food
+    run.encounters = [
+      {
+        id: 'beast-test',
+        kind: 'beast',
+        cell: { x: run.player.cell.x + 1, y: run.player.cell.y },
+        crew: 6,
+        crewAtStart: 6,
+        conveyance: 'horse',
+        nextActHours: 0,
+        rounds: 0,
+        chasing: true,
+      },
+    ]
+    applyCommand(run, { type: 'tribute' })
+    expect(party.food).toBe(partyFood - Math.ceil(6 * COMBAT.tributeDays))
+    expect(run.supplies.food).toBe(shipFood)
+  })
+
+  it('뭍 무리가 굶으면 뭍의 일로 알린다', () => {
+    const { run } = ashore(10)
+    Object.assign(run.party as Provisioned, { food: 0 })
+    const ration = eventsOf(applyCommand(run, { type: 'wait' }), 'ration')
+    expect(ration).toHaveLength(1)
+    expect(ration[0]).toMatchObject({ ashore: true, starving: true, thirsty: false })
+  })
+
+  it('한 합에 선원과 선체가 함께 바닥나면 crew-lost다', () => {
+    const run = createRun(CONFIG, grid)
+    run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell
+    Object.assign(run.supplies, { crew: 1, hull: 1 })
+    run.encounters = [
+      {
+        id: 'pirate-test',
+        kind: 'pirate',
+        cell: { x: run.player.cell.x + 1, y: run.player.cell.y },
+        crew: 400,
+        crewAtStart: 400,
+        conveyance: 'ship',
+        nextActHours: 0,
+        rounds: 0,
+        chasing: true,
+      },
+    ]
+    applyCommand(run, { type: 'wait' })
+    expect(run.supplies).toMatchObject({ crew: 0, hull: 0 })
+    expect(run.ended).toBe('crew-lost')
   })
 
   it('뭍에서 싸우는 것은 뭍 무리뿐이다', () => {

@@ -28,7 +28,7 @@ import {
   resolveDrift,
 } from '../travel/drift'
 import type { EastNorth } from '../travel/drift.types'
-import { consumeDay, createSupplies, settleProvisions } from '../supplies/supplies'
+import { consumeDay, createSupplies, settleProvisions, trimProvisions } from '../supplies/supplies'
 import type { Provisioned } from '../supplies/supplies.types'
 import { buyGoods, knownLanguages, sellGoods } from '../trade/trade'
 import type { Mount, Passage } from '../travel/travel.types'
@@ -208,7 +208,8 @@ function concludeIfEnded(run: RunState, events: RunEvent[]): void {
     run.player.driftNm = NO_DRIFT
     events.push({ type: 'party-lost', portId: berth.portId })
   }
-  const end = run.supplies.hull <= 0 ? 'hull-lost' : totalCrew(run) <= 0 ? 'crew-lost' : null
+  // 선원을 먼저 본다. 한 합에 선원과 선체가 함께 바닥나면 crew-lost다 — 옛 로그의 끝을 바꾸지 않는다.
+  const end = totalCrew(run) <= 0 ? 'crew-lost' : run.supplies.hull <= 0 ? 'hull-lost' : null
   if (end !== null) {
     run.ended = end
     events.push({ type: 'ended', reason: end })
@@ -701,9 +702,13 @@ function embark(run: RunState, events: RunEvent[]): boolean {
     run.supplies.water += party.water
     run.party = null
   }
-  // 합친 식량·물이 상한을 넘어도 여기서 맞추지 않는다. 정박한 채 날이 바뀔 때 되판다(R21) —
-  // 오를 때 맞추면 올림이 한 번 더 생겨, 뭍 무리를 나누기 전의 로그가 금화 한 닢 다르게 되살아난다 (R71).
   events.push({ type: 'embark', portId: berth.portId })
+  // 넘치는 몫만 되판다. 모자란 몫까지 사면 올림이 한 번 더 생겨 뭍 무리를 나누기 전의 로그가
+  // 금화 한 닢 다르게 되살아난다 (R71). 전원 하선이었으면 배가 비어 있어 넘칠 일이 없다.
+  const trimmed = trimProvisions(run.supplies)
+  if (trimmed.food !== 0 || trimmed.water !== 0) {
+    events.push({ type: 'resupply', portId: berth.portId, ...trimmed })
+  }
   return true
 }
 
