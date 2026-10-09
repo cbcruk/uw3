@@ -2,7 +2,7 @@ import { PORTS } from '../../content/ports'
 import { findShipClass } from '../../content/ships'
 import { DEFAULT_EXPEDITION_SHIP, EXPEDITION_SHIPS } from '../../content/game/expedition-ships'
 import { createRng, hashString } from '../../sim/rng/rng'
-import { currentDay } from '../run/run'
+import { currentDay, totalCrew } from '../run/run'
 import type { RunConfig, RunState } from '../run/run.types'
 import {
   addLanguageDocks,
@@ -112,7 +112,7 @@ export function recordOf(run: RunState, daily: string | null): RunRecord | null 
     outcome: run.ended,
     days: currentDay(run) + 1,
     crewAtStart: run.crewAtStart,
-    crewLeft: run.supplies.crew,
+    crewLeft: totalCrew(run),
     defeated: run.defeated,
     regions: run.visitedRegions.size,
     gold: run.supplies.gold,

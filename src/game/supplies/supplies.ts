@@ -6,6 +6,7 @@ import type {
   Cargo,
   ExpeditionEnd,
   ProvisionSettlement,
+  Provisioned,
   RationReport,
   Supplies,
 } from './supplies.types'
@@ -37,7 +38,7 @@ export function createSupplies(shipClass: ShipClass, patronGold = 0): Supplies {
  *
  * @param waterRatio 한 사람의 하루 물 소모 배율. 사막의 말은 3, 낙타는 1.5다 (R68). 올림으로 떠낸다.
  */
-export function consumeDay(supplies: Supplies, waterRatio = 1): RationReport {
+export function consumeDay(supplies: Provisioned, waterRatio = 1): Omit<RationReport, 'ashore'> {
   const need = supplies.crew
   const waterNeed = Math.ceil(need * waterRatio)
   const foodServed = Math.min(supplies.food, need)
@@ -79,10 +80,7 @@ export function settleProvisions(supplies: Supplies): ProvisionSettlement {
   const before = { food: supplies.food, water: supplies.water, gold: supplies.gold }
   const price = PROVISION.provisionPrice
   const limit = provisionLimit(supplies)
-  const surplus = Math.max(0, supplies.food - limit) + Math.max(0, supplies.water - limit)
-  supplies.food = Math.min(supplies.food, limit)
-  supplies.water = Math.min(supplies.water, limit)
-  supplies.gold += Math.floor(surplus * price)
+  trimProvisions(supplies)
 
   const foodNeed = limit - supplies.food
   const waterNeed = limit - supplies.water
@@ -103,11 +101,31 @@ export function settleProvisions(supplies: Supplies): ProvisionSettlement {
 }
 
 /**
+ * 상한을 넘는 식량·물만 되판다. 모자란 몫은 사지 않는다.
+ *
+ * 뭍 무리가 배에 합쳐질 때 쓴다 (R71). 사기까지 하면 올림이 한 번 더 생겨 옛 로그가 다르게 되살아난다.
+ */
+export function trimProvisions(supplies: Supplies): ProvisionSettlement {
+  const before = { food: supplies.food, water: supplies.water, gold: supplies.gold }
+  const limit = provisionLimit(supplies)
+  const surplus = Math.max(0, supplies.food - limit) + Math.max(0, supplies.water - limit)
+  supplies.food = Math.min(supplies.food, limit)
+  supplies.water = Math.min(supplies.water, limit)
+  supplies.gold += Math.floor(surplus * PROVISION.provisionPrice)
+  return {
+    food: supplies.food - before.food,
+    water: supplies.water - before.water,
+    gold: supplies.gold - before.gold,
+    short: false,
+  }
+}
+
+/**
  * 식량과 물 중 먼저 떨어지는 쪽으로 며칠을 버티는가. 선원이 없으면 0.
  *
  * @param waterRatio 지금 자리의 물 소모 배율. 사막에서는 물이 먼저 떨어진다.
  */
-export function daysOfSupply(supplies: Supplies, waterRatio = 1): number {
+export function daysOfSupply(supplies: Provisioned, waterRatio = 1): number {
   if (supplies.crew <= 0) {
     return 0
   }

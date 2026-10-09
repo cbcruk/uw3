@@ -8,7 +8,7 @@ import type { ExploredMap } from '../fog/fog.types'
 import type { Direction } from '../grid/direction.types'
 import type { Cell, WorldGrid } from '../grid/world-grid.types'
 import type { RegionId } from '../region/region.types'
-import type { Cargo, ExpeditionEnd, Supplies } from '../supplies/supplies.types'
+import type { Cargo, ExpeditionEnd, Provisioned, Supplies } from '../supplies/supplies.types'
 import type { EastNorth } from '../travel/drift.types'
 import type { Conveyance, Mount } from '../travel/travel.types'
 
@@ -63,7 +63,11 @@ export interface Traveler {
 export type Command =
   | { type: 'move'; dir: Direction }
   | { type: 'wait' }
-  | { type: 'disembark'; mount: Mount }
+  /**
+   * 항구에서 뭍 무리를 내린다. `crew`는 내릴 인원이고 나머지는 배를 지킨다 (§26).
+   * 없으면 전원이다 — 뭍 무리를 나누기 전에 저장된 명령 로그가 그렇게 읽힌다 (R71).
+   */
+  | { type: 'disembark'; mount: Mount; crew?: number }
   | { type: 'embark' }
   | { type: 'hire' }
   | { type: 'tribute' }
@@ -85,11 +89,13 @@ export type RunEvent =
   | { type: 'drift'; actorId: string; from: Cell; to: Cell }
   | { type: 'region'; region: RegionId }
   | { type: 'dock'; portId: string }
-  | { type: 'disembark'; mount: Mount; portId: string }
+  | { type: 'disembark'; mount: Mount; portId: string; crew: number }
+  /** 뭍 무리가 전멸했다. 배를 지키던 선원이 원정을 잇는다 (R70). */
+  | { type: 'party-lost'; portId: string }
   | { type: 'embark'; portId: string }
   | { type: 'rejected'; command: Command['type']; reason: string }
   | { type: 'day-start'; day: number }
-  | { type: 'ration'; lost: number; starving: boolean; thirsty: boolean }
+  | { type: 'ration'; ashore: boolean; lost: number; starving: boolean; thirsty: boolean }
   | {
       type: 'resupply'
       portId: string
@@ -150,6 +156,11 @@ export interface RunState {
   /** 배로 들어가 본 항구. 메타의 "아는 항구"로 넘어간다. */
   dockedPorts: Set<string>
   berth: Berth | null
+  /**
+   * 하선한 뭍 무리. 내릴 때 식량·물을 머릿수만큼 나눠 들고 간다. 뭍에서 먹고 싸우는 것은 이 무리뿐이고,
+   * 배에 남은 선원(`supplies.crew`)은 항구에서 보급받는다 (R69). 배에 있으면 `null`.
+   */
+  party: Provisioned | null
   region: RegionId
   /** 한 번이라도 본 칸. 명령 로그에서 파생되므로 재현하면 같아진다 (R8). */
   explored: ExploredMap

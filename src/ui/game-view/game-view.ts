@@ -8,6 +8,7 @@ import {
   createWorld,
   dayNumberOf,
   passageFrom,
+  force,
   replayRun,
   waterRatioOf,
 } from '../../game/run/run'
@@ -38,6 +39,7 @@ import {
   encounterName,
   commandForKey,
   tradeCommandForKey,
+  withShoreParty,
   describeDrift,
   describeEvent,
   hoursPerCell,
@@ -93,7 +95,7 @@ export function mountGame(root: HTMLElement): void {
     <main class="layout">
       <section class="chart">
         <canvas id="rl-canvas" class="rl-canvas"></canvas>
-        <p class="chart__hint">방향키 이동 · y u b n 대각선 · . 기다림(다음 날) · h 말 하선 · c 낙타 하선 · e 승선 · r 선원 고용(항구) · 1–9 사기 · ⇧1–9 팔기(항구) · 적에게 가면 공격 · t 내주고 놓여나기 · x 항복 · <a href="#sim">시뮬레이터 →</a></p>
+        <p class="chart__hint">방향키 이동 · y u b n 대각선 · . 기다림(다음 날) · h 말 하선 · c 낙타 하선(절반, ⇧ 전원) · e 승선 · r 선원 고용(항구) · 1–9 사기 · ⇧1–9 팔기(항구) · 적에게 가면 공격 · t 내주고 놓여나기 · x 항복 · <a href="#sim">시뮬레이터 →</a></p>
       </section>
       <aside class="panel">
         <div id="rl-expedition" class="rl-expedition"></div>
@@ -174,9 +176,11 @@ export function mountGame(root: HTMLElement): void {
   })
 
   window.addEventListener('keydown', (event: KeyboardEvent) => {
+    const keyed = commandForKey(event.key, event.code)
     const command =
-      commandForKey(event.key, event.code) ??
-      tradeCommandForKey(event.code, event.shiftKey, session.run)
+      keyed === null
+        ? tradeCommandForKey(event.code, event.shiftKey, session.run)
+        : withShoreParty(keyed, event.shiftKey, session.run)
     if (command === null || event.metaKey || event.ctrlKey) {
       return
     }
@@ -229,19 +233,26 @@ function renderStatus(run: RunState): string {
   const lat = `${Math.abs(position.lat).toFixed(2)}°${position.lat >= 0 ? 'N' : 'S'}`
   const lon = `${Math.abs(position.lon).toFixed(2)}°${position.lon >= 0 ? 'E' : 'W'}`
   const { supplies } = run
+  const lead = force(run)
+  const crewLabel = run.party === null ? '선원' : '뭍 무리'
+  const keepers =
+    run.party === null
+      ? ''
+      : `<div class="readout__wide"><dt>배</dt><dd>지킴이 ${supplies.crew}명 · 식량 ${supplies.food.toLocaleString()} · 물 ${supplies.water.toLocaleString()}</dd></div>`
   return `
     <header class="hud__header">
       <h1>${formatGameDate(dayNumberOf(run))} ${String(hour).padStart(2, '0')}시</h1>
       <p>목표 ${describeGoal(run, position)}</p>
     </header>
     <div class="gauges">
-      ${renderGauge('선원', supplies.crew, run.shipClass.crewMax, `${supplies.crew}/${run.shipClass.crewMax}명`)}
+      ${renderGauge(crewLabel, lead.crew, run.shipClass.crewMax, `${lead.crew}/${run.shipClass.crewMax}명`)}
       ${renderGauge('선체', supplies.hull, supplies.hullMax, `${supplies.hull}/${supplies.hullMax}`)}
-      ${renderGauge('식량', supplies.food, supplies.capacity, supplies.food.toLocaleString())}
-      ${renderGauge('물', supplies.water, supplies.capacity, supplies.water.toLocaleString())}
+      ${renderGauge('식량', lead.food, supplies.capacity, lead.food.toLocaleString())}
+      ${renderGauge('물', lead.water, supplies.capacity, lead.water.toLocaleString())}
     </div>
     <dl class="readout">
-      <div class="readout__wide"><dt>보급</dt><dd>${daysOfSupply(supplies, waterRatioOf(run))}일분 · ${CONVEYANCE_LABEL[run.player.conveyance]}${describeWaterRatio(waterRatioOf(run))}</dd></div>
+      <div class="readout__wide"><dt>보급</dt><dd>${daysOfSupply(lead, waterRatioOf(run))}일분 · ${CONVEYANCE_LABEL[run.player.conveyance]}${describeWaterRatio(waterRatioOf(run))}</dd></div>
+      ${keepers}
       <div class="readout__wide"><dt>바람</dt><dd>${describeWindDirection(wind.fromDeg)} ${wind.speedKnots.toFixed(1)}kn · ${WIND_REGIME_LABELS[wind.regime]}</dd></div>
       <div class="readout__wide"><dt>해류</dt><dd>${describeCurrent(position)}</dd></div>
       <div class="readout__wide"><dt>위치</dt><dd>${lat} ${lon}</dd></div>

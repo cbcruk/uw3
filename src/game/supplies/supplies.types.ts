@@ -3,15 +3,19 @@ import type { GoodId } from '../../content/game/game-content.types'
 /** 화물칸. 품목마다 실은 톤 수다. 없는 품목은 키가 없다. */
 export type Cargo = Partial<Record<GoodId, number>>
 
+/** 먹고 마시는 무리 하나. 배의 보급과 뭍 무리(§26)가 같은 규칙으로 줄어든다. */
+export interface Provisioned {
+  crew: number
+  food: number
+  water: number
+}
+
 /**
  * 원정이 잃을 수 있는 것. 시뮬의 `VoyageState`에서 넷만 남겼고, 교역(§19)이 금화와 화물을 더했다.
  *
  * 식량·물의 단위는 시뮬과 같다 — 1 = 한 사람의 하루치.
  */
-export interface Supplies {
-  crew: number
-  food: number
-  water: number
+export interface Supplies extends Provisioned {
   hull: number
   hullMax: number
   /** 화물이 없을 때 식량·물 각각을 채울 수 있는 상한. 배의 적재량에서 정해진다. */
@@ -39,6 +43,8 @@ export type ExpeditionEnd = 'arrived' | 'crew-lost' | 'hull-lost' | 'surrendered
 
 /** 하루치 소모의 결과. 화면 로그가 쓴다. */
 export interface RationReport {
+  /** 뭍 무리의 일이면 참, 배(지킴이)의 일이면 거짓. */
+  ashore: boolean
   lost: number
   starving: boolean
   thirsty: boolean
