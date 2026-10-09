@@ -43,7 +43,7 @@ export type CombatEvent =
     }
   /** 물러나거나 쓰러진 사람 무리에게서 거둔 금화 (R64). */
   | { type: 'plunder'; encounterId: string; kind: EncounterKindId; gold: number }
-  /** 추격에서 잡은 포로를 중개인을 거쳐 그 자리에서 몸값을 받고 풀어 줬다 (R81). */
+  /** 추격에서 잡은 포로를 그 자리에서 값을 받고 넘겼다 (R81). 데리고 다니지 않는다. */
   | {
       type: 'captives-ransomed'
       encounterId: string

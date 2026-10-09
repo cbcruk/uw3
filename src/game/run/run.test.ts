@@ -490,6 +490,16 @@ describe('전투 — 붙으면 양쪽이 머릿수를 잃는다', () => {
     expect(eventsOf(events, 'combat').some((e) => !e.initiated)).toBe(true)
   })
 
+  it('바다에서 무너진 해적은 추격이 없어 넘길 포로도 없다 (R81)', () => {
+    const run = seaRunNextTo(STRONG_PIRATE)
+    let events: RunEvent[] = []
+    for (let i = 0; i < 20 && eventsOf(events, 'routed').length === 0; i += 1) {
+      events = applyCommand(run, { type: 'move', dir: 'e' })
+    }
+    expect(eventsOf(events, 'routed')).toHaveLength(1)
+    expect(eventsOf(events, 'captives-ransomed')).toHaveLength(0)
+  })
+
   it('같은 시드·같은 명령이면 같은 전투 결과다', () => {
     const play = () => {
       const run = seaRunNextTo(30)
@@ -756,8 +766,9 @@ describe('뭍 무리 — 하선한 인원만 뭍에서 먹고 싸운다', () => 
     expect(both?.ended).toBe('crew-lost')
   })
 
-  it('뭍의 추격에서 잡은 포로는 그 자리에서 몸값을 받고 풀어 준다 (R81)', () => {
+  it('뭍의 추격에서 잡은 포로는 그 자리에서 값을 받고 넘긴다 (R81)', () => {
     // 도적이 들이받혀 무너지고 포로가 생기는 조우 id를 찾는다 — 무너짐과 추격은 운이다.
+    const bandits = 12
     const found = Array.from({ length: 200 }, (_, i) => {
       const { run } = ashore()
       run.encounters = [
@@ -765,8 +776,8 @@ describe('뭍 무리 — 하선한 인원만 뭍에서 먹고 싸운다', () => 
           id: `bandit-${i}`,
           kind: 'bandit',
           cell: { x: run.player.cell.x + 1, y: run.player.cell.y },
-          crew: 12,
-          crewAtStart: 12,
+          crew: bandits,
+          crewAtStart: bandits,
           conveyance: 'horse',
           nextActHours: 0,
           rounds: 0,
@@ -790,7 +801,7 @@ describe('뭍 무리 — 하선한 인원만 뭍에서 먹고 싸운다', () => 
         gold: captives * COMBAT.captiveRansom,
       },
     ])
-    const plunder = 12 * COMBAT.plunderGold
+    const plunder = bandits * COMBAT.plunderGold
     expect(found?.run.supplies.gold).toBe(
       (found?.gold ?? 0) + plunder + captives * COMBAT.captiveRansom,
     )

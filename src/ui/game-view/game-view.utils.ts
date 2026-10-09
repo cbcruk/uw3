@@ -282,7 +282,7 @@ export function describeEvent(event: RunEvent): LogLine | null {
       }
     case 'captives-ransomed':
       return {
-        text: `포로 ${event.captives}명을 몸값 ${signed(event.gold)}두카트에 풀어 줬다`,
+        text: `포로 ${event.captives}명을 넘기고 ${signed(event.gold)}두카트를 받았다`,
         tone: 'good',
       }
     case 'surrender':

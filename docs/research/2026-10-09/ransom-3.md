@@ -1,5 +1,7 @@
 # Round 3: ransom of one ordinary captured Moor, Iberian–Maghreb frontier c. 1450-1550
 
+> **Decision (PR #51):** the game pays on the spot, so it uses 30 (the low, sale-side order of magnitude), graded `unverified` — the only on-the-spot figure is Bençude's remark in Anais I ch. XXI, not a recorded sale; Málaga 1487 is a city head-tax and is not used. The ~100 below is the delayed-ransom value.
+>
 > Copied from a research scratchpad on 2026-10-09. Quotes are from djvu/OCR text with light cleanup — check against page images before quoting elsewhere.
 
 Builds on `ransom-2.md` (Naples/Malta captive values) and `raids.md` (Arzila land-fight cases).
