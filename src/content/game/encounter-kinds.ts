@@ -14,6 +14,7 @@ export const ENCOUNTER_KINDS: readonly EncounterKind[] = [
     crewMin: 20,
     crewMax: 60,
     conveyances: ['ship'],
+    carriesGold: true,
     shipClassId: 'caravela-latina',
   },
   {
@@ -23,6 +24,7 @@ export const ENCOUNTER_KINDS: readonly EncounterKind[] = [
     crewMin: 8,
     crewMax: 30,
     conveyances: ['horse', 'camel'],
+    carriesGold: true,
   },
   {
     id: 'beast',
@@ -31,5 +33,6 @@ export const ENCOUNTER_KINDS: readonly EncounterKind[] = [
     crewMin: 4,
     crewMax: 12,
     conveyances: ['horse'],
+    carriesGold: false,
   },
 ]

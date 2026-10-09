@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { COMBAT } from '../../content/game/combat.tuning'
+import { GOOD_BASE_PRICE } from '../../content/game/trade.tuning'
 import { MOUNT } from '../../content/game/mounts.tuning'
 import { PROVISION } from '../../content/game/provisions.tuning'
 import { findShipClass } from '../../content/ships'
@@ -400,6 +401,25 @@ describe('전투 — 붙으면 양쪽이 머릿수를 잃는다', () => {
     expect(run.encounters).toHaveLength(0)
   })
 
+  it('물리친 해적은 처음 머릿수만큼 노획을 남긴다 — 물러나도 남긴다', () => {
+    const run = seaRunNextTo(20)
+    const gold = run.supplies.gold
+    let plunder: RunEvent[] = []
+    for (let i = 0; i < 20 && plunder.length === 0; i += 1) {
+      plunder = eventsOf(applyCommand(run, { type: 'move', dir: 'e' }), 'plunder')
+    }
+    expect(plunder).toEqual([
+      {
+        type: 'plunder',
+        encounterId: 'pirate-test',
+        kind: 'pirate',
+        gold: 20 * COMBAT.plunderGold,
+      },
+    ])
+    expect(run.supplies.gold).toBe(gold + 20 * COMBAT.plunderGold)
+    expect(run.defeated).toBe(1)
+  })
+
   it('큰 해적에게 선원이나 선체를 다 잃으면 원정이 끝난다', () => {
     const run = seaRunNextTo(400)
     let ended = false
@@ -451,14 +471,14 @@ describe('선원 고용 — 항구에서 정원까지 채운다', () => {
   })
 })
 
-describe('내주기 — 식량·물을 주고 붙은 조우에게서 놓여난다', () => {
-  function seaRunNextTo(crew: number) {
+describe('내주기 — 몸값을 주고 붙은 조우에게서 놓여난다', () => {
+  function seaRunNextTo(crew: number, kind: 'pirate' | 'beast' = 'pirate') {
     const run = createRun(CONFIG, grid)
     run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell
     run.encounters = [
       {
-        id: 'pirate-test',
-        kind: 'pirate',
+        id: `${kind}-test`,
+        kind,
         cell: { x: run.player.cell.x + 1, y: run.player.cell.y },
         crew,
         crewAtStart: crew,
@@ -471,28 +491,61 @@ describe('내주기 — 식량·물을 주고 붙은 조우에게서 놓여난�
     return run
   }
 
-  it('머릿수만큼 식량과 물을 잃고, 해적은 사라지되 물리친 수에는 들지 않는다', () => {
+  it('해적은 머릿수만큼 금화를 받고 사라지며, 물리친 수에는 들지 않는다', () => {
     const run = seaRunNextTo(40)
-    const { food, water, crew } = run.supplies
+    const { gold, food, water, crew } = run.supplies
     const hours = run.elapsedHours
     const events = applyCommand(run, { type: 'tribute' })
-    const share = Math.ceil(40 * COMBAT.tributeDays)
+    const ransom = 40 * COMBAT.tributeGold
     expect(eventsOf(events, 'tribute')).toEqual([
-      { type: 'tribute', encounterId: 'pirate-test', kind: 'pirate', food: share, water: share },
+      { type: 'tribute', encounterId: 'pirate-test', kind: 'pirate', food: 0, gold: ransom },
     ])
-    expect(run.supplies).toMatchObject({ food: food - share, water: water - share, crew })
+    expect(eventsOf(events, 'ransom')).toEqual([{ type: 'ransom', gold: ransom, cargo: {} }])
+    expect(run.supplies).toMatchObject({ gold: gold - ransom, food, water, crew })
     expect(run.elapsedHours).toBe(hours + COMBAT.roundHours)
     expect(run.encounters).toHaveLength(0)
     expect(run.defeated).toBe(0)
     expect(eventsOf(events, 'combat')).toHaveLength(0)
   })
 
-  it('줄 만큼이 없으면 거절하고 시간도 흐르지 않는다', () => {
+  it('금화가 모자라면 비싼 화물부터 기준값으로 쳐서 채운다', () => {
+    const run = seaRunNextTo(40)
+    run.supplies.gold = 100
+    run.supplies.cargo = { salt: 30, sugar: 10 }
+    const events = applyCommand(run, { type: 'tribute' })
+    const ransom = eventsOf(events, 'ransom')[0]
+    expect(ransom?.gold).toBe(100)
+    const owed = 40 * COMBAT.tributeGold - 100
+    const sugarTons = Math.ceil(owed / GOOD_BASE_PRICE.sugar)
+    expect(ransom?.cargo).toEqual({ sugar: sugarTons })
+    expect(run.supplies.gold).toBe(0)
+    expect(run.supplies.cargo).toEqual({ salt: 30, sugar: 10 - sugarTons })
+  })
+
+  it('늑대는 금화가 아니라 식량을 가져간다', () => {
+    const run = seaRunNextTo(10, 'beast')
+    run.player.conveyance = 'horse'
+    const cell = grid.cellOf({ lat: 40, lon: -4 }) as Cell
+    run.player.cell = cell
+    const foe = run.encounters[0]
+    if (foe !== undefined) {
+      foe.cell = { x: cell.x + 1, y: cell.y }
+      foe.conveyance = 'horse'
+    }
+    const { gold, food } = run.supplies
+    applyCommand(run, { type: 'tribute' })
+    const share = Math.ceil(10 * COMBAT.tributeDays)
+    expect(run.supplies).toMatchObject({ gold, food: food - share })
+  })
+
+  it('금화와 화물을 합쳐도 모자라면 거절하고 시간도 흐르지 않는다', () => {
     const run = seaRunNextTo(400)
     const hours = run.elapsedHours
+    const gold = run.supplies.gold
     const events = applyCommand(run, { type: 'tribute' })
     expect(eventsOf(events, 'rejected')).toHaveLength(1)
     expect(run.elapsedHours).toBe(hours)
+    expect(run.supplies.gold).toBe(gold)
     expect(run.encounters).toHaveLength(1)
   })
 
@@ -501,6 +554,28 @@ describe('내주기 — 식량·물을 주고 붙은 조우에게서 놓여난�
     run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell
     run.encounters = []
     expect(eventsOf(applyCommand(run, { type: 'tribute' }), 'rejected')).toHaveLength(1)
+  })
+
+  it('항복하면 금화·화물을 넘기고 선원은 산 채로 원정이 끝난다', () => {
+    const run = seaRunNextTo(400)
+    run.supplies.cargo = { sugar: 10 }
+    const { gold, crew } = run.supplies
+    const events = applyCommand(run, { type: 'surrender' })
+    expect(eventsOf(events, 'surrender')).toEqual([
+      { type: 'surrender', gold, cargo: { sugar: 10 } },
+    ])
+    expect(run.ended).toBe('surrendered')
+    expect(run.supplies).toMatchObject({ gold: 0, cargo: {}, crew })
+    expect(eventsOf(events, 'combat')).toHaveLength(0)
+    expect(eventsOf(applyCommand(run, { type: 'wait' }), 'rejected')).toHaveLength(1)
+  })
+
+  it('붙은 사람 무리가 없으면 항복을 받지 않는다', () => {
+    const run = createRun(CONFIG, grid)
+    run.player.cell = grid.cellOf({ lat: 36, lon: -14 }) as Cell
+    run.encounters = []
+    expect(eventsOf(applyCommand(run, { type: 'surrender' }), 'rejected')).toHaveLength(1)
+    expect(run.ended).toBeNull()
   })
 })
 

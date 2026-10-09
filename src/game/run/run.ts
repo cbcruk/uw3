@@ -6,7 +6,8 @@ import { HOURS_PER_DAY, toDayNumber } from '../../sim/calendar/calendar'
 import { WORLD_LAND_CELLS_PER_DEGREE } from '../../sim/map/land-mask.const'
 import { createTileMap } from '../../sim/map/tile-map'
 import { spawnEncounters } from '../encounter/encounter'
-import { actEncounters, canStrike } from '../encounter/pursuit'
+import { actEncounters, canStrike, kindOf } from '../encounter/pursuit'
+import { payRansom } from '../combat/ransom'
 import { fightRound } from '../combat/combat'
 import { COMBAT } from '../../content/game/combat.tuning'
 import { PROVISION } from '../../content/game/provisions.tuning'
@@ -128,7 +129,7 @@ export function applyCommand(run: RunState, command: Command): RunEvent[] {
           toDayNumber(run.config.startDate) + Math.floor(hours / HOURS_PER_DAY),
         fallbackShip: run.shipClass,
         engage: (foe) =>
-          expeditionEndOf(run.supplies) === null
+          run.ended === null && expeditionEndOf(run.supplies) === null
             ? { hours: COMBAT.roundHours, events: fight(run, foe, false) }
             : null,
       },
@@ -184,7 +185,12 @@ function concludeIfEnded(run: RunState, events: RunEvent[]): void {
   }
 }
 
-/** 조우 하나와 한 합을 치른다. */
+/**
+ * 조우 하나와 한 합을 치른다. 사람 무리가 쓰러지거나 물러나면 노획을 거둔다 (R64).
+ *
+ * 노획은 처음 머릿수에 비례한다 — 물러난 무리도 짐을 버리고 달아난다. 쓰러뜨릴 때만 주면
+ * 퇴각(R46)이 먼저 오는 탓에 노획은 거의 일어나지 않는다.
+ */
 function fight(run: RunState, foe: Encounter, initiated: boolean): CombatEvent[] {
   const events = fightRound({
     seed: run.config.seed,
@@ -193,9 +199,15 @@ function fight(run: RunState, foe: Encounter, initiated: boolean): CombatEvent[]
     foe,
     initiated,
   })
-  run.defeated += events.filter(
-    (event) => event.type === 'defeated' || event.type === 'routed',
-  ).length
+  const beaten = events.some((event) => event.type === 'defeated' || event.type === 'routed')
+  if (beaten) {
+    run.defeated += 1
+    if (kindOf(foe).carriesGold) {
+      const gold = foe.crewAtStart * COMBAT.plunderGold
+      run.supplies.gold += gold
+      events.push({ type: 'plunder', encounterId: foe.id, kind: foe.kind, gold })
+    }
+  }
   return events
 }
 
@@ -299,6 +311,8 @@ function resolveCommand(run: RunState, command: Command, events: RunEvent[]): bo
       return hire(run, events)
     case 'tribute':
       return tribute(run, events)
+    case 'surrender':
+      return surrender(run, events)
     case 'buy':
     case 'sell':
       return trade(run, command, events)
@@ -460,10 +474,11 @@ function hire(run: RunState, events: RunEvent[]): boolean {
 }
 
 /**
- * 붙은 조우 모두에게 식량·물을 내주고 놓여난다. 한 합만큼의 시간이 든다.
+ * 붙은 조우 모두에게 몫을 내주고 놓여난다. 한 합만큼의 시간이 든다.
  *
- * 몫은 상대 머릿수 × `tributeDays`다. 짐승은 식량만 가져간다. 모두에게 줄 만큼이 없으면 거절한다 —
- * 일부만 달래고 나머지와 싸우는 길은 열지 않는다. 내준 조우는 격자에서 빠지지만 물리친 수에는 세지 않는다 (R48).
+ * 사람 무리는 머릿수 × `tributeGold`의 몸값을 금화로, 모자라면 화물로 받는다 (R63). 짐승은 머릿수 ×
+ * `tributeDays`의 식량을 가져간다. 모두에게 줄 만큼이 없으면 거절한다 — 일부만 달래고 나머지와 싸우는
+ * 길은 열지 않는다. 내준 조우는 격자에서 빠지지만 물리친 수에는 세지 않는다 (R48).
  */
 function tribute(run: RunState, events: RunEvent[]): boolean {
   const foes = run.encounters.filter((encounter) => canStrike(run.grid, encounter, run.player.cell))
@@ -471,34 +486,72 @@ function tribute(run: RunState, events: RunEvent[]): boolean {
     events.push({ type: 'rejected', command: 'tribute', reason: '내줄 상대가 붙어 있지 않다' })
     return false
   }
-  const demands = foes.map((foe) => {
-    const share = Math.ceil(foe.crew * COMBAT.tributeDays)
-    return { foe, food: share, water: foe.kind === 'beast' ? 0 : share }
-  })
+  const demands = foes.map((foe) =>
+    kindOf(foe).carriesGold
+      ? { foe, food: 0, gold: Math.ceil(foe.crew * COMBAT.tributeGold) }
+      : { foe, food: Math.ceil(foe.crew * COMBAT.tributeDays), gold: 0 },
+  )
   const food = demands.reduce((sum, demand) => sum + demand.food, 0)
-  const water = demands.reduce((sum, demand) => sum + demand.water, 0)
-  if (food > run.supplies.food || water > run.supplies.water) {
+  const gold = demands.reduce((sum, demand) => sum + demand.gold, 0)
+  if (food > run.supplies.food) {
     events.push({
       type: 'rejected',
       command: 'tribute',
-      reason: `내줄 것이 모자라다 (식량 ${food} · 물 ${water} 필요)`,
+      reason: `내줄 식량이 모자라다 (${food} 필요)`,
+    })
+    return false
+  }
+  const ransom = gold > 0 ? payRansom(run.supplies, gold) : null
+  if (gold > 0 && ransom === null) {
+    events.push({
+      type: 'rejected',
+      command: 'tribute',
+      reason: `몸값이 모자라다 (${gold.toLocaleString()}두카트 — 금화와 화물로)`,
     })
     return false
   }
   run.supplies.food -= food
-  run.supplies.water -= water
   run.elapsedHours += COMBAT.roundHours
-  for (const { foe, food: paidFood, water: paidWater } of demands) {
-    foe.crew = 0
+  for (const demand of demands) {
+    demand.foe.crew = 0
     events.push({
       type: 'tribute',
-      encounterId: foe.id,
-      kind: foe.kind,
-      food: paidFood,
-      water: paidWater,
+      encounterId: demand.foe.id,
+      kind: demand.foe.kind,
+      food: demand.food,
+      gold: demand.gold,
     })
   }
+  if (ransom !== null) {
+    events.push({ type: 'ransom', ...ransom })
+  }
   run.encounters = run.encounters.filter((encounter) => encounter.crew > 0)
+  return true
+}
+
+/**
+ * 배·화물·금화를 넘기고 선원만 산다. 원정은 `surrendered`로 끝난다 (R65).
+ *
+ * 사람 무리가 붙어 있을 때만 된다 — 늑대는 항복을 받지 않는다. 몸값을 낼 수 있어도 항복할 수 있다.
+ */
+function surrender(run: RunState, events: RunEvent[]): boolean {
+  const captor = run.encounters.some(
+    (encounter) => kindOf(encounter).carriesGold && canStrike(run.grid, encounter, run.player.cell),
+  )
+  if (!captor) {
+    events.push({
+      type: 'rejected',
+      command: 'surrender',
+      reason: '항복을 받을 상대가 붙어 있지 않다',
+    })
+    return false
+  }
+  const { gold, cargo } = run.supplies
+  run.supplies.gold = 0
+  run.supplies.cargo = {}
+  run.elapsedHours += COMBAT.roundHours
+  run.ended = 'surrendered'
+  events.push({ type: 'surrender', gold, cargo }, { type: 'ended', reason: 'surrendered' })
   return true
 }
 

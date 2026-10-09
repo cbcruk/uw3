@@ -31,8 +31,11 @@ export interface ProvisionSettlement {
   short: boolean
 }
 
-/** 원정이 끝난 이유. `arrived`만 성공이다 — 계약한 목표 항구에 배로 들어왔다. */
-export type ExpeditionEnd = 'arrived' | 'crew-lost' | 'hull-lost'
+/**
+ * 원정이 끝난 이유. `arrived`만 성공이다 — 계약한 목표 항구에 배로 들어왔다.
+ * `surrendered`는 배·화물·금화를 넘기고 선원만 산 끝이다 (R65).
+ */
+export type ExpeditionEnd = 'arrived' | 'crew-lost' | 'hull-lost' | 'surrendered'
 
 /** 하루치 소모의 결과. 화면 로그가 쓴다. */
 export interface RationReport {
