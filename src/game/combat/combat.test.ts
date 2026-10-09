@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { findShipClass } from '../../content/ships'
+import { COMBAT } from '../../content/game/combat.tuning'
 import type { ShipClass } from '../../sim/ship/ship.types'
 import type { Encounter } from '../encounter/encounter.types'
 import { createSupplies } from '../supplies/supplies'
@@ -100,5 +101,51 @@ describe('퇴각 — 절반을 잃으면 물러난다', () => {
     }
     expect(routed).toBe(true)
     expect(enemy.crew).toBe(0)
+  })
+})
+
+describe('전면 폭 — 배끼리는 한 번에 붙는 인원이 묶인다', () => {
+  function losses(conveyance: 'ship' | 'horse', kind: Encounter['kind'], foeCrew: number) {
+    let lost = 0
+    for (let seed = 1; seed <= 100; seed += 1) {
+      const supplies = { ...createSupplies(shipClass), crew: 48 }
+      const enemy = { ...foe(kind, foeCrew), id: `${kind}-${seed}`, conveyance }
+      for (let round = 0; round < 3; round += 1) {
+        fightRound({ seed, supplies, conveyance, foe: enemy, initiated: false })
+      }
+      lost += 48 - supplies.crew
+    }
+    return lost / 100
+  }
+
+  it('Centurion호(1591) — 48명이 150명의 승선 공격을 세 합 받아도 몇 명만 잃는다', () => {
+    expect(losses('ship', 'pirate', 150)).toBeLessThan(8)
+  })
+
+  it('뭍에서는 상한이 없어 150명의 도적에게 같은 세 합이면 훨씬 많이 잃는다', () => {
+    expect(losses('horse', 'bandit', 150)).toBeGreaterThan(30)
+  })
+
+  it('상한보다 적으면 전원이 싸운다 — 작은 해적과의 손실은 상한 전과 같다', () => {
+    const small = COMBAT.boardingFrontage - 2
+    const supplies = { ...createSupplies(shipClass), crew: small }
+    const enemy = foe('pirate', small)
+    const [round] = fightRound({
+      seed: 3,
+      supplies,
+      conveyance: 'ship',
+      foe: enemy,
+      initiated: true,
+    })
+    const open = { ...createSupplies(shipClass), crew: small }
+    const landed = { ...foe('pirate', small), conveyance: 'horse' as const }
+    const [ashore] = fightRound({
+      seed: 3,
+      supplies: open,
+      conveyance: 'ship',
+      foe: landed,
+      initiated: true,
+    })
+    expect(round).toEqual(ashore)
   })
 })

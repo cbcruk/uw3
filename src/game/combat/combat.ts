@@ -23,6 +23,9 @@ const FOE_LETHALITY: Readonly<Record<EncounterKindId, number>> = {
  * 재현된다 (R8, R33).
  *
  * 처음 머릿수의 절반 아래로 줄면 물러난다 (R46). 짐승도 같다 — 무리가 반으로 줄면 흩어진다.
+ *
+ * 배와 배가 맞붙으면 한 합에 싸우는 머릿수가 양쪽 모두 `boardingFrontage`를 넘지 않는다 (R75). 손실은 여전히 무리 전체에서 난다.
+ * 뭍은 트인 땅이라 상한이 없다 — 머릿수가 그대로 공격력이다.
  */
 export function fightRound(options: {
   seed: number
@@ -36,11 +39,18 @@ export function fightRound(options: {
   const rng = createRng(mixSeed(options.seed, hashString(`${foe.id}#${foe.rounds}`)))
   foe.rounds += 1
 
-  const crewLost = Math.min(supplies.crew, casualties(foe.crew * FOE_LETHALITY[foe.kind], rng))
-  const foeLost = Math.min(foe.crew, casualties(supplies.crew * COMBAT.playerLethality, rng))
+  const boarding = foe.conveyance === 'ship' && conveyance === 'ship'
+  const engaged = (crew: number): number =>
+    boarding ? Math.min(crew, COMBAT.boardingFrontage) : crew
+  const foeFighting = engaged(foe.crew)
+  const crewLost = Math.min(supplies.crew, casualties(foeFighting * FOE_LETHALITY[foe.kind], rng))
+  const foeLost = Math.min(
+    foe.crew,
+    casualties(engaged(supplies.crew) * COMBAT.playerLethality, rng),
+  )
   const hullLost =
     foe.kind === 'pirate' && conveyance === 'ship' && supplies.hull !== undefined
-      ? Math.min(supplies.hull, casualties(foe.crew * COMBAT.pirateHullDamage, rng))
+      ? Math.min(supplies.hull, casualties(foeFighting * COMBAT.pirateHullDamage, rng))
       : 0
 
   supplies.crew -= crewLost
