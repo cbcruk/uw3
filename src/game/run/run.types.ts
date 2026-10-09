@@ -8,7 +8,7 @@ import type { ExploredMap } from '../fog/fog.types'
 import type { Direction } from '../grid/direction.types'
 import type { Cell, WorldGrid } from '../grid/world-grid.types'
 import type { RegionId } from '../region/region.types'
-import type { ExpeditionEnd, Supplies } from '../supplies/supplies.types'
+import type { Cargo, ExpeditionEnd, Supplies } from '../supplies/supplies.types'
 import type { EastNorth } from '../travel/drift.types'
 import type { Conveyance, Mount } from '../travel/travel.types'
 
@@ -67,6 +67,7 @@ export type Command =
   | { type: 'embark' }
   | { type: 'hire' }
   | { type: 'tribute' }
+  | { type: 'surrender' }
   | { type: 'buy'; goodId: GoodId; tons: number }
   | { type: 'sell'; goodId: GoodId; tons: number }
 
@@ -112,9 +113,15 @@ export type RunEvent =
       type: 'tribute'
       encounterId: string
       kind: Encounter['kind']
+      /** 짐승에게 내준 식량. */
       food: number
-      water: number
+      /** 사람 무리가 요구한 몸값(두카트). 무엇으로 냈는지는 `ransom`이 알린다. */
+      gold: number
     }
+  /** 몸값을 무엇으로 냈는가. 금화가 먼저고, 모자란 몫은 화물이다 (R63). */
+  | { type: 'ransom'; gold: number; cargo: Cargo }
+  /** 배·화물·금화를 넘기고 선원만 산다. 곧이어 `ended`가 온다 (R65). */
+  | { type: 'surrender'; gold: number; cargo: Cargo }
   | { type: 'ended'; reason: ExpeditionEnd }
   | { type: 'sighted'; encounterId: string; kind: Encounter['kind']; crew: number }
   | PursuitEvent

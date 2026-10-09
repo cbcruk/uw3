@@ -161,6 +161,7 @@ export function applyRunToMeta(meta: MetaState, run: RunState, record: RunRecord
 
 /**
  * 리더보드 순서. 도착한 원정이 먼저, 그 안에서는 짧은 날수, 그다음 많이 남긴 선원, 마지막으로 금화.
+ * 도착 못 한 원정은 많이 들른 영역, 그다음 항복(살아 돌아옴), 오래 버틴 날 순이다 (R66).
  *
  * 점수 공식을 만들지 않았다. 가중치를 정할 근거가 없고, 기준들은 서로 바꿔 쓸 수 없다.
  * 금화가 날수보다 뒤인 것은 일부러다 — 값이 변하지 않아(R54) 두 항구를 오가면 금화는 얼마든지 불어난다.
@@ -174,7 +175,8 @@ export function compareRecords(a: RunRecord, b: RunRecord): number {
   if (a.outcome === 'arrived') {
     return a.days - b.days || b.crewLeft - a.crewLeft || goldOf(b) - goldOf(a)
   }
-  return b.regions - a.regions || b.days - a.days || goldOf(b) - goldOf(a)
+  const survived = Number(b.outcome === 'surrendered') - Number(a.outcome === 'surrendered')
+  return b.regions - a.regions || survived || b.days - a.days || goldOf(b) - goldOf(a)
 }
 
 function goldOf(record: RunRecord): number {

@@ -164,6 +164,26 @@ describe('리더보드 순서 — 도착 > 짧은 날수 > 남긴 선원', () =>
     const poor = { ...base, gold: 100 }
     expect([poor, richButSlow, rich].sort(compareRecords)).toEqual([rich, poor, richButSlow])
   })
+
+  it('항복은 들른 영역이 같을 때만 전멸보다 위다 — 일찍 항복해 순위를 사지 못한다', () => {
+    const sunk = { ...base, outcome: 'hull-lost' as const, days: 40, regions: 3 }
+    const yielded = { ...base, outcome: 'surrendered' as const, days: 5, regions: 3 }
+    const yieldedEarly = { ...base, outcome: 'surrendered' as const, days: 2, regions: 1 }
+    expect([yieldedEarly, sunk, yielded].sort(compareRecords)).toEqual([
+      yielded,
+      sunk,
+      yieldedEarly,
+    ])
+  })
+
+  it('항복한 원정은 죽은 원정처럼 도착·이익의 명성을 받지 않는다', () => {
+    const run = createRun(freeConfig(11, createMeta()), grid)
+    run.defeated = 1
+    run.ended = 'surrendered'
+    run.supplies.gold += 5000
+    const meta = applyRunToMeta(createMeta(), run, recordOf(run, null) as RunRecord)
+    expect(meta.fame).toBe(FAME.fameDefeated + FAME.fameDiscovery)
+  })
 })
 
 describe('명성·어학 — 끝난 원정에서만 쌓이고, 설정을 거쳐 다음 원정에 닿는다', () => {

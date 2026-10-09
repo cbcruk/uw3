@@ -6,7 +6,7 @@ import { HOURS_PER_DAY } from '../../sim/calendar/calendar'
 import type { Direction } from '../../game/grid/direction.types'
 import type { Command, RunEvent, RunState } from '../../game/run/run.types'
 import { cargoGoods, knownLanguages, marketAt } from '../../game/trade/trade'
-import type { ExpeditionEnd } from '../../game/supplies/supplies.types'
+import type { Cargo, ExpeditionEnd } from '../../game/supplies/supplies.types'
 import type { Conveyance } from '../../game/travel/travel.types'
 import type { LogLine } from './game-view.types'
 
@@ -55,6 +55,8 @@ export function commandForKey(key: string, code: string): Command | null {
       return { type: 'hire' }
     case 't':
       return { type: 'tribute' }
+    case 'x':
+      return { type: 'surrender' }
     default:
       return code === 'Numpad5' ? { type: 'wait' } : null
   }
@@ -140,6 +142,7 @@ export const END_LABEL: Readonly<Record<ExpeditionEnd, string>> = {
   arrived: '목표 항구에 닿았다',
   'crew-lost': '선원을 모두 잃었다',
   'hull-lost': '배가 가라앉았다',
+  surrendered: '배를 넘기고 항복했다',
 }
 
 function portName(portId: string): string {
@@ -217,6 +220,18 @@ export function describeEvent(event: RunEvent): LogLine | null {
         text: `${withParticle(encounterName(event.kind), '이', '가')} ${describeTribute(event)} 받고 떠났다`,
         tone: 'warn',
       }
+    case 'ransom':
+      return { text: `몸값으로 ${describeLoss(event.gold, event.cargo)}을 내줬다`, tone: 'warn' }
+    case 'plunder':
+      return {
+        text: `${withParticle(encounterName(event.kind), '이', '가')} 남긴 금품 ${signed(event.gold)}두카트를 거뒀다`,
+        tone: 'good',
+      }
+    case 'surrender':
+      return {
+        text: `항복했다. ${describeLoss(event.gold, event.cargo)}과 배를 넘기고 선원은 살았다`,
+        tone: 'bad',
+      }
     case 'defeated':
       return {
         text: `${withParticle(encounterName(event.kind), '을', '를')} 물리쳤다`,
@@ -247,7 +262,15 @@ function describeResupply(event: Extract<RunEvent, { type: 'resupply' }>): LogLi
 }
 
 function describeTribute(event: Extract<RunEvent, { type: 'tribute' }>): string {
-  return event.water > 0 ? `식량 ${event.food} · 물 ${event.water}을` : `식량 ${event.food}을`
+  return event.gold > 0 ? `몸값 ${event.gold.toLocaleString()}두카트를` : `식량 ${event.food}을`
+}
+
+/** 내준 금화와 화물을 한 줄로. "금화 300두카트 · 설탕 10톤". */
+function describeLoss(gold: number, cargo: Cargo): string {
+  const goods = (Object.entries(cargo) as [GoodId, number][])
+    .filter(([, tons]) => tons > 0)
+    .map(([goodId, tons]) => `${goodName(goodId)} ${tons}톤`)
+  return [`금화 ${gold.toLocaleString()}두카트`, ...goods].join(' · ')
 }
 
 function describeRation(event: Extract<RunEvent, { type: 'ration' }>): string {

@@ -34,6 +34,11 @@ export interface EncounterKind {
    * 늑대는 말의 행정을 빌린다. 짐승 행정 표를 따로 만들 만큼 차이가 의미 있지 않다.
    */
   conveyances: readonly Conveyance[]
+  /**
+   * 금화를 원하고 지니는 사람 무리인가. 그렇다면 내주기는 금화·화물로 받고(R63), 물리치면 노획이 남고(R64),
+   * 항복을 받는다(R65). 짐승은 식량만 받는다.
+   */
+  carriesGold: boolean
   /** 배로 움직이는 종류의 선형. 바람을 받는 방식이 선형마다 다르다. 뭍의 종류는 없다. */
   shipClassId?: string
 }
