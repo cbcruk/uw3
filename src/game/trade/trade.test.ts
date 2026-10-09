@@ -5,7 +5,15 @@ import type { ShipClass } from '../../sim/ship/ship.types'
 import { createSupplies } from '../supplies/supplies'
 import { FAME } from '../../content/game/fame.tuning'
 import type { LanguageId } from '../../content/content.types'
-import { buyGoods, cargoGoods, knownLanguages, marketAt, priceAt, sellGoods } from './trade'
+import {
+  buyGoods,
+  cargoGoods,
+  knownLanguages,
+  marketAt,
+  portFee,
+  priceAt,
+  sellGoods,
+} from './trade'
 
 /** 말을 모두 아는 원정. 값의 바탕만 보려는 테스트가 쓴다. */
 const FLUENT: ReadonlySet<LanguageId> = new Set(['portuguese', 'castilian', 'arabic'])
@@ -59,23 +67,40 @@ describe('시장 — 값은 항구와 품목에서만 정해진다', () => {
     expect(supplies.gold).toBeGreaterThan(before)
   })
 
-  it('말을 모르는 항구에서는 통역이 떼어 사는 값이 오르고 파는 값이 내린다', () => {
-    const native = knownLanguages({
-      seed: 0,
-      startDate: { year: 1502, month: 1, day: 1 },
-      startPortId: 'lisboa',
-      shipClassId: 'x',
-    })
+  const native = knownLanguages({
+    seed: 0,
+    startDate: { year: 1502, month: 1, day: 1 },
+    startPortId: 'lisboa',
+    shipClassId: 'x',
+  })
+
+  it('다른 나라 항구에서는 관세를 낸다 — 말을 다 알아도 남는다', () => {
     const base = GOOD_BASE_PRICE.sugar * TRADE.localPriceRatio
-    expect(priceAt('malaga', 'sugar', 'buy', native)).toBe(
-      Math.round(base * (1 + FAME.interpreterFee)),
-    )
-    expect(priceAt('malaga', 'sugar', 'sell', native)).toBe(
-      Math.round(base * (1 - FAME.interpreterFee)),
-    )
+    expect(portFee('malaga', FLUENT)).toEqual({
+      customs: TRADE.customsDuty,
+      interpreter: 0,
+      total: TRADE.customsDuty,
+    })
     expect(priceAt('malaga', 'sugar', 'buy', FLUENT)).toBe(
-      priceAt('malaga', 'sugar', 'sell', FLUENT),
+      Math.round(base * (1 + TRADE.customsDuty)),
     )
+    expect(priceAt('malaga', 'sugar', 'sell', FLUENT)).toBe(
+      Math.round(base * (1 - TRADE.customsDuty)),
+    )
+  })
+
+  it('말을 모르는 항구에서는 통역료를 더 낸다. 관세와 더한다', () => {
+    expect(portFee('malaga', native).total).toBeCloseTo(TRADE.customsDuty + FAME.interpreterFee)
+    expect(portFee('ceuta', native)).toEqual({
+      customs: 0,
+      interpreter: FAME.interpreterFee,
+      total: FAME.interpreterFee,
+    })
+  })
+
+  it('원정의 나라·말인 항구에서는 떼이는 몫이 없어 산지의 사는 값과 파는 값이 같다', () => {
+    expect(portFee('lisboa', native).total).toBe(0)
     expect(priceAt('lisboa', 'salt', 'buy', native)).toBe(priceAt('lisboa', 'salt', 'sell', native))
+    expect(priceAt('ceuta', 'wax', 'buy', FLUENT)).toBe(priceAt('ceuta', 'wax', 'sell', FLUENT))
   })
 })

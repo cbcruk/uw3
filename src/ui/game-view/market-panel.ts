@@ -1,6 +1,6 @@
 import { findPort } from '../../content/ports'
 import { cargoTons, provisionLimit } from '../../game/supplies/supplies'
-import { cargoGoods, knownLanguages, marketAt, priceAt } from '../../game/trade/trade'
+import { cargoGoods, knownLanguages, marketAt, portFee, priceAt } from '../../game/trade/trade'
 import { LANGUAGE_LABELS } from '../../content/content.types'
 import type { RunState } from '../../game/run/run.types'
 import { TRADE_LOT_TONS, goodName } from './game-view.utils'
@@ -20,9 +20,14 @@ export function renderMarket(run: RunState): string {
   const { supplies } = run
   const languages = knownLanguages(run.config)
   const market = marketAt(portId, languages)
-  const interpreter = languages.has(port.language)
-    ? ''
-    : ` · ${LANGUAGE_LABELS[port.language]}를 몰라 통역이 뗀다`
+  const fee = portFee(portId, languages)
+  const percent = (ratio: number): string => `${Math.round(ratio * 1000) / 10}%`
+  const interpreter = [
+    fee.customs > 0 ? ` · ${port.nation} 항구라 관세 ${percent(fee.customs)}` : '',
+    fee.interpreter > 0
+      ? ` · ${LANGUAGE_LABELS[port.language]}를 몰라 통역 ${percent(fee.interpreter)}`
+      : '',
+  ].join('')
   const forSale =
     market.length === 0
       ? '<li class="rl-market__empty">시장이 없다</li>'

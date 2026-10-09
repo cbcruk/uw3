@@ -38,11 +38,11 @@ const FAME_SCALARS = {
     '그 말을 쓰는 항구에 들른 횟수(원정마다 항구 하나에 한 번)가 이만큼이면 배운다. 게임 속도 값',
   ),
   interpreterFee: {
-    value: 0.1,
+    value: 0.005,
     unit: '비',
-    grade: 'unverified',
+    grade: 'qualitative',
     source:
-      '감으로 정함. 말을 모르는 항구에서 떼이는 몫. 크기 10%는 하프스 튀니스에서 기독교 상인이 낸 수입 관세와 같다(Brunschvig 1947 II, pp. 241–242; 제노바–튀니스 1445 조약, Mas Latrie 1866) — 그러나 그것은 말이 아니라 신앙·국적에 걸린 수입 관세이고 수출은 면세였다. 통역료 자체는 0.5%. 게임의 뜻(말에 묶이고 사고팔기 양쪽)에 맞는 사료가 필요하다 — docs/sources.md',
+      "말을 모르는 항구에서 통역(드라고만)에게 떼이는 몫. 피렌체–튀니스 1421 조약: 통역료 'cinque miliaresi per cento bisanti' = 0.5%(Mas Latrie, Traités de paix et de commerce, 1866, pp. 199–200). 하프스 튀니스의 사료라 1500년 이베리아 항구에는 방향만 댄다. 외국 상인의 큰 몫은 관세(customsDuty)다 — docs/sources.md",
   },
 } as const satisfies Record<string, Tuned>
 
