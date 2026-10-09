@@ -468,6 +468,9 @@ describe('전투 — 붙으면 양쪽이 머릿수를 잃는다', () => {
     expect(
       eventsOf(applyCommand(seaRunNextTo(weak), { type: 'tribute' }), 'rejected'),
     ).toHaveLength(1)
+    expect(
+      eventsOf(applyCommand(seaRunNextTo(weak), { type: 'surrender' }), 'rejected'),
+    ).toHaveLength(1)
   })
 
   it('우세한 해적은 덤비고, 약한 해적도 들이받히면 끝까지 싸운다 (R80)', () => {
